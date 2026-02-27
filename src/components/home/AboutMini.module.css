@@ -1,0 +1,65 @@
+.section {
+  width: 100%;
+  overflow: visible;
+}
+
+/* Fono panelė su tarpais abiejuose kraštuose (kaip renginių skyriams) */
+.panel {
+  position: relative;
+  margin-inline: clamp(3rem, 12vw, 7.5rem);
+  padding: 3rem clamp(2rem, 5vw, 4rem) 6rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 30px;
+  will-change: transform;
+}
+
+/* Antraštė: dvi eilutės, suplaukia iš kraštų – kaip „Artėjantys užsiėmimai“, centruota */
+.sectionTitleWrapper {
+  padding-block: 0.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0em;
+}
+
+.sectionTitleLine {
+  font-family:
+    var(--font-heading-current), var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  font-size: clamp(1.35rem, 4.5vw, 2rem);
+  font-weight: 300;
+  letter-spacing: normal;
+  color: #1a1b1e;
+  white-space: nowrap;
+}
+
+.sectionTitleLine2 {
+  font-family: var(--font-hurricane), var(--font-lovers-quarrel), "Lovers Quarrel", cursive;
+  font-size: clamp(6rem, 20vw, 9rem);
+}
+
+@media (max-width: 47.9375em) {
+  .sectionTitleLine2 {
+    font-size: clamp(4.25rem, 18vw, 6rem);
+  }
+}
+
+.text {
+  color: #495057;
+  font-size: clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
+  font-style: italic;
+}
+
+/* Dark theme */
+[data-theme="dark"] .panel {
+  background: rgba(26, 27, 30, 0.9);
+}
+
+[data-theme="dark"] .sectionTitleLine,
+[data-theme="dark"] .sectionTitleLine2 {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .text {
+  color: #adb5bd;
+}

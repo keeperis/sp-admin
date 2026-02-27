@@ -1,0 +1,406 @@
+.section {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.section :global(.mantine-Title-root) {
+  color: #1a1b1e;
+}
+
+/* Skilties antraštė: du žodžiai atskiromis eilutėmis, suvažiuoja iš kraštų */
+.sectionTitleWrapper {
+  padding-block: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0em;
+}
+
+.sectionTitleLine {
+  font-family: var(--font-heading-current), var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  font-size: clamp(2.25rem, 7vw, 3.5rem);
+  font-weight: 300;
+  letter-spacing: normal;
+  color: #1a1b1e;
+  white-space: nowrap;
+}
+
+.section :global(.mantine-Card-root) {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.workshopCard {
+  font-family: var(--font-body-current), var(--font-space-grotesk), "Space Grotesk", sans-serif;
+}
+
+.section :global(.mantine-Text-root) {
+  color: inherit;
+}
+
+.workshopCardTitle {
+  font-family: var(--font-subheading-current), var(--font-fraunces), Fraunces, Georgia, serif;
+}
+
+.section .metaText {
+  color: #6c757d;
+}
+
+.priceText {
+  font-family: var(--font-subheading-current), var(--font-fraunces), Fraunces, Georgia, serif;
+  color: #1a1b1e;
+}
+
+.spotsBadge {
+  border: 1px solid transparent;
+}
+
+.spotsAvailable {
+  background: #e8f5e9;
+  border-color: #c8e6c9;
+  color: #2e7d32;
+}
+
+.spotsLow {
+  background: #fff4e5;
+  border-color: #ffe0b2;
+  color: #9a5b00;
+}
+
+.spotsFull {
+  background: #fdecec;
+  border-color: #f8c9c9;
+  color: #b23a48;
+}
+
+.section :global(.mantine-Tabs-list) {
+  background: transparent;
+}
+
+.section :global(.mantine-Tabs-list::before) {
+  border-color: rgba(0, 0, 0, 0.22);
+}
+
+.section :global(.mantine-Tabs-root) {
+  --tabs-color: #495057;
+}
+
+.section :global(.mantine-Tabs-tab) {
+  color: #495057;
+}
+
+.section :global(.mantine-Tabs-tab[data-active]) {
+  background: rgba(255, 255, 255, 0.92);
+  color: #212529;
+}
+
+.section :global(.mantine-Tabs-tab[data-active]::before) {
+  border-color: #495057;
+}
+
+.section :global(.mantine-Button-root) {
+  color: inherit;
+}
+
+.section :global(.mantine-Button-root[data-variant="light"]) {
+  --button-bg: rgba(73, 80, 87, 0.08);
+  --button-hover: rgba(73, 80, 87, 0.14);
+  border-color: rgba(173, 181, 189, 0.85);
+  color: #495057;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.section :global(.mantine-Button-root[data-variant="light"]:hover) {
+  border-color: rgba(73, 80, 87, 0.95);
+  color: #212529;
+  transform: translateY(-1px);
+}
+
+.modalContent {
+  background: #f8f9fa;
+  color: #212529;
+  display: flex;
+  flex-direction: column;
+  max-height: 90dvh;
+}
+
+.modalHeader {
+  background: #f8f9fa;
+  color: #212529;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.modalBody {
+  background: #f8f9fa;
+  color: #212529;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-inline: 2rem;
+  padding-block: 0;
+  overflow: hidden;
+}
+
+.modalCloseBtn {
+  position: absolute;
+  top: 0.75rem;
+  right: -1rem;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modalPriceAmount {
+  font-size: 1.5rem;
+}
+
+.modalPriceBox {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  padding: 14px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.modalHeaderSection {
+  flex-shrink: 0;
+  padding-inline: 2rem;
+  padding-block: 2rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.modalCoverImage {
+  position: relative;
+  width: 100%;
+  height: min(160px, 42vw);
+  overflow: hidden;
+}
+
+.modalScrollSection {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-inline: 2rem;
+  padding-block: 1.5rem;
+}
+
+.modalScrollSection * {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.modalFooterSection {
+  flex-shrink: 0;
+  padding-inline: 1.5rem;
+  padding-block: 0.75rem 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f8f9fa;
+}
+
+.modalFooterIconsOnly {
+  display: flex;
+}
+
+.modalFooterFullBtns {
+  display: none;
+}
+
+/* Mobile: mažesnės šoninės paraštės */
+@media (max-width: 47.9375em) {
+  .modalCloseBtn {
+    right: -0.5rem;
+  }
+
+  .modalBody {
+    padding-inline: 1rem;
+  }
+
+  .modalHeaderSection {
+    padding-inline: 1rem;
+  }
+
+  .modalScrollSection {
+    padding-inline: 1rem;
+  }
+
+  .modalFooterSection {
+    padding-inline: 0.75rem;
+  }
+
+  .modalPriceBox {
+    padding-block-start: 7px;
+    padding-block-end: 14px;
+    padding-inline: 12px;
+    gap: 1px;
+  }
+}
+
+@media (min-width: 48em) {
+  .modalFooterIconsOnly {
+    display: none;
+  }
+
+  .modalFooterFullBtns {
+    display: flex;
+  }
+}
+
+.modalTitle {
+  color: #212529;
+}
+
+/* Dark theme */
+[data-theme="dark"] .section {
+  background: rgba(26, 27, 30, 0.9);
+}
+
+[data-theme="dark"] .section :global(.mantine-Title-root) {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .sectionTitleLine {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Card-root) {
+  background: rgba(37, 38, 43, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .section :global(.mantine-Text-root) {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Text-root[data-dimmed]) {
+  color: #868e96;
+}
+
+[data-theme="dark"] .section .metaText {
+  color: #868e96;
+}
+
+[data-theme="dark"] .section :global(.mantine-Tabs-list) {
+  background: transparent;
+}
+
+[data-theme="dark"] .section :global(.mantine-Tabs-list::before) {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+[data-theme="dark"] .section :global(.mantine-Tabs-root) {
+  --tabs-color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Tabs-tab) {
+  color: #adb5bd;
+}
+
+[data-theme="dark"] .section :global(.mantine-Tabs-tab[data-active]) {
+  background: rgba(37, 38, 43, 0.9);
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Tabs-tab[data-active]::before) {
+  border-color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Button-root) {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Button-root[data-variant="light"]) {
+  --button-bg: rgba(255, 255, 255, 0.08);
+  --button-hover: rgba(233, 236, 239, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Button-root[data-variant="light"]:hover) {
+  border-color: rgba(233, 236, 239, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .section :global(.mantine-Button-root[data-variant="subtle"]) {
+  color: #74c0fc;
+}
+
+[data-theme="dark"] .section :global(.mantine-Button-root[data-variant="subtle"]:hover) {
+  background: rgba(116, 192, 252, 0.15);
+}
+
+[data-theme="dark"] .modalContent {
+  background: #25262b;
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .modalHeader {
+  background: #25262b;
+  color: #e9ecef;
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .modalBody {
+  background: #25262b;
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .modalBody .priceText {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .modalPriceBox {
+  background: rgba(37, 38, 43, 0.95);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .modalHeaderSection {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .modalFooterSection {
+  border-top-color: rgba(255, 255, 255, 0.12);
+  background: #25262b;
+}
+
+[data-theme="dark"] .modalFooterSection .priceText {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .modalTitle {
+  color: #e9ecef;
+}
+
+/* Kaina – skaitoma pagal temą */
+[data-theme="dark"] .section .priceText {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section .spotsAvailable {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(129, 199, 132, 0.35);
+  color: #c8e6c9;
+}
+
+[data-theme="dark"] .section .spotsLow {
+  background: rgba(255, 193, 7, 0.2);
+  border-color: rgba(255, 224, 178, 0.35);
+  color: #ffe0b2;
+}
+
+[data-theme="dark"] .section .spotsFull {
+  background: rgba(244, 67, 54, 0.2);
+  border-color: rgba(248, 201, 201, 0.35);
+  color: #ffcdd2;
+}

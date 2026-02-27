@@ -1,0 +1,93 @@
+/* Skiltis: fonas su kairiuoju tarpu pagal puslapio grind */
+.section {
+  width: 100%;
+  overflow: visible;
+}
+
+/* Sliding panel: fonas + turinys kartu išlenda iš dešinės; kairėje tarpas nuo krašto */
+.panel {
+  position: relative;
+  margin-left: clamp(3rem, 12vw, 7.5rem);
+  margin-right: 0;
+  padding: 6rem clamp(2rem, 5vw, 4rem);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  will-change: transform;
+}
+
+.imageCol {
+  display: flex;
+  align-items: center;
+}
+
+.imageWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+.title {
+  font-family:
+    var(--font-heading-current), var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 400;
+  color: #1a1b1e;
+  line-height: 1.2;
+}
+
+.paragraph {
+  font-family: var(--font-body-current), var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  color: #495057;
+  line-height: 1.7;
+}
+
+@media (max-width: 47.9375em) {
+  .panel {
+    margin-left: clamp(1.5rem, 6vw, 3rem);
+    padding: 3rem clamp(1rem, 2.5vw, 2rem);
+  }
+}
+
+.bullet {
+  display: inline-block;
+  width: 0.4em;
+  height: 0.4em;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 0.5em;
+  flex-shrink: 0;
+}
+
+.textColumn :global(.mantine-List-root) {
+  color: #495057;
+}
+
+.textColumn :global(.mantine-List-item) {
+  margin-bottom: 0;
+}
+
+.textColumn {
+  min-height: 280px;
+  padding-block: 1rem;
+}
+
+/* Dark theme */
+[data-theme="dark"] .panel {
+  background: rgba(26, 27, 30, 0.9);
+}
+
+[data-theme="dark"] .title {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .paragraph,
+[data-theme="dark"] .textColumn :global(.mantine-List-root) {
+  color: #adb5bd;
+}
+
+[data-theme="dark"] .imageWrapper {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}

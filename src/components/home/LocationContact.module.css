@@ -1,0 +1,151 @@
+.section {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  padding-top: 4rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.title {
+  font-family:
+    var(--font-heading-current), var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  color: #1a1b1e;
+}
+
+.text {
+  color: #495057;
+  font-size: clamp(1.05rem, 1rem + 0.25vw, 1.2rem);
+}
+
+.mapWrapper {
+  width: 100%;
+  height: 400px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.mapFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.footerGrid {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 2rem;
+}
+
+.footerColumn {
+  min-height: 0;
+}
+
+.footerHeading {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6c757d;
+  margin-bottom: 0.85rem;
+}
+
+.footerContactBtn {
+  color: #212529;
+  border-color: rgba(173, 181, 189, 0.9);
+  background: rgba(73, 80, 87, 0.06);
+}
+
+.footerContactBtn:hover {
+  color: #212529;
+  border-color: rgba(108, 117, 125, 0.95);
+  background: rgba(73, 80, 87, 0.12);
+}
+
+.footerLink {
+  color: #495057;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.footerLink:hover {
+  color: #212529;
+}
+
+.copyright {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #868e96;
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding-inline-start: 2rem !important;
+  }
+
+  .footerGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .footerColumn {
+    min-height: 0;
+  }
+}
+
+/* Dark theme */
+[data-theme="dark"] .section {
+  background: rgba(26, 27, 30, 0.9);
+}
+
+[data-theme="dark"] .title {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .text {
+  color: #adb5bd;
+}
+
+[data-theme="dark"] .mapWrapper {
+  border-top-color: rgba(255, 255, 255, 0.15);
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .footer {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .footerHeading {
+  color: #adb5bd;
+}
+
+[data-theme="dark"] .footerContactBtn {
+  color: #f1f3f5;
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .footerContactBtn:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .footerLink {
+  color: #ced4da;
+}
+
+[data-theme="dark"] .footerLink:hover {
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .copyright {
+  color: #adb5bd;
+}

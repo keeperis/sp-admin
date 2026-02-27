@@ -1,0 +1,55 @@
+.section {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.sectionTitleWrapper {
+  padding-top: 2rem;
+  padding-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0em;
+}
+
+.sectionTitleLine {
+  font-family:
+    var(--font-heading-current), var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  font-size: clamp(2.25rem, 7vw, 3.5rem);
+  font-weight: 300;
+  letter-spacing: normal;
+  color: #1a1b1e;
+  text-align: center;
+  max-width: 100%;
+}
+
+/* Dark theme */
+[data-theme="dark"] .section {
+  background: rgba(26, 27, 30, 0.9);
+}
+
+[data-theme="dark"] .sectionTitleLine {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Accordion-item) {
+  background: rgba(37, 38, 43, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .section :global(.mantine-Accordion-control) {
+  color: #e9ecef;
+}
+
+[data-theme="dark"] .section :global(.mantine-Accordion-control:hover) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .section :global(.mantine-Accordion-panel) {
+  color: #adb5bd;
+}
+
+[data-theme="dark"] .section :global(.mantine-Accordion-panel .mantine-Text-root) {
+  color: #adb5bd;
+}

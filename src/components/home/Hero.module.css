@@ -1,0 +1,92 @@
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Brand layer - viršuje per vidurį */
+.brandLayer {
+  position: absolute;
+  min-width: 280px;
+  text-align: center;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: clamp(0.85rem, 2.5vw, 1.2rem);
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+}
+
+/* Headline layer - didelės raidės, paraštės kaip content grid */
+.headlineLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.05em;
+  padding: 4rem var(--mantine-spacing-xl, 2rem);
+  max-width: 1200px;
+  margin-inline: auto;
+  box-sizing: border-box;
+  z-index: 5;
+}
+
+.headlineLine {
+  display: block;
+  width: 100%;
+  min-height: 1em;
+}
+
+.headlineLineInner {
+  display: block;
+  width: 100%;
+  font-family:
+    var(--font-heading-current), var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  font-size: clamp(3rem, 10vw, 9rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: white;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 20px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+/* Momentai – centre */
+.headlineLine[data-line="0"] {
+  text-align: center;
+}
+
+/* kurie – dešinėje */
+.headlineLine[data-line="1"] {
+  text-align: right;
+}
+
+/* mobile: didesnis tekstas, tarpas tarp eilučių 1.4 */
+@media (max-width: 767px) {
+  .headlineLineInner {
+    font-size: clamp(3.5rem, 12vw, 9rem);
+    line-height: 1.2;
+  }
+}
+
+/* desktop: 50px paraštė dešinėje */
+@media (min-width: 768px) {
+  .headlineLine[data-line="1"] {
+    padding-right: 50px;
+  }
+}
+
+/* žavi. – kairėje */
+.headlineLine[data-line="2"] {
+  text-align: left;
+}
