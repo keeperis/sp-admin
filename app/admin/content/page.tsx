@@ -18,7 +18,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconLanguage, IconPlus, IconTrash } from '@tabler/icons-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
 import type { FAQTag, SiteContent } from '@/src/lib/content/schema';
@@ -95,6 +95,10 @@ export default function ContentPage() {
   const [saving, setSaving] = useState(false);
   const [version, setVersion] = useState<number | null>(null);
   const [translating, setTranslating] = useState<string | null>(null);
+  const [bgColumns, setBgColumns] = useState<string[][]>([[], [], [], []]);
+  const [bgSaving, setBgSaving] = useState(false);
+  const [bgUploadingCol, setBgUploadingCol] = useState<number | null>(null);
+  const uploadRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const content = useMemo(() => {
     if (draft) return draft;
@@ -120,6 +124,22 @@ export default function ContentPage() {
       setVersion(data.version);
     }
   }, [version, data?.version]);
+
+  useEffect(() => {
+    if (selectedSite !== 'ceramics' && selectedSite !== 'yoga') return;
+    fetch(`/api/admin/bg-grid?site=${selectedSite}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d?.columns)) {
+          const cols = d.columns.slice(0, 4).map((c: unknown) =>
+            Array.isArray(c) ? c.slice(0, 6).filter((v): v is string => typeof v === 'string') : [],
+          );
+          while (cols.length < 4) cols.push([]);
+          setBgColumns(cols);
+        }
+      })
+      .catch(() => setBgColumns([[], [], [], []]));
+  }, [selectedSite]);
 
   const setSectionParagraph = (
     section: 'oneTime' | 'ongoing' | 'private',
@@ -150,6 +170,67 @@ export default function ContentPage() {
       notifications.show({ message: error?.message || 'Vertimas nepavyko', color: 'red' });
     } finally {
       setTranslating(null);
+    }
+  };
+
+  const removeBgImage = (colIdx: number, imgIdx: number) => {
+    setBgColumns((prev) => prev.map((col, i) => (i === colIdx ? col.filter((_, j) => j !== imgIdx) : col)));
+  };
+
+  const moveBgImage = (fromCol: number, imgIdx: number, toCol: number) => {
+    if (fromCol === toCol) return;
+    setBgColumns((prev) => {
+      const next = prev.map((c) => [...c]);
+      const item = next[fromCol]?.[imgIdx];
+      if (!item) return prev;
+      if ((next[toCol]?.length || 0) >= 6) {
+        notifications.show({ message: 'Tik 6 img viename stulpelyje', color: 'orange' });
+        return prev;
+      }
+      next[fromCol].splice(imgIdx, 1);
+      next[toCol].push(item);
+      return next;
+    });
+  };
+
+  const uploadBgImage = async (colIdx: number, file?: File) => {
+    if (!file) return;
+    if ((bgColumns[colIdx]?.length || 0) >= 6) {
+      notifications.show({ message: 'Stulpelis pilnas (max 6)', color: 'orange' });
+      return;
+    }
+    try {
+      setBgUploadingCol(colIdx);
+      const form = new FormData();
+      form.append('site', selectedSite);
+      form.append('file', file);
+      const res = await fetch('/api/admin/bg-grid/upload', { method: 'POST', body: form });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'Upload failed');
+      setBgColumns((prev) => prev.map((col, i) => (i === colIdx ? [...col, body.url] : col)));
+      notifications.show({ message: 'Image įkelta', color: 'green' });
+    } catch (e: any) {
+      notifications.show({ message: e?.message || 'Upload nepavyko', color: 'red' });
+    } finally {
+      setBgUploadingCol(null);
+    }
+  };
+
+  const saveBgGrid = async () => {
+    try {
+      setBgSaving(true);
+      const res = await fetch('/api/admin/bg-grid', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site: selectedSite, columns: bgColumns }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'Save failed');
+      notifications.show({ message: 'BG grid išsaugotas', color: 'green' });
+    } catch (e: any) {
+      notifications.show({ message: e?.message || 'Save nepavyko', color: 'red' });
+    } finally {
+      setBgSaving(false);
     }
   };
 
@@ -238,6 +319,72 @@ export default function ContentPage() {
           </Button>
         </Group>
       </Group>
+
+      <Paper withBorder p="md" mb="md">
+        <Group justify="space-between" mb="sm">
+          <Title order={3}>Background grid ({selectedSite})</Title>
+          <Button onClick={saveBgGrid} loading={bgSaving}>
+            Save BG grid
+          </Button>
+        </Group>
+        <SimpleGrid cols={{ base: 1, md: 4 }}>
+          {[0, 1, 2, 3].map((colIdx) => (
+            <Paper key={`bg-col-${colIdx}`} withBorder p="xs">
+              <Group justify="space-between" mb="xs">
+                <Text fw={600}>Stulpelis {colIdx + 1}</Text>
+                <Text size="xs" c="dimmed">
+                  {bgColumns[colIdx]?.length || 0}/6
+                </Text>
+              </Group>
+              <Stack gap="xs">
+                {(bgColumns[colIdx] || []).map((url, imgIdx) => (
+                  <Paper key={`${url}-${imgIdx}`} withBorder p={4}>
+                    <Group justify="space-between" mb={4}>
+                      <Select
+                        size="xs"
+                        data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
+                        value={String(colIdx)}
+                        onChange={(value) => {
+                          if (value == null) return;
+                          moveBgImage(colIdx, imgIdx, Number(value));
+                        }}
+                        w={120}
+                      />
+                      <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Group>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url.startsWith('http') ? url : `https://api.soulpoetry.love${url}`}
+                      alt="bg thumb"
+                      style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6 }}
+                    />
+                  </Paper>
+                ))}
+                <input
+                  ref={(el) => {
+                    uploadRefs.current[colIdx] = el;
+                  }}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(event) => uploadBgImage(colIdx, event.currentTarget.files?.[0])}
+                />
+                <Button
+                  size="xs"
+                  variant="light"
+                  loading={bgUploadingCol === colIdx}
+                  onClick={() => uploadRefs.current[colIdx]?.click()}
+                  disabled={(bgColumns[colIdx]?.length || 0) >= 6}
+                >
+                  Upload į stulpelį
+                </Button>
+              </Stack>
+            </Paper>
+          ))}
+        </SimpleGrid>
+      </Paper>
 
       <Accordion variant="separated" radius="md">
         <Accordion.Item value="hero">
