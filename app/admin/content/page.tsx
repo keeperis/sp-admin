@@ -177,7 +177,18 @@ export default function ContentPage() {
 
   return (
     <Container size="lg">
-      <Group justify="space-between" mb="md">
+      <Group
+        justify="space-between"
+        mb="md"
+        style={{
+          position: 'sticky',
+          top: 60,
+          zIndex: 100,
+          background: 'var(--mantine-color-body)',
+          paddingTop: 8,
+          paddingBottom: 8,
+        }}
+      >
         <Title order={1}>Content</Title>
         <Group>
           <Select
