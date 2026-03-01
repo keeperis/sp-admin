@@ -9,7 +9,6 @@ import {
   Group,
   Paper,
   Select,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -352,22 +351,26 @@ export default function ContentPage() {
         </Button>
       </Group>
 
-      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-        <SegmentedControl
-          value={activeSection}
-          onChange={(value) => setActiveSection(value as EditorSection)}
-          data={[
-            { label: 'BG', value: 'bg' },
-            { label: 'Hero', value: 'hero' },
-            { label: 'One-time', value: 'oneTime' },
-            { label: 'Ongoing', value: 'ongoing' },
-            { label: 'Private', value: 'private' },
-            { label: 'DUK', value: 'faq' },
-            { label: 'About', value: 'about' },
-          ]}
-          style={{ minWidth: 680 }}
-        />
-      </div>
+      <Group gap="xs" mb="md" wrap="wrap">
+        {[
+          { label: 'BG', value: 'bg' },
+          { label: 'Hero', value: 'hero' },
+          { label: 'One-time', value: 'oneTime' },
+          { label: 'Ongoing', value: 'ongoing' },
+          { label: 'Private', value: 'private' },
+          { label: 'DUK', value: 'faq' },
+          { label: 'About', value: 'about' },
+        ].map((item) => (
+          <Button
+            key={item.value}
+            size="xs"
+            variant={activeSection === item.value ? 'filled' : 'light'}
+            onClick={() => setActiveSection(item.value as EditorSection)}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </Group>
 
       {activeSection === 'bg' && (
         <Paper withBorder p="md" mb="md">
@@ -962,6 +965,19 @@ export default function ContentPage() {
           </Accordion.Panel>
         </Accordion.Item>}
       </Accordion>
+
+      <div
+        style={{
+          position: 'fixed',
+          right: 12,
+          bottom: 12,
+          zIndex: 300,
+        }}
+      >
+        <Button onClick={save} loading={saving}>
+          Save
+        </Button>
+      </div>
     </Container>
   );
 }
