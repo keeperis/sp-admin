@@ -5,7 +5,11 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4100';
 export async function POST(request: NextRequest) {
   try {
     const target = new URL('/api/admin/bg-grid/upload', API_BASE_URL);
-    const contentType = request.headers.get('content-type') || 'multipart/form-data';
+    const contentType = request.headers.get('content-type');
+    if (!contentType) {
+      return NextResponse.json({ error: 'Missing multipart content-type' }, { status: 400 });
+    }
+
     const rawBody = await request.arrayBuffer();
 
     const res = await fetch(target, {
