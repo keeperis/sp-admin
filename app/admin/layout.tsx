@@ -1,11 +1,12 @@
 'use client';
 
-import { AppShell, Avatar, Group, MantineProvider, Menu, Text } from '@mantine/core';
+import { AppShell, Avatar, Burger, Group, MantineProvider, Menu, Text } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { IconCalendarEvent, IconEdit, IconLogout, IconMoon, IconSun } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
+import { useDisclosure } from '@mantine/hooks';
 import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
 
@@ -21,6 +22,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const [opened, { toggle, close }] = useDisclosure(false);
   const isDark = theme === 'dark';
   const bg = isDark ? adminDarkBg : adminLightBg;
 
@@ -31,6 +33,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         navbar={{
           width: 250,
           breakpoint: 'sm',
+          collapsed: { mobile: !opened, desktop: false },
         }}
         header={{
           height: 60,
@@ -50,9 +53,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       >
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
-            <Text fw={700} size="lg">
-              SoulPoetry Admin
-            </Text>
+            <Group gap="sm">
+              <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+              <Text fw={700} size="lg">
+                SoulPoetry Admin
+              </Text>
+            </Group>
             {session?.user && (
               <Menu shadow="md" width={200}>
                 <Menu.Target>
@@ -83,7 +89,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{ textDecoration: 'none' }}
+                  onClick={close}
+                >
                   <Group
                     p="sm"
                     mb="xs"
