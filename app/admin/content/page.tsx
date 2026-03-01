@@ -309,12 +309,12 @@ export default function ContentPage() {
     <Container size="lg">
       <Group
         justify="space-between"
-        mb="md"
+        mb="xs"
         style={{
           position: 'sticky',
           top: 60,
           zIndex: 100,
-          background: 'var(--mantine-color-body)',
+          background: 'transparent',
           paddingTop: 8,
           paddingBottom: 8,
         }}
@@ -334,10 +334,22 @@ export default function ContentPage() {
             allowDeselect={false}
             w={{ base: 140, sm: 170 }}
           />
-          <Button onClick={save} loading={saving}>
-            Save
-          </Button>
         </Group>
+      </Group>
+
+      <Group
+        justify="flex-end"
+        mb="md"
+        style={{
+          position: 'sticky',
+          top: 118,
+          zIndex: 101,
+          background: 'transparent',
+        }}
+      >
+        <Button onClick={save} loading={saving}>
+          Save
+        </Button>
       </Group>
 
       <div style={{ overflowX: 'auto', marginBottom: 12 }}>
@@ -376,8 +388,8 @@ export default function ContentPage() {
                 </Group>
                 <Stack gap="xs">
                   {(bgColumns[colIdx] || []).map((url, imgIdx) => (
-                    <Paper key={`${url}-${imgIdx}`} withBorder p={4}>
-                      <Group justify="space-between" mb={4}>
+                    <Paper key={`${url}-${imgIdx}`} withBorder p={4} style={{ overflow: 'hidden' }}>
+                      <Group justify="space-between" mb={4} wrap="nowrap">
                         <Select
                           size="xs"
                           data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
@@ -386,7 +398,7 @@ export default function ContentPage() {
                             if (value == null) return;
                             moveBgImage(colIdx, imgIdx, Number(value));
                           }}
-                          w={120}
+                          style={{ flex: 1, minWidth: 0 }}
                         />
                         <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
                           <IconTrash size={14} />

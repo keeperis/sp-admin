@@ -42,7 +42,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         styles={{
           main: {
             backgroundColor: bg,
-            overflowX: 'hidden',
+            overflowX: 'clip',
+            maxWidth: '100vw',
           },
           navbar: {
             backgroundColor: bg,
