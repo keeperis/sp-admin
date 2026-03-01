@@ -378,7 +378,13 @@ export default function ContentPage() {
                       </Group>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={url.startsWith('http') ? url : `https://api.soulpoetry.love${url}`}
+                        src={
+                          url.startsWith('http')
+                            ? url
+                            : url.startsWith('/bg/')
+                              ? `https://${selectedSite === 'yoga' ? 'yoga.soulpoetry.love' : 'ceramics.soulpoetry.love'}${url}`
+                              : `https://api.soulpoetry.love${url}`
+                        }
                         alt="bg thumb"
                         style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6 }}
                       />
