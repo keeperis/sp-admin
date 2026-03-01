@@ -103,6 +103,25 @@ export default function ContentPage() {
   const uploadRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [activeSection, setActiveSection] = useState<EditorSection>('bg');
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sp-admin:selected-site');
+      if (saved === 'ceramics' || saved === 'yoga') {
+        setSelectedSite(saved);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sp-admin:selected-site', selectedSite);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedSite]);
+
   const content = useMemo(() => {
     if (draft) return draft;
     if (!data?.data) return null;
