@@ -4,21 +4,28 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4100';
 
 export async function POST(request: NextRequest) {
   try {
-    const target = new URL('/api/admin/bg-grid/upload', API_BASE_URL);
-    const contentType = request.headers.get('content-type');
-    if (!contentType) {
-      return NextResponse.json({ error: 'Missing multipart content-type' }, { status: 400 });
+    const form = await request.formData();
+    const site = String(form.get('site') || '');
+    const file = form.get('file');
+    if (!(file instanceof File) || (site !== 'ceramics' && site !== 'yoga')) {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const rawBody = await request.arrayBuffer();
+    const buf = Buffer.from(await file.arrayBuffer());
+    const target = new URL('/api/admin/bg-grid/upload-json', API_BASE_URL);
 
     const res = await fetch(target, {
       method: 'POST',
       headers: {
+        'content-type': 'application/json',
         'x-internal-admin-token': process.env.INTERNAL_ADMIN_API_TOKEN || '',
-        'content-type': contentType,
       },
-      body: rawBody,
+      body: JSON.stringify({
+        site,
+        filename: file.name,
+        mimeType: file.type,
+        base64: buf.toString('base64'),
+      }),
       cache: 'no-store',
     });
 
@@ -27,9 +34,6 @@ export async function POST(request: NextRequest) {
       headers: { 'content-type': res.headers.get('content-type') || 'application/json' },
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || 'Upload proxy failed' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: error?.message || 'Upload proxy failed' }, { status: 500 });
   }
 }
