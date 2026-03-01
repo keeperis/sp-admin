@@ -20,7 +20,6 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { buildApiUrl } from '@/lib/api';
 import type { SiteKey } from '@/lib/site';
 import type { FAQTag, SiteContent } from '@/src/lib/content/schema';
 
@@ -72,7 +71,7 @@ const PARAGRAPH_SLOTS = ['p1', 'p2', 'p3', 'p4', 'p5'] as const;
 
 export default function ContentPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
-  const contentApiUrl = buildApiUrl('/api/admin/content', { site: selectedSite });
+  const contentApiUrl = `/api/admin/content?site=${selectedSite}`;
   const { data, isLoading, mutate } = useSWR<AdminContentResponse>(contentApiUrl, fetcher);
   const [draft, setDraft] = useState<SiteContent | null>(null);
   const [saving, setSaving] = useState(false);
