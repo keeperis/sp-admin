@@ -23,7 +23,14 @@ import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
 import type { FAQTag, SiteContent } from '@/src/lib/content/schema';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url, { cache: 'no-store' });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error || 'Failed to load content');
+  }
+  return data;
+};
 
 type AdminContentResponse = {
   version: number;
@@ -72,7 +79,7 @@ const PARAGRAPH_SLOTS = ['p1', 'p2', 'p3', 'p4', 'p5'] as const;
 export default function ContentPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
   const contentApiUrl = `/api/admin/content?site=${selectedSite}`;
-  const { data, isLoading, mutate } = useSWR<AdminContentResponse>(contentApiUrl, fetcher);
+  const { data, error, isLoading, mutate } = useSWR<AdminContentResponse>(contentApiUrl, fetcher);
   const [draft, setDraft] = useState<SiteContent | null>(null);
   const [saving, setSaving] = useState(false);
   const [version, setVersion] = useState<number | null>(null);
@@ -151,6 +158,14 @@ export default function ContentPage() {
       setSaving(false);
     }
   };
+
+  if (error) {
+    return (
+      <Container size="lg">
+        <Text c="red">Nepavyko užkrauti turinio: {(error as Error).message}</Text>
+      </Container>
+    );
+  }
 
   if (isLoading || !content) {
     return (
