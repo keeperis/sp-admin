@@ -254,9 +254,9 @@ export default function ContentPage() {
     }
   };
 
-  const saveBgGrid = async () => {
+  const persistBgGrid = async (silent = false) => {
+    setBgSaving(true);
     try {
-      setBgSaving(true);
       const res = await fetch('/api/admin/bg-grid', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -264,12 +264,18 @@ export default function ContentPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Save failed');
-      notifications.show({ message: 'BG grid išsaugotas', color: 'green' });
+      if (!silent) notifications.show({ message: 'BG grid išsaugotas', color: 'green' });
+      return true;
     } catch (e: any) {
-      notifications.show({ message: e?.message || 'Save nepavyko', color: 'red' });
+      if (!silent) notifications.show({ message: e?.message || 'Save nepavyko', color: 'red' });
+      return false;
     } finally {
       setBgSaving(false);
     }
+  };
+
+  const saveBgGrid = async () => {
+    await persistBgGrid(false);
   };
 
   const save = async () => {
@@ -296,10 +302,14 @@ export default function ContentPage() {
         throw new Error(body?.error || 'Save failed');
       }
 
+      const bgOk = await persistBgGrid(true);
       setDraft(body.data);
       setVersion(body.version);
       await mutate();
-      notifications.show({ message: 'Turinys išsaugotas', color: 'green' });
+      notifications.show({
+        message: bgOk ? 'Turinys + BG grid išsaugota' : 'Turinys išsaugotas, BG grid – ne',
+        color: bgOk ? 'green' : 'orange',
+      });
     } catch (error: any) {
       notifications.show({ message: error?.message || 'Nepavyko išsaugoti', color: 'red' });
     } finally {
