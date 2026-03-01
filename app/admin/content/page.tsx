@@ -209,8 +209,24 @@ export default function ContentPage() {
       form.append('site', selectedSite);
       form.append('file', file);
       const res = await fetch('/api/admin/bg-grid/upload', { method: 'POST', body: form });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error || 'Upload failed');
+      const raw = await res.text();
+      let body: any = null;
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        body = null;
+      }
+
+      if (!res.ok) {
+        const detail =
+          body?.error || body?.message || raw?.slice(0, 180) || `HTTP ${res.status}`;
+        throw new Error(`Upload klaida (${res.status}): ${detail}`);
+      }
+
+      if (!body?.url) {
+        throw new Error('Upload atsakymas be url');
+      }
+
       setBgColumns((prev) => prev.map((col, i) => (i === colIdx ? [...col, body.url] : col)));
       notifications.show({ message: 'Image įkelta', color: 'green' });
     } catch (e: any) {
