@@ -332,6 +332,7 @@ export default function ContentPage() {
             label="Project"
             allowDeselect={false}
             w={{ base: 140, sm: 170 }}
+            styles={{ input: { fontSize: '16px' } }}
           />
         </Group>
       </Group>
