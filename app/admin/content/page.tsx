@@ -386,7 +386,7 @@ export default function ContentPage() {
                               : `https://api.soulpoetry.love${url}`
                         }
                         alt="bg thumb"
-                        style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6 }}
+                        style={{ width: '100%', aspectRatio: '4 / 6', objectFit: 'cover', borderRadius: 6 }}
                       />
                     </Paper>
                   ))}
