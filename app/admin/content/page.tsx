@@ -9,6 +9,7 @@ import {
   Group,
   Paper,
   Select,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -36,6 +37,8 @@ type AdminContentResponse = {
   version: number;
   data: SiteContent;
 };
+
+type EditorSection = 'bg' | 'hero' | 'oneTime' | 'ongoing' | 'private' | 'faq' | 'about';
 
 const TAG_OPTIONS: Array<{ value: FAQTag; label: string }> = [
   { value: 'general', label: 'Bendri' },
@@ -99,6 +102,7 @@ export default function ContentPage() {
   const [bgSaving, setBgSaving] = useState(false);
   const [bgUploadingCol, setBgUploadingCol] = useState<number | null>(null);
   const uploadRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const [activeSection, setActiveSection] = useState<EditorSection>('bg');
 
   const content = useMemo(() => {
     if (draft) return draft;
@@ -320,74 +324,93 @@ export default function ContentPage() {
         </Group>
       </Group>
 
-      <Paper withBorder p="md" mb="md">
-        <Group justify="space-between" mb="sm">
-          <Title order={3}>Background grid ({selectedSite})</Title>
-          <Button onClick={saveBgGrid} loading={bgSaving}>
-            Save BG grid
-          </Button>
-        </Group>
-        <SimpleGrid cols={{ base: 1, md: 4 }}>
-          {[0, 1, 2, 3].map((colIdx) => (
-            <Paper key={`bg-col-${colIdx}`} withBorder p="xs">
-              <Group justify="space-between" mb="xs">
-                <Text fw={600}>Stulpelis {colIdx + 1}</Text>
-                <Text size="xs" c="dimmed">
-                  {bgColumns[colIdx]?.length || 0}/6
-                </Text>
-              </Group>
-              <Stack gap="xs">
-                {(bgColumns[colIdx] || []).map((url, imgIdx) => (
-                  <Paper key={`${url}-${imgIdx}`} withBorder p={4}>
-                    <Group justify="space-between" mb={4}>
-                      <Select
-                        size="xs"
-                        data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
-                        value={String(colIdx)}
-                        onChange={(value) => {
-                          if (value == null) return;
-                          moveBgImage(colIdx, imgIdx, Number(value));
-                        }}
-                        w={120}
-                      />
-                      <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
-                        <IconTrash size={14} />
-                      </ActionIcon>
-                    </Group>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url.startsWith('http') ? url : `https://api.soulpoetry.love${url}`}
-                      alt="bg thumb"
-                      style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6 }}
-                    />
-                  </Paper>
-                ))}
-                <input
-                  ref={(el) => {
-                    uploadRefs.current[colIdx] = el;
-                  }}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(event) => uploadBgImage(colIdx, event.currentTarget.files?.[0])}
-                />
-                <Button
-                  size="xs"
-                  variant="light"
-                  loading={bgUploadingCol === colIdx}
-                  onClick={() => uploadRefs.current[colIdx]?.click()}
-                  disabled={(bgColumns[colIdx]?.length || 0) >= 6}
-                >
-                  Upload į stulpelį
-                </Button>
-              </Stack>
-            </Paper>
-          ))}
-        </SimpleGrid>
-      </Paper>
+      <SegmentedControl
+        mb="md"
+        fullWidth
+        value={activeSection}
+        onChange={(value) => setActiveSection(value as EditorSection)}
+        data={[
+          { label: 'BG', value: 'bg' },
+          { label: 'Hero', value: 'hero' },
+          { label: 'One-time', value: 'oneTime' },
+          { label: 'Ongoing', value: 'ongoing' },
+          { label: 'Private', value: 'private' },
+          { label: 'DUK', value: 'faq' },
+          { label: 'About', value: 'about' },
+        ]}
+      >
+      </SegmentedControl>
 
-      <Accordion variant="separated" radius="md">
-        <Accordion.Item value="hero">
+      {activeSection === 'bg' && (
+        <Paper withBorder p="md" mb="md">
+          <Group justify="space-between" mb="sm">
+            <Title order={3}>Background grid ({selectedSite})</Title>
+            <Button onClick={saveBgGrid} loading={bgSaving}>
+              Save BG grid
+            </Button>
+          </Group>
+          <SimpleGrid cols={{ base: 1, md: 4 }}>
+            {[0, 1, 2, 3].map((colIdx) => (
+              <Paper key={`bg-col-${colIdx}`} withBorder p="xs">
+                <Group justify="space-between" mb="xs">
+                  <Text fw={600}>Stulpelis {colIdx + 1}</Text>
+                  <Text size="xs" c="dimmed">
+                    {bgColumns[colIdx]?.length || 0}/6
+                  </Text>
+                </Group>
+                <Stack gap="xs">
+                  {(bgColumns[colIdx] || []).map((url, imgIdx) => (
+                    <Paper key={`${url}-${imgIdx}`} withBorder p={4}>
+                      <Group justify="space-between" mb={4}>
+                        <Select
+                          size="xs"
+                          data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
+                          value={String(colIdx)}
+                          onChange={(value) => {
+                            if (value == null) return;
+                            moveBgImage(colIdx, imgIdx, Number(value));
+                          }}
+                          w={120}
+                        />
+                        <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Group>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url.startsWith('http') ? url : `https://api.soulpoetry.love${url}`}
+                        alt="bg thumb"
+                        style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6 }}
+                      />
+                    </Paper>
+                  ))}
+                  <input
+                    ref={(el) => {
+                      uploadRefs.current[colIdx] = el;
+                    }}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(event) => uploadBgImage(colIdx, event.currentTarget.files?.[0])}
+                  />
+                  <Button
+                    size="xs"
+                    variant="light"
+                    loading={bgUploadingCol === colIdx}
+                    onClick={() => uploadRefs.current[colIdx]?.click()}
+                    disabled={(bgColumns[colIdx]?.length || 0) >= 6}
+                  >
+                    Upload į stulpelį
+                  </Button>
+                </Stack>
+              </Paper>
+            ))}
+          </SimpleGrid>
+        </Paper>
+      )}
+
+      <Accordion variant="separated" radius="md" value={activeSection === 'bg' ? null : activeSection}>
+        {activeSection === 'hero' && <Accordion.Item value="hero">
           <Accordion.Control>
             <Text fw={600}>Hero</Text>
           </Accordion.Control>
@@ -518,9 +541,11 @@ export default function ContentPage() {
               ))}
             </Stack>
           </Accordion.Panel>
-        </Accordion.Item>
+        </Accordion.Item>}
 
-        {(['oneTime', 'ongoing', 'private'] as const).map((sectionKey) => (
+        {(['oneTime', 'ongoing', 'private'] as const)
+          .filter((sectionKey) => sectionKey === activeSection)
+          .map((sectionKey) => (
           <Accordion.Item key={sectionKey} value={sectionKey}>
             <Accordion.Control>
               <Text fw={600}>{sectionLabel(sectionKey)}</Text>
@@ -627,7 +652,7 @@ export default function ContentPage() {
           </Accordion.Item>
         ))}
 
-        <Accordion.Item value="faq">
+        {activeSection === 'faq' && <Accordion.Item value="faq">
           <Accordion.Control>
             <Text fw={600}>DUK</Text>
           </Accordion.Control>
@@ -791,9 +816,9 @@ export default function ContentPage() {
               </Group>
             </Stack>
           </Accordion.Panel>
-        </Accordion.Item>
+        </Accordion.Item>}
 
-        <Accordion.Item value="about">
+        {activeSection === 'about' && <Accordion.Item value="about">
           <Accordion.Control>
             <Text fw={600}>Apie</Text>
           </Accordion.Control>
@@ -901,7 +926,7 @@ export default function ContentPage() {
               </Group>
             </Stack>
           </Accordion.Panel>
-        </Accordion.Item>
+        </Accordion.Item>}
       </Accordion>
     </Container>
   );
