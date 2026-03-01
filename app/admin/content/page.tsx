@@ -320,7 +320,7 @@ export default function ContentPage() {
         }}
       >
         <Title order={1}>Content</Title>
-        <Group>
+        <Group wrap="wrap" justify="flex-end">
           <Select
             data={PROJECT_OPTIONS}
             value={selectedSite}
@@ -332,7 +332,7 @@ export default function ContentPage() {
             }}
             label="Project"
             allowDeselect={false}
-            w={170}
+            w={{ base: 140, sm: 170 }}
           />
           <Button onClick={save} loading={saving}>
             Save
@@ -340,22 +340,22 @@ export default function ContentPage() {
         </Group>
       </Group>
 
-      <SegmentedControl
-        mb="md"
-        fullWidth
-        value={activeSection}
-        onChange={(value) => setActiveSection(value as EditorSection)}
-        data={[
-          { label: 'BG', value: 'bg' },
-          { label: 'Hero', value: 'hero' },
-          { label: 'One-time', value: 'oneTime' },
-          { label: 'Ongoing', value: 'ongoing' },
-          { label: 'Private', value: 'private' },
-          { label: 'DUK', value: 'faq' },
-          { label: 'About', value: 'about' },
-        ]}
-      >
-      </SegmentedControl>
+      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+        <SegmentedControl
+          value={activeSection}
+          onChange={(value) => setActiveSection(value as EditorSection)}
+          data={[
+            { label: 'BG', value: 'bg' },
+            { label: 'Hero', value: 'hero' },
+            { label: 'One-time', value: 'oneTime' },
+            { label: 'Ongoing', value: 'ongoing' },
+            { label: 'Private', value: 'private' },
+            { label: 'DUK', value: 'faq' },
+            { label: 'About', value: 'about' },
+          ]}
+          style={{ minWidth: 680 }}
+        />
+      </div>
 
       {activeSection === 'bg' && (
         <Paper withBorder p="md" mb="md">
