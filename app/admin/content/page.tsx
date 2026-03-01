@@ -17,7 +17,7 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconLanguage, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
@@ -76,6 +76,17 @@ function withFiveParagraphs(input: Array<{ lt: string; en: string }>) {
 
 const PARAGRAPH_SLOTS = ['p1', 'p2', 'p3', 'p4', 'p5'] as const;
 
+async function translateLtToEn(texts: string[]) {
+  const res = await fetch('/api/admin/content/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || 'Translation failed');
+  return (data?.translations || []) as string[];
+}
+
 export default function ContentPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
   const contentApiUrl = `/api/admin/content?site=${selectedSite}`;
@@ -83,6 +94,7 @@ export default function ContentPage() {
   const [draft, setDraft] = useState<SiteContent | null>(null);
   const [saving, setSaving] = useState(false);
   const [version, setVersion] = useState<number | null>(null);
+  const [translating, setTranslating] = useState<string | null>(null);
 
   const content = useMemo(() => {
     if (draft) return draft;
@@ -122,6 +134,23 @@ export default function ContentPage() {
     }
     next.sections[section].paragraphs[index][locale] = value;
     setDraft(next);
+  };
+
+  const translateSingle = async (
+    key: string,
+    ltText: string,
+    apply: (translated: string) => void,
+  ) => {
+    try {
+      setTranslating(key);
+      const [translated] = await translateLtToEn([ltText || '']);
+      apply(translated || '');
+      notifications.show({ message: 'Išversta', color: 'green' });
+    } catch (error: any) {
+      notifications.show({ message: error?.message || 'Vertimas nepavyko', color: 'red' });
+    } finally {
+      setTranslating(null);
+    }
   };
 
   const save = async () => {
@@ -226,6 +255,21 @@ export default function ContentPage() {
                   setDraft(next);
                 }}
               />
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconLanguage size={14} />}
+                loading={translating === 'hero.brandName'}
+                onClick={() =>
+                  translateSingle('hero.brandName', content.hero.brandName.lt, (translated) => {
+                    const next = cloneContent(content);
+                    next.hero.brandName.en = translated;
+                    setDraft(next);
+                  })
+                }
+              >
+                Versti LT → EN
+              </Button>
               <TextInput
                 label="Brand name EN"
                 value={content.hero.brandName.en}
@@ -287,6 +331,28 @@ export default function ContentPage() {
                       />
                     ))}
                   </SimpleGrid>
+                  <Group justify="flex-end" mt="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconLanguage size={14} />}
+                      loading={translating === `hero.line.${rowIndex}`}
+                      onClick={() =>
+                        translateSingle(
+                          `hero.line.${rowIndex}`,
+                          line.lt.join(' '),
+                          (translated) => {
+                            const next = cloneContent(content);
+                            const parts = translated.split(/\s+/).filter(Boolean);
+                            next.hero.lines[rowIndex].en = [parts[0] || '', parts[1] || '', parts[2] || ''];
+                            setDraft(next);
+                          },
+                        )
+                      }
+                    >
+                      Versti eilutę
+                    </Button>
+                  </Group>
                   <SimpleGrid cols={{ base: 1, md: 3 }} mt="sm">
                     {[0, 1, 2].map((wordIndex) => (
                       <TextInput
@@ -323,6 +389,21 @@ export default function ContentPage() {
                     setDraft(next);
                   }}
                 />
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconLanguage size={14} />}
+                  loading={translating === `${sectionKey}.title`}
+                  onClick={() =>
+                    translateSingle(`${sectionKey}.title`, content.sections[sectionKey].title.lt, (translated) => {
+                      const next = cloneContent(content);
+                      next.sections[sectionKey].title.en = translated;
+                      setDraft(next);
+                    })
+                  }
+                >
+                  Versti LT → EN
+                </Button>
                 <TextInput
                   label="Title EN"
                   value={content.sections[sectionKey].title.en}
@@ -360,6 +441,40 @@ export default function ContentPage() {
                     </SimpleGrid>
                   );
                 })}
+                <Group justify="flex-end">
+                  <Button
+                    size="xs"
+                    variant="light"
+                    leftSection={<IconLanguage size={14} />}
+                    loading={translating === `${sectionKey}.all`}
+                    onClick={async () => {
+                      try {
+                        setTranslating(`${sectionKey}.all`);
+                        const source = [
+                          content.sections[sectionKey].title.lt,
+                          ...withFiveParagraphs(content.sections[sectionKey].paragraphs).map((p) => p.lt),
+                        ];
+                        const translated = await translateLtToEn(source);
+                        const next = cloneContent(content);
+                        next.sections[sectionKey].title.en = translated[0] || '';
+                        while (next.sections[sectionKey].paragraphs.length < 5) {
+                          next.sections[sectionKey].paragraphs.push({ lt: '', en: '' });
+                        }
+                        for (let i = 0; i < 5; i += 1) {
+                          next.sections[sectionKey].paragraphs[i].en = translated[i + 1] || '';
+                        }
+                        setDraft(next);
+                        notifications.show({ message: 'Skiltis išversta', color: 'green' });
+                      } catch (error: any) {
+                        notifications.show({ message: error?.message || 'Vertimas nepavyko', color: 'red' });
+                      } finally {
+                        setTranslating(null);
+                      }
+                    }}
+                  >
+                    Versti visą skiltį LT → EN
+                  </Button>
+                </Group>
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
@@ -432,6 +547,21 @@ export default function ContentPage() {
                         setDraft(next);
                       }}
                     />
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconLanguage size={14} />}
+                      loading={translating === `faq.q.${idx}`}
+                      onClick={() =>
+                        translateSingle(`faq.q.${idx}`, item.question.lt, (translated) => {
+                          const next = cloneContent(content);
+                          next.faq[idx].question.en = translated;
+                          setDraft(next);
+                        })
+                      }
+                    >
+                      Versti LT → EN
+                    </Button>
                     <TextInput
                       label="Question EN"
                       value={item.question.en}
@@ -454,6 +584,21 @@ export default function ContentPage() {
                         setDraft(next);
                       }}
                     />
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconLanguage size={14} />}
+                      loading={translating === `faq.a.${idx}`}
+                      onClick={() =>
+                        translateSingle(`faq.a.${idx}`, item.answer.lt, (translated) => {
+                          const next = cloneContent(content);
+                          next.faq[idx].answer.en = translated;
+                          setDraft(next);
+                        })
+                      }
+                    >
+                      Versti LT → EN
+                    </Button>
                     <Textarea
                       autosize
                       minRows={3}
@@ -468,6 +613,35 @@ export default function ContentPage() {
                   </SimpleGrid>
                 </Paper>
               ))}
+              <Group justify="flex-end">
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconLanguage size={14} />}
+                  loading={translating === 'faq.all'}
+                  onClick={async () => {
+                    try {
+                      setTranslating('faq.all');
+                      const source = content.faq.flatMap((f) => [f.question.lt, f.answer.lt]);
+                      const translated = await translateLtToEn(source);
+                      const next = cloneContent(content);
+                      next.faq = next.faq.map((f, i) => ({
+                        ...f,
+                        question: { ...f.question, en: translated[i * 2] || '' },
+                        answer: { ...f.answer, en: translated[i * 2 + 1] || '' },
+                      }));
+                      setDraft(next);
+                      notifications.show({ message: 'DUK išversta', color: 'green' });
+                    } catch (error: any) {
+                      notifications.show({ message: error?.message || 'Vertimas nepavyko', color: 'red' });
+                    } finally {
+                      setTranslating(null);
+                    }
+                  }}
+                >
+                  Versti visą DUK LT → EN
+                </Button>
+              </Group>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
@@ -487,6 +661,21 @@ export default function ContentPage() {
                   setDraft(next);
                 }}
               />
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconLanguage size={14} />}
+                loading={translating === 'about.title'}
+                onClick={() =>
+                  translateSingle('about.title', content.about.title.lt, (translated) => {
+                    const next = cloneContent(content);
+                    next.about.title.en = translated;
+                    setDraft(next);
+                  })
+                }
+              >
+                Versti LT → EN
+              </Button>
               <TextInput
                 label="Title EN"
                 value={content.about.title.en}
@@ -508,6 +697,21 @@ export default function ContentPage() {
                     setDraft(next);
                   }}
                 />
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconLanguage size={14} />}
+                  loading={translating === 'about.text'}
+                  onClick={() =>
+                    translateSingle('about.text', content.about.text.lt, (translated) => {
+                      const next = cloneContent(content);
+                      next.about.text.en = translated;
+                      setDraft(next);
+                    })
+                  }
+                >
+                  Versti LT → EN
+                </Button>
                 <Textarea
                   label="Text EN"
                   autosize
@@ -520,6 +724,34 @@ export default function ContentPage() {
                   }}
                 />
               </SimpleGrid>
+              <Group justify="flex-end">
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconLanguage size={14} />}
+                  loading={translating === 'about.all'}
+                  onClick={async () => {
+                    try {
+                      setTranslating('about.all');
+                      const [titleEn, textEn] = await translateLtToEn([
+                        content.about.title.lt,
+                        content.about.text.lt,
+                      ]);
+                      const next = cloneContent(content);
+                      next.about.title.en = titleEn || '';
+                      next.about.text.en = textEn || '';
+                      setDraft(next);
+                      notifications.show({ message: 'About išversta', color: 'green' });
+                    } catch (error: any) {
+                      notifications.show({ message: error?.message || 'Vertimas nepavyko', color: 'red' });
+                    } finally {
+                      setTranslating(null);
+                    }
+                  }}
+                >
+                  Versti visą About LT → EN
+                </Button>
+              </Group>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
