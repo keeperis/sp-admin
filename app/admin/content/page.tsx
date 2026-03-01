@@ -354,7 +354,7 @@ export default function ContentPage() {
 
       <Group gap="xs" mb="md" wrap="wrap">
         {[
-          { label: 'BG', value: 'bg' },
+          { label: 'BG grid', value: 'bg' },
           { label: 'Hero', value: 'hero' },
           { label: 'One-time', value: 'oneTime' },
           { label: 'Ongoing', value: 'ongoing' },
@@ -381,69 +381,75 @@ export default function ContentPage() {
               Save BG grid
             </Button>
           </Group>
-          <SimpleGrid cols={{ base: 1, md: 4 }}>
+          <Stack gap="sm">
             {[0, 1, 2, 3].map((colIdx) => (
-              <Paper key={`bg-col-${colIdx}`} withBorder p="xs">
-                <Group justify="space-between" mb="xs">
-                  <Text fw={600}>Stulpelis {colIdx + 1}</Text>
-                  <Text size="xs" c="dimmed">
-                    {bgColumns[colIdx]?.length || 0}/6
-                  </Text>
-                </Group>
-                <Stack gap="xs">
-                  {(bgColumns[colIdx] || []).map((url, imgIdx) => (
-                    <Paper key={`${url}-${imgIdx}`} withBorder p={4} style={{ overflow: 'hidden' }}>
-                      <Group justify="space-between" mb={4} wrap="nowrap">
-                        <Select
-                          size="xs"
-                          data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
-                          value={String(colIdx)}
-                          onChange={(value) => {
-                            if (value == null) return;
-                            moveBgImage(colIdx, imgIdx, Number(value));
-                          }}
-                          style={{ flex: 1, minWidth: 0 }}
-                        />
-                        <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Group>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={
-                          url.startsWith('http')
-                            ? url
-                            : url.startsWith('/bg/')
-                              ? `https://${selectedSite === 'yoga' ? 'yoga.soulpoetry.love' : 'ceramics.soulpoetry.love'}${url}`
-                              : `https://api.soulpoetry.love${url}`
-                        }
-                        alt="bg thumb"
-                        style={{ width: '100%', aspectRatio: '4 / 6', objectFit: 'cover', borderRadius: 6 }}
+              <Accordion key={`bg-col-${colIdx}`} variant="contained" radius="md">
+                <Accordion.Item value={`col-${colIdx}`}>
+                  <Accordion.Control>
+                    <Group justify="space-between" wrap="nowrap" w="100%">
+                      <Text fw={600}>Stulpelis {colIdx + 1}</Text>
+                      <Text size="xs" c="dimmed">
+                        {bgColumns[colIdx]?.length || 0}/6
+                      </Text>
+                    </Group>
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack gap="xs">
+                      {(bgColumns[colIdx] || []).map((url, imgIdx) => (
+                        <Paper key={`${url}-${imgIdx}`} withBorder p={4} style={{ overflow: 'hidden' }}>
+                          <Group justify="space-between" mb={4} wrap="nowrap">
+                            <Select
+                              size="xs"
+                              data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
+                              value={String(colIdx)}
+                              onChange={(value) => {
+                                if (value == null) return;
+                                moveBgImage(colIdx, imgIdx, Number(value));
+                              }}
+                              style={{ flex: 1, minWidth: 0 }}
+                            />
+                            <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
+                              <IconTrash size={14} />
+                            </ActionIcon>
+                          </Group>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={
+                              url.startsWith('http')
+                                ? url
+                                : url.startsWith('/bg/')
+                                  ? `https://${selectedSite === 'yoga' ? 'yoga.soulpoetry.love' : 'ceramics.soulpoetry.love'}${url}`
+                                  : `https://api.soulpoetry.love${url}`
+                            }
+                            alt="bg thumb"
+                            style={{ width: '100%', aspectRatio: '4 / 6', objectFit: 'cover', borderRadius: 6 }}
+                          />
+                        </Paper>
+                      ))}
+                      <input
+                        ref={(el) => {
+                          uploadRefs.current[colIdx] = el;
+                        }}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(event) => uploadBgImage(colIdx, event.currentTarget.files?.[0])}
                       />
-                    </Paper>
-                  ))}
-                  <input
-                    ref={(el) => {
-                      uploadRefs.current[colIdx] = el;
-                    }}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(event) => uploadBgImage(colIdx, event.currentTarget.files?.[0])}
-                  />
-                  <Button
-                    size="xs"
-                    variant="light"
-                    loading={bgUploadingCol === colIdx}
-                    onClick={() => uploadRefs.current[colIdx]?.click()}
-                    disabled={(bgColumns[colIdx]?.length || 0) >= 6}
-                  >
-                    Upload į stulpelį
-                  </Button>
-                </Stack>
-              </Paper>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        loading={bgUploadingCol === colIdx}
+                        onClick={() => uploadRefs.current[colIdx]?.click()}
+                        disabled={(bgColumns[colIdx]?.length || 0) >= 6}
+                      >
+                        Upload į stulpelį
+                      </Button>
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
             ))}
-          </SimpleGrid>
+          </Stack>
         </Paper>
       )}
 
