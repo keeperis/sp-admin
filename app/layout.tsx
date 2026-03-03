@@ -38,8 +38,18 @@ const hurricane = Hurricane({
 const themeInitScript = `(function(){try{var s=localStorage.getItem('plp-theme');var d=s==='dark'||(!s&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light')}catch(e){}})();`;
 
 export const metadata: Metadata = {
-  title: 'Unified Meta Inbox',
-  description: 'Meta inbox for Messenger, Instagram DMs and Comments',
+  title: 'Soul Poetry Studija',
+  description: 'Soul Poetry Studio landing and admin',
+  icons: {
+    icon: [
+      { url: '/favicon_dark.png', media: '(prefers-color-scheme: light)', type: 'image/png' },
+      { url: '/favicon_white.png', media: '(prefers-color-scheme: dark)', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    shortcut: ['/favicon.ico'],
+    apple: [{ url: '/favicon.png', type: 'image/png' }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

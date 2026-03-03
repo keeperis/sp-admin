@@ -897,39 +897,6 @@ export default function ContentPage() {
           </Accordion.Control>
           <Accordion.Panel>
             <Stack gap="sm">
-              <TextInput
-                label="Antraštė LT"
-                value={content.about.title.lt}
-                onChange={(event) => {
-                  const next = cloneContent(content);
-                  next.about.title.lt = event.currentTarget.value;
-                  setDraft(next);
-                }}
-              />
-              <Button
-                size="xs"
-                variant="light"
-                leftSection={<IconLanguage size={14} />}
-                loading={translating === 'about.title'}
-                onClick={() =>
-                  translateSingle('about.title', content.about.title.lt, (translated) => {
-                    const next = cloneContent(content);
-                    next.about.title.en = translated;
-                    setDraft(next);
-                  })
-                }
-              >
-                Versti LT → EN
-              </Button>
-              <TextInput
-                label="Title EN"
-                value={content.about.title.en}
-                onChange={(event) => {
-                  const next = cloneContent(content);
-                  next.about.title.en = event.currentTarget.value;
-                  setDraft(next);
-                }}
-              />
               <SimpleGrid cols={{ base: 1, md: 2 }}>
                 <Textarea
                   label="Tekstas LT"
@@ -978,12 +945,8 @@ export default function ContentPage() {
                   onClick={async () => {
                     try {
                       setTranslating('about.all');
-                      const [titleEn, textEn] = await translateLtToEn([
-                        content.about.title.lt,
-                        content.about.text.lt,
-                      ]);
+                      const [textEn] = await translateLtToEn([content.about.text.lt]);
                       const next = cloneContent(content);
-                      next.about.title.en = titleEn || '';
                       next.about.text.en = textEn || '';
                       setDraft(next);
                       notifications.show({ message: 'About išversta', color: 'green' });
