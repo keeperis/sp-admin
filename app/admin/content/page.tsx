@@ -18,7 +18,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconLanguage, IconPlus, IconTrash } from '@tabler/icons-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
 import type { FAQTag, SiteContent } from '@/src/lib/content/schema';
@@ -37,7 +37,7 @@ type AdminContentResponse = {
   data: SiteContent;
 };
 
-type EditorSection = 'bg' | 'hero' | 'oneTime' | 'ongoing' | 'private' | 'faq' | 'about';
+type EditorSection = 'hero' | 'oneTime' | 'ongoing' | 'private' | 'faq' | 'about';
 
 const TAG_OPTIONS: Array<{ value: FAQTag; label: string }> = [
   { value: 'general', label: 'Bendri' },
@@ -97,11 +97,7 @@ export default function ContentPage() {
   const [saving, setSaving] = useState(false);
   const [version, setVersion] = useState<number | null>(null);
   const [translating, setTranslating] = useState<string | null>(null);
-  const [bgColumns, setBgColumns] = useState<string[][]>([[], [], [], []]);
-  const [bgSaving, setBgSaving] = useState(false);
-  const [bgUploadingCol, setBgUploadingCol] = useState<number | null>(null);
-  const uploadRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const [activeSection, setActiveSection] = useState<EditorSection>('bg');
+  const [activeSection, setActiveSection] = useState<EditorSection>('hero');
 
   useEffect(() => {
     try {
@@ -135,21 +131,6 @@ export default function ContentPage() {
     }
   }, [version, data?.version]);
 
-  useEffect(() => {
-    if (selectedSite !== 'ceramics' && selectedSite !== 'yoga') return;
-    fetch(`/api/admin/bg-grid?site=${selectedSite}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d?.columns)) {
-          const cols = d.columns.slice(0, 4).map((c: unknown) =>
-            Array.isArray(c) ? c.slice(0, 6).filter((v): v is string => typeof v === 'string') : [],
-          );
-          while (cols.length < 4) cols.push([]);
-          setBgColumns(cols);
-        }
-      })
-      .catch(() => setBgColumns([[], [], [], []]));
-  }, [selectedSite]);
 
   const setSectionParagraph = (
     section: 'oneTime' | 'ongoing' | 'private',
@@ -183,88 +164,6 @@ export default function ContentPage() {
     }
   };
 
-  const removeBgImage = (colIdx: number, imgIdx: number) => {
-    setBgColumns((prev) => prev.map((col, i) => (i === colIdx ? col.filter((_, j) => j !== imgIdx) : col)));
-  };
-
-  const moveBgImage = (fromCol: number, imgIdx: number, toCol: number) => {
-    if (fromCol === toCol) return;
-    setBgColumns((prev) => {
-      const next = prev.map((c) => [...c]);
-      const item = next[fromCol]?.[imgIdx];
-      if (!item) return prev;
-      if ((next[toCol]?.length || 0) >= 6) {
-        notifications.show({ message: 'Tik 6 img viename stulpelyje', color: 'orange' });
-        return prev;
-      }
-      next[fromCol].splice(imgIdx, 1);
-      next[toCol].push(item);
-      return next;
-    });
-  };
-
-  const uploadBgImage = async (colIdx: number, file?: File) => {
-    if (!file) return;
-    if ((bgColumns[colIdx]?.length || 0) >= 6) {
-      notifications.show({ message: 'Stulpelis pilnas (max 6)', color: 'orange' });
-      return;
-    }
-    try {
-      setBgUploadingCol(colIdx);
-      const form = new FormData();
-      form.append('site', selectedSite);
-      form.append('file', file);
-      const res = await fetch('/api/admin/bg-grid/upload', { method: 'POST', body: form });
-      const raw = await res.text();
-      let body: any = null;
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        body = null;
-      }
-
-      if (!res.ok) {
-        const detail =
-          body?.error || body?.message || raw?.slice(0, 180) || `HTTP ${res.status}`;
-        throw new Error(`Upload klaida (${res.status}): ${detail}`);
-      }
-
-      if (!body?.url) {
-        throw new Error('Upload atsakymas be url');
-      }
-
-      setBgColumns((prev) => prev.map((col, i) => (i === colIdx ? [...col, body.url] : col)));
-      notifications.show({ message: 'Image įkelta', color: 'green' });
-    } catch (e: any) {
-      notifications.show({ message: e?.message || 'Upload nepavyko', color: 'red' });
-    } finally {
-      setBgUploadingCol(null);
-    }
-  };
-
-  const persistBgGrid = async (silent = false) => {
-    setBgSaving(true);
-    try {
-      const res = await fetch('/api/admin/bg-grid', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ site: selectedSite, columns: bgColumns }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error || 'Save failed');
-      if (!silent) notifications.show({ message: 'BG grid išsaugotas', color: 'green' });
-      return true;
-    } catch (e: any) {
-      if (!silent) notifications.show({ message: e?.message || 'Save nepavyko', color: 'red' });
-      return false;
-    } finally {
-      setBgSaving(false);
-    }
-  };
-
-  const saveBgGrid = async () => {
-    await persistBgGrid(false);
-  };
 
   const save = async () => {
     if (!content || version === null) return;
@@ -290,14 +189,10 @@ export default function ContentPage() {
         throw new Error(body?.error || 'Save failed');
       }
 
-      const bgOk = await persistBgGrid(true);
       setDraft(body.data);
       setVersion(body.version);
       await mutate();
-      notifications.show({
-        message: bgOk ? 'Turinys + BG grid išsaugota' : 'Turinys išsaugotas, BG grid – ne',
-        color: bgOk ? 'green' : 'orange',
-      });
+      notifications.show({ message: 'Turinys išsaugotas', color: 'green' });
     } catch (error: any) {
       notifications.show({ message: error?.message || 'Nepavyko išsaugoti', color: 'red' });
     } finally {
@@ -371,7 +266,6 @@ export default function ContentPage() {
 
       <Group gap="xs" mb="md" wrap="wrap">
         {[
-          { label: 'BG grid', value: 'bg' },
           { label: 'Hero', value: 'hero' },
           { label: 'One-time', value: 'oneTime' },
           { label: 'Ongoing', value: 'ongoing' },
@@ -390,87 +284,7 @@ export default function ContentPage() {
         ))}
       </Group>
 
-      {activeSection === 'bg' && (
-        <Paper withBorder p="md" mb="md">
-          <Group justify="space-between" mb="sm">
-            <Title order={3}>Background grid ({selectedSite})</Title>
-            <Button onClick={saveBgGrid} loading={bgSaving}>
-              Save BG grid
-            </Button>
-          </Group>
-          <Stack gap="sm">
-            {[0, 1, 2, 3].map((colIdx) => (
-              <Accordion key={`bg-col-${colIdx}`} variant="contained" radius="md">
-                <Accordion.Item value={`col-${colIdx}`}>
-                  <Accordion.Control>
-                    <Group justify="space-between" wrap="nowrap" w="100%">
-                      <Text fw={600}>Stulpelis {colIdx + 1}</Text>
-                      <Text size="xs" c="dimmed">
-                        {bgColumns[colIdx]?.length || 0}/6
-                      </Text>
-                    </Group>
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap="xs">
-                      {(bgColumns[colIdx] || []).map((url, imgIdx) => (
-                        <Paper key={`${url}-${imgIdx}`} withBorder p={4} style={{ overflow: 'hidden' }}>
-                          <Group justify="space-between" mb={4} wrap="nowrap">
-                            <Select
-                              size="xs"
-                              data={[1, 2, 3, 4].map((n) => ({ value: String(n - 1), label: `Stulpelis ${n}` }))}
-                              value={String(colIdx)}
-                              onChange={(value) => {
-                                if (value == null) return;
-                                moveBgImage(colIdx, imgIdx, Number(value));
-                              }}
-                              style={{ flex: 1, minWidth: 0 }}
-                            />
-                            <ActionIcon color="red" variant="light" onClick={() => removeBgImage(colIdx, imgIdx)}>
-                              <IconTrash size={14} />
-                            </ActionIcon>
-                          </Group>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={
-                              url.startsWith('http')
-                                ? url
-                                : url.startsWith('/bg/')
-                                  ? `https://${selectedSite === 'yoga' ? 'yoga.soulpoetry.love' : 'ceramics.soulpoetry.love'}${url}`
-                                  : `https://api.soulpoetry.love${url}`
-                            }
-                            alt="bg thumb"
-                            style={{ width: '100%', aspectRatio: '4 / 6', objectFit: 'cover', borderRadius: 6 }}
-                          />
-                        </Paper>
-                      ))}
-                      <input
-                        ref={(el) => {
-                          uploadRefs.current[colIdx] = el;
-                        }}
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={(event) => uploadBgImage(colIdx, event.currentTarget.files?.[0])}
-                      />
-                      <Button
-                        size="xs"
-                        variant="light"
-                        loading={bgUploadingCol === colIdx}
-                        onClick={() => uploadRefs.current[colIdx]?.click()}
-                        disabled={(bgColumns[colIdx]?.length || 0) >= 6}
-                      >
-                        Upload į stulpelį
-                      </Button>
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-              </Accordion>
-            ))}
-          </Stack>
-        </Paper>
-      )}
-
-      <Accordion variant="separated" radius="md" value={activeSection === 'bg' ? null : activeSection}>
+      <Accordion variant="separated" radius="md" value={activeSection}>
         {activeSection === 'hero' && <Accordion.Item value="hero">
           <Accordion.Control>
             <Text fw={600}>Hero</Text>
