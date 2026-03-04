@@ -128,18 +128,6 @@ export default function ContentPage() {
     return data.data;
   }, [data, draft]);
 
-  const heroLineRows = useMemo(() => {
-    const seen = new Map<string, number>();
-    return content?.hero.lines.map((line) => {
-      const signature = `${line.lt.join('|')}::${line.en.join('|')}`;
-      const count = (seen.get(signature) || 0) + 1;
-      seen.set(signature, count);
-      return {
-        line,
-        key: `${signature}#${count}`,
-      };
-    });
-  }, [content]);
 
   useEffect(() => {
     if (version === null && data?.version !== undefined) {
@@ -539,8 +527,8 @@ export default function ContentPage() {
                   Pridėti eilutę
                 </Button>
               </Group>
-              {heroLineRows?.map(({ line, key }, rowIndex) => (
-                <Paper key={key} withBorder p="sm">
+              {content.hero.lines.map((line, rowIndex) => (
+                <Paper key={`hero-line-${rowIndex}`} withBorder p="sm">
                   <Group justify="space-between" mb="xs">
                     <Text size="sm" fw={600}>
                       Eilutė {rowIndex + 1}
