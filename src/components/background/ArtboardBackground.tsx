@@ -19,7 +19,7 @@ const ASPECT_HEIGHT = 6;
 const GRID_WIDTH_VW = 125;
 const SPEEDS_4 = [0.45, 0.3, 0.5, 0.4];
 
-const INITIAL_OFFSETS_PERCENT = [80, 51, 40, 70];
+const INITIAL_OFFSETS_PERCENT = [10, 5, 4, 7];
 
 const COLUMN_IMAGE_ASSIGNMENT: number[][] = [
   [0, 1, 2, 3, 4, 5],

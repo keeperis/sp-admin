@@ -13,8 +13,9 @@ import { ThemeToggle } from './ThemeToggle';
 export function ThemeWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const isWelcomeLanding = pathname === '/';
 
-  if (isAdmin) {
+  if (isAdmin || isWelcomeLanding) {
     return <ThemeProvider>{children}</ThemeProvider>;
   }
 
