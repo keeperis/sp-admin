@@ -124,13 +124,11 @@ export default function ContentPage() {
     return data.data;
   }, [data, draft]);
 
-
   useEffect(() => {
-    if (version === null && data?.version !== undefined) {
+    if (!draft && data?.version !== undefined) {
       setVersion(data.version);
     }
-  }, [version, data?.version]);
-
+  }, [draft, data?.version]);
 
   const setSectionParagraph = (
     section: 'oneTime' | 'ongoing' | 'private',
@@ -164,7 +162,6 @@ export default function ContentPage() {
     }
   };
 
-
   const save = async () => {
     if (!content || version === null) return;
     setSaving(true);
@@ -177,11 +174,15 @@ export default function ContentPage() {
 
       const body = await res.json();
       if (res.status === 409) {
+        if (typeof body?.currentVersion === 'number') {
+          setVersion(body.currentVersion);
+        }
         notifications.show({
           title: 'Konfliktas',
-          message: 'Turinys jau buvo pakeistas kitame lange. Perkrauk puslapį.',
+          message: 'Turinys jau buvo pakeistas. Pabandyk išsaugoti dar kartą.',
           color: 'red',
         });
+        await mutate();
         return;
       }
 
@@ -189,7 +190,7 @@ export default function ContentPage() {
         throw new Error(body?.error || 'Save failed');
       }
 
-      setDraft(body.data);
+      setDraft(null);
       setVersion(body.version);
       await mutate();
       notifications.show({ message: 'Turinys išsaugotas', color: 'green' });

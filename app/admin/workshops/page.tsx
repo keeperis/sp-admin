@@ -22,7 +22,15 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconCalendarEvent, IconEdit, IconMinus, IconPlus, IconTrash } from '@tabler/icons-react';
+import {
+  IconCalendarEvent,
+  IconEdit,
+  IconMinus,
+  IconPlus,
+  IconTicket,
+  IconTrash,
+} from '@tabler/icons-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { buildApiUrl } from '@/lib/api';
@@ -746,6 +754,15 @@ export default function WorkshopsPage() {
                           aria-label="Redaguoti"
                         >
                           <IconEdit size={16} />
+                        </ActionIcon>
+                        <ActionIcon
+                          component={Link}
+                          href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
+                          variant="subtle"
+                          size="sm"
+                          aria-label="Registracijos"
+                        >
+                          <IconTicket size={16} />
                         </ActionIcon>
                         <ActionIcon
                           variant="subtle"

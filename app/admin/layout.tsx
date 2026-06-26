@@ -2,7 +2,14 @@
 
 import { AppShell, Avatar, Burger, Group, MantineProvider, Menu, Text } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { IconCalendarEvent, IconEdit, IconLogout, IconMoon, IconSun } from '@tabler/icons-react';
+import {
+  IconCalendarEvent,
+  IconEdit,
+  IconLogout,
+  IconMoon,
+  IconSun,
+  IconTicket,
+} from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
@@ -12,6 +19,7 @@ import { appTheme } from '@/src/theme';
 
 const navItems = [
   { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
+  { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
   { href: '/admin/content', label: 'Content', icon: IconEdit },
 ];
 
