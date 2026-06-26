@@ -31,7 +31,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { buildApiUrl } from '@/lib/api';
 import type { SiteKey } from '@/lib/site';
@@ -75,10 +75,58 @@ const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
   { value: 'yoga', label: 'Yoga' },
 ];
 
+type BookingStatus = 'draft' | 'pending_payment' | 'confirmed' | 'cancelled' | 'expired';
+
+type BookingStats = {
+  all: number;
+  draft: number;
+  pending_payment: number;
+  confirmed: number;
+  cancelled: number;
+  expired: number;
+  participants: number;
+  draftParticipants: number;
+  pendingParticipants: number;
+  confirmedParticipants: number;
+  cancelledParticipants: number;
+  expiredParticipants: number;
+};
+
+const EMPTY_BOOKING_STATS: BookingStats = {
+  all: 0,
+  draft: 0,
+  pending_payment: 0,
+  confirmed: 0,
+  cancelled: 0,
+  expired: 0,
+  participants: 0,
+  draftParticipants: 0,
+  pendingParticipants: 0,
+  confirmedParticipants: 0,
+  cancelledParticipants: 0,
+  expiredParticipants: 0,
+};
+
+function createEmptyBookingStats(): BookingStats {
+  return { ...EMPTY_BOOKING_STATS };
+}
+
+function isBookingStatus(value: unknown): value is BookingStatus {
+  return (
+    value === 'draft' ||
+    value === 'pending_payment' ||
+    value === 'confirmed' ||
+    value === 'cancelled' ||
+    value === 'expired'
+  );
+}
+
 export default function WorkshopsPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
   const workshopsApiUrl = buildApiUrl('/api/workshops', { site: selectedSite });
+  const bookingsApiUrl = buildApiUrl('/api/bookings', { site: selectedSite });
   const { data, mutate } = useSWR(workshopsApiUrl, fetcher);
+  const { data: bookingsData } = useSWR(bookingsApiUrl, fetcher);
   const [fetching, setFetching] = useState(false);
   const [fbData, setFbData] = useState<any>(null);
   const [editingWorkshop, setEditingWorkshop] = useState<any>(null);
@@ -409,6 +457,39 @@ export default function WorkshopsPage() {
   };
 
   const workshops = data?.workshops || [];
+  const bookingStatsByWorkshop = useMemo(() => {
+    const statsMap = new Map<string, BookingStats>();
+    const bookings = bookingsData?.bookings || [];
+
+    for (const booking of bookings) {
+      const workshopId =
+        typeof booking?.workshopId === 'string'
+          ? booking.workshopId
+          : booking?.workshop?.id || booking?.workshop?._id;
+
+      if (!workshopId) continue;
+
+      const stats = statsMap.get(workshopId) || createEmptyBookingStats();
+      stats.all += 1;
+      const participants = Number(booking?.participantsCount ?? 0);
+      const safeParticipants = Number.isFinite(participants) ? participants : 0;
+      stats.participants += safeParticipants;
+
+      if (isBookingStatus(booking?.status)) {
+        const status: BookingStatus = booking.status;
+        stats[status] += 1;
+        if (status === 'draft') stats.draftParticipants += safeParticipants;
+        if (status === 'pending_payment') stats.pendingParticipants += safeParticipants;
+        if (status === 'confirmed') stats.confirmedParticipants += safeParticipants;
+        if (status === 'cancelled') stats.cancelledParticipants += safeParticipants;
+        if (status === 'expired') stats.expiredParticipants += safeParticipants;
+      }
+
+      statsMap.set(workshopId, stats);
+    }
+
+    return statsMap;
+  }, [bookingsData]);
 
   return (
     <Container size="xl" py="md">
@@ -693,12 +774,20 @@ export default function WorkshopsPage() {
                   <Table.Th>Užsiėmimų kiekis</Table.Th>
                   <Table.Th>Kaina</Table.Th>
                   <Table.Th>Vietos</Table.Th>
+                  <Table.Th>Registracijos</Table.Th>
                   <Table.Th>Savaitgalis</Table.Th>
                   <Table.Th>Veiksmai</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {workshops.map((w: any) => (
+                {workshops.map((w: any) => {
+                  const stats = bookingStatsByWorkshop.get(w.id) || EMPTY_BOOKING_STATS;
+                  const reservedParticipants =
+                    stats.pendingParticipants + stats.confirmedParticipants;
+                  const expectedSpotsLeft = Math.max(w.spotsTotal - reservedParticipants, 0);
+                  const spotsMismatch = expectedSpotsLeft !== w.spotsLeft;
+
+                  return (
                   <Table.Tr key={w.id}>
                     <Table.Td>{w.titleLt}</Table.Td>
                     <Table.Td>
@@ -717,32 +806,91 @@ export default function WorkshopsPage() {
                         : `${w.sessionsCount}×${w.pricePerSession ?? w.priceEur ?? 0}€${w.subscriptionPriceEur != null ? ` / abon. ${w.subscriptionPriceEur}€` : ''}`}
                     </Table.Td>
                     <Table.Td>
-                      <Group gap={4} wrap="nowrap">
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => handleQuickSpots(w, -1)}
-                          disabled={w.spotsLeft <= 0 || updatingSpots === w.id}
-                          aria-label="Sumažinti laisvų vietų"
-                        >
-                          <IconMinus size={14} />
-                        </ActionIcon>
-                        <Badge
-                          color={w.spotsLeft === 0 ? 'red' : w.spotsLeft <= 2 ? 'orange' : 'green'}
-                          variant="light"
-                        >
-                          {w.spotsLeft} / {w.spotsTotal}
-                        </Badge>
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => handleQuickSpots(w, 1)}
-                          disabled={w.spotsLeft >= w.spotsTotal || updatingSpots === w.id}
-                          aria-label="Padidinti laisvų vietų"
-                        >
-                          <IconPlus size={14} />
-                        </ActionIcon>
-                      </Group>
+                      <Stack gap={4}>
+                        <Group gap={4} wrap="nowrap">
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            onClick={() => handleQuickSpots(w, -1)}
+                            disabled={w.spotsLeft <= 0 || updatingSpots === w.id}
+                            aria-label="Sumažinti laisvų vietų"
+                          >
+                            <IconMinus size={14} />
+                          </ActionIcon>
+                          <Badge
+                            color={w.spotsLeft === 0 ? 'red' : w.spotsLeft <= 2 ? 'orange' : 'green'}
+                            variant="light"
+                          >
+                            laisvos {w.spotsLeft} / {w.spotsTotal}
+                          </Badge>
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            onClick={() => handleQuickSpots(w, 1)}
+                            disabled={w.spotsLeft >= w.spotsTotal || updatingSpots === w.id}
+                            aria-label="Padidinti laisvų vietų"
+                          >
+                            <IconPlus size={14} />
+                          </ActionIcon>
+                        </Group>
+                        <Group gap={6}>
+                          <Badge variant="light" color="orange">
+                            pending dal. {stats.pendingParticipants}
+                          </Badge>
+                          <Badge variant="light" color="green">
+                            confirmed dal. {stats.confirmedParticipants}
+                          </Badge>
+                        </Group>
+                        <Group gap={6}>
+                          <Badge variant="light" color="blue">
+                            rezervuota {reservedParticipants}
+                          </Badge>
+                          <Badge variant="light" color={spotsMismatch ? 'red' : 'teal'}>
+                            {spotsMismatch
+                              ? `tikėtina ${expectedSpotsLeft}, dabar ${w.spotsLeft}`
+                              : 'sutampa su booking'}
+                          </Badge>
+                        </Group>
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td>
+                      <Stack gap={4}>
+                        <Group gap={6}>
+                          <Badge variant="light" color="blue">
+                            viso {stats.all}
+                          </Badge>
+                          <Badge variant="light" color="grape">
+                            dalyviai {stats.participants}
+                          </Badge>
+                        </Group>
+                        <Group gap={6}>
+                          <Badge variant="light" color="orange">
+                            laukia {stats.pending_payment}
+                          </Badge>
+                          <Badge variant="light" color="green">
+                            patvirtinta {stats.confirmed}
+                          </Badge>
+                        </Group>
+                        {(stats.cancelled > 0 || stats.expired > 0 || stats.draft > 0) && (
+                          <Group gap={6}>
+                            {stats.draft > 0 ? (
+                              <Badge variant="light" color="gray">
+                                draft {stats.draft}
+                              </Badge>
+                            ) : null}
+                            {stats.cancelled > 0 ? (
+                              <Badge variant="light" color="red">
+                                atšaukta {stats.cancelled}
+                              </Badge>
+                            ) : null}
+                            {stats.expired > 0 ? (
+                              <Badge variant="light" color="dark">
+                                expired {stats.expired}
+                              </Badge>
+                            ) : null}
+                          </Group>
+                        )}
+                      </Stack>
                     </Table.Td>
                     <Table.Td>{w.isWeekend ? 'Taip' : 'Ne'}</Table.Td>
                     <Table.Td>
@@ -776,7 +924,7 @@ export default function WorkshopsPage() {
                       </Group>
                     </Table.Td>
                   </Table.Tr>
-                ))}
+                )})}
               </Table.Tbody>
             </Table>
           )}

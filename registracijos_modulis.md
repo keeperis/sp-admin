@@ -1,5 +1,47 @@
 # Soul Poetry Registracijų, Bilietų ir Dovanų Kuponų Planas
 
+## Būsena 2026-06-26
+
+Šiuo metu jau įgyvendinta:
+
+- `sp-api` turi `Booking` modelį.
+- Yra `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/:id`, `POST /api/bookings/:id/cancel`.
+- Booking kūrimo metu vietos rezervuojamos per backend mažinant `spotsLeft`.
+- `sp-ceramics` ir `sp-yoga` turi viešą checkout route:
+  - `/[locale]/checkout/[workshopId]`
+- Viešas checkout jau:
+  - sukuria booking;
+  - inicijuoja Stripe Checkout session;
+  - grąžina vartotoją į tą patį checkout route su booking/payment status parametrais.
+- `sp-admin` turi:
+  - `/admin/bookings`;
+  - workshop lentelės booking statistiką;
+  - aiškesnį vietų modelį pagal `spotsLeft`, `pending_payment`, `confirmed`.
+- `sp-api` turi mokėjimų bazę:
+  - `Payment` modelį;
+  - `POST /api/payments/create-checkout-session`;
+  - `POST /api/webhooks/stripe`.
+- `sp-api` jau turi ticketų/email MVP pagrindą:
+  - `Ticket` modelį;
+  - `EmailDelivery` outbox modelį;
+  - `GET /api/tickets/:code`;
+  - Stripe webhook po `confirmed` užtikrina ticket sukūrimą ir bando siųsti patvirtinimo email.
+- `sp-ceramics` ir `sp-yoga` turi viešą ticket route:
+  - `/[locale]/tickets/[code]`
+- Confirmed checkout būsenoje jau rodoma:
+  - ticket kodas;
+  - QR kodas;
+  - nuoroda į bilieto puslapį;
+  - email siuntimo būsena (`sent | pending | failed`).
+
+Dar liko:
+
+- dovanų kuponai;
+- QR / check-in;
+- produkcinė Stripe konfigūracija (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) ir live webhook testavimas;
+- produkcinė email konfigūracija (`SMTP_*`, `CERAMICS_SITE_URL`, `YOGA_SITE_URL`) ir realus delivery testavimas;
+- admin / operatoriaus resend / check-in įrankiai.
+
 ## Projektų kontekstas
 
 Yra 4 susiję projektai:
@@ -16,16 +58,21 @@ Dabartinė sistema jau turi:
 - FB event importą per `/api/workshops/fetch-fb`.
 - `sp-admin` puslapį `/admin/workshops`.
 - `sp-ceramics` ir `sp-yoga` rodo artimiausius užsiėmimus pagal `site=ceramics|yoga`.
+- `Booking` modelį ir booking API.
+- viešą checkout flow `sp-ceramics` ir `sp-yoga`.
+- admin booking sąrašą ir workshop booking statistiką.
+- Stripe mokėjimų session kūrimą ir webhook pagrindą `sp-api`.
+- ticketų generavimą po apmokėjimo.
+- email outbox + SMTP siuntimo bandymą po apmokėjimo.
+- viešą ticket peržiūros puslapį `sp-ceramics` ir `sp-yoga`.
 
 Trūksta:
 
-- realios registracijos;
-- pirkimo;
-- mokėjimų;
-- bilietų;
 - dovanų kuponų;
-- dalyvių valdymo;
-- vietų automatinio rezervavimo.
+- admin check-in flow;
+- resend / support įrankių email pakartotiniam siuntimui;
+- produkcinės Stripe konfigūracijos ir webhook testavimo;
+- produkcinės SMTP/site URL konfigūracijos ir live email testavimo.
 
 Pagrindinis principas: `sp-api` turi būti vienintelis vietų, registracijų, mokėjimų, bilietų ir kuponų šaltinis. Facebook lieka tik marketingo/importo kanalas.
 
@@ -34,6 +81,8 @@ Pagrindinis principas: `sp-api` turi būti vienintelis vietų, registracijų, mo
 # Modulis 1: Booking / Order Pagrindas
 
 Tikslas: sukurti registracijos/užsakymo bazę be mokėjimo integracijos.
+
+Būsena: įgyvendinta.
 
 ## Sukurti `sp-api`
 
@@ -45,6 +94,7 @@ Naujas modelis `Booking`:
 - `customerName`
 - `customerEmail`
 - `customerPhone`
+- `locale`
 - `participantsCount`
 - `unitPrice`
 - `totalAmount`
@@ -100,6 +150,8 @@ Pridėti booking sąrašą konkrečiam workshopui.
 
 Tikslas: vartotojas iš event sąrašo gali pradėti pirkimą.
 
+Būsena: įgyvendinta.
+
 ## `sp-ceramics` ir `sp-yoga`
 
 Pakeisti CTA:
@@ -124,14 +176,17 @@ Checkout forma:
 Po formos submit:
 
 - kviečia `POST /api/bookings`;
-- jei sėkminga, rodo kitą žingsnį;
-- kol dar nėra mokėjimų, galima rodyti “Registracija sukurta, mokėjimas bus prijungtas kitame etape”.
+- jei sėkminga, inicijuoja Stripe Checkout session;
+- jei Stripe redirect nepavyksta, booking lieka sukurtas ir checkout puslapyje galima bandyti mokėti dar kartą;
+- po grįžimo iš Stripe naudojamas tas pats route su `booking` ir `payment` query parametrais.
 
 ---
 
 # Modulis 3: Mokėjimai
 
 Tikslas: booking tampa realiu pirkimu.
+
+Būsena: backend ir frontend flow įgyvendintas, liko produkcinė Stripe konfigūracija ir live testavimas.
 
 Rekomenduojamas MVP provideris: Stripe Checkout.
 Vėliau galima pridėti Paysera.
@@ -167,14 +222,16 @@ API:
 
 Po apmokėjimo:
 
-- redirect į `/checkout/success?booking=...`
-- jei nepavyko: `/checkout/cancel?booking=...`
+- redirect atgal į `/{locale}/checkout/{workshopId}?booking=...&payment=success`
+- jei nutraukta/nepavyko: `/{locale}/checkout/{workshopId}?booking=...&payment=cancelled`
 
 ---
 
 # Modulis 4: Bilietai
 
 Tikslas: po apmokėjimo sugeneruojami bilietai.
+
+Būsena: ticketų MVP įgyvendintas, check-in admin dalis dar nepadaryta.
 
 ## `sp-api`
 
@@ -190,13 +247,21 @@ Naujas modelis `Ticket`:
 - `status`: `valid | checked_in | cancelled`
 - `checkedInAt`
 - `createdAt`
+- `updatedAt`
 
 Jei pirkta 2 vietos, kuriami 2 bilietai arba vienas booking su `participantsCount=2`. MVP paprasčiau: vienas booking, vienas QR, dalyvių kiekis booking’e.
 
 API:
 
 - `GET /api/tickets/:code`
-- `POST /api/admin/tickets/:code/check-in`
+
+Dabartinis MVP elgesys:
+
+- po `booking.status = confirmed` webhook/service sluoksnis užtikrina, kad egzistuoja vienas ticket į vieną booking;
+- jei Stripe webhook dubliuojasi, ticket kūrimas išlieka idempotentiškas;
+- jei trūksta ticket/email artefaktų, `GET /api/bookings/:id` juos gali susigydyti;
+- bilieto QR veda į viešą `/{locale}/tickets/{code}` puslapį;
+- bilieto puslapį jau rodo tiek `sp-ceramics`, tiek `sp-yoga`.
 
 ## El. laiškai
 
@@ -206,6 +271,13 @@ Po mokėjimo siųsti:
 - bilietą / QR kodą;
 - renginio datą, vietą, laiką;
 - atšaukimo sąlygas.
+
+Dabartinis MVP elgesys:
+
+- email siuntimas turi `EmailDelivery` outbox įrašą;
+- jei `SMTP_*` sukonfigūruota, `sp-api` bando išsiųsti laišką iškart po ticket sugeneravimo;
+- jei SMTP dar nesukonfigūruotas arba siuntimas nepavyksta, būsena lieka `pending` arba `failed`, o checkout puslapis rodo realų delivery statusą;
+- laiške yra ticket nuoroda ir QR paveikslėlis.
 
 ---
 
