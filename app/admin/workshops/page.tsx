@@ -27,6 +27,7 @@ import {
   IconEdit,
   IconMinus,
   IconPlus,
+  IconRefresh,
   IconTicket,
   IconTrash,
 } from '@tabler/icons-react';
@@ -35,16 +36,37 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { buildApiUrl } from '@/lib/api';
 import type { SiteKey } from '@/lib/site';
+import { formatWorkshopDuration } from '@/src/lib/workshops/format-duration';
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store' });
+  const data = await res.json();
   if (!res.ok) {
-    throw new Error('Failed to fetch workshops');
+    throw new Error(data.error || 'Nepavyko gauti duomenų');
   }
-  return res.json();
+  return data;
 };
 
 const formatStartISO = (value: string) => value.replace('T', ' ');
+
+const formatFbEventDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('lt-LT', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(date);
+};
+
+type FbEventSummary = {
+  fbEventId: string;
+  fbEventUrl: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  placeName: string | null;
+  coverImageUrl: string | null;
+};
 
 type StructuredDescription = {
   intro: string;
@@ -123,11 +145,24 @@ function isBookingStatus(value: unknown): value is BookingStatus {
 
 export default function WorkshopsPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
+  const [createOpened, setCreateOpened] = useState(false);
+  const [createSource, setCreateSource] = useState<'select' | 'facebook' | 'manual'>('select');
   const workshopsApiUrl = buildApiUrl('/api/workshops', { site: selectedSite });
   const bookingsApiUrl = buildApiUrl('/api/bookings', { site: selectedSite });
+  const fbEventsApiUrl = buildApiUrl('/api/workshops/fetch-fb', { site: selectedSite });
   const { data, mutate } = useSWR(workshopsApiUrl, fetcher);
   const { data: bookingsData } = useSWR(bookingsApiUrl, fetcher);
-  const [fetching, setFetching] = useState(false);
+  const {
+    data: fbEventsData,
+    error: fbEventsError,
+    isLoading: fbEventsLoading,
+    mutate: mutateFbEvents,
+  } = useSWR<{ events: FbEventSummary[] }>(
+    createOpened && createSource === 'select' ? fbEventsApiUrl : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const [fetchingFbEventId, setFetchingFbEventId] = useState<string | null>(null);
   const [fbData, setFbData] = useState<any>(null);
   const [editingWorkshop, setEditingWorkshop] = useState<any>(null);
   const [updatingSpots, setUpdatingSpots] = useState<string | null>(null);
@@ -136,7 +171,6 @@ export default function WorkshopsPage() {
 
   const form = useForm({
     initialValues: {
-      fbEventUrl: '',
       titleLt: '',
       titleEn: '',
       startISO: '',
@@ -151,6 +185,8 @@ export default function WorkshopsPage() {
       spotsTotal: 0,
       spotsLeft: 0,
       isWeekend: false,
+      placeName: '',
+      coverImageUrl: '',
       descriptionStructured: emptyStructuredDescription(),
     },
   });
@@ -172,20 +208,40 @@ export default function WorkshopsPage() {
     },
   });
 
-  const handleFetchFb = async () => {
-    const url = form.values.fbEventUrl.trim();
-    if (!url) {
-      notifications.show({ message: 'Įveskite FB renginio nuorodą', color: 'orange' });
-      return;
-    }
+  const openCreateWorkflow = () => {
+    form.reset();
+    setFbData(null);
+    setCreateSource('select');
+    setCreateOpened(true);
+  };
 
-    setFetching(true);
+  const closeCreateWorkflow = () => {
+    form.reset();
+    setFbData(null);
+    setCreateSource('select');
+    setCreateOpened(false);
+  };
+
+  const openManualCreate = () => {
+    form.reset();
+    setFbData(null);
+    setCreateSource('manual');
+  };
+
+  const chooseAnotherSource = () => {
+    form.reset();
+    setFbData(null);
+    setCreateSource('select');
+  };
+
+  const handleFetchFb = async (fbEventId: string) => {
+    setFetchingFbEventId(fbEventId);
     setFbData(null);
     try {
-      const res = await fetch(buildApiUrl('/api/workshops/fetch-fb'), {
+      const res = await fetch(fbEventsApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fbEventUrl: url }),
+        body: JSON.stringify({ fbEventId }),
       });
 
       const data = await res.json();
@@ -196,6 +252,7 @@ export default function WorkshopsPage() {
       }
 
       setFbData(data);
+      setCreateSource('facebook');
       const startISO = typeof data.startISO === 'string' ? data.startISO : '';
       const startDateISO = startISO.length >= 10 ? startISO.slice(0, 10) : '';
       const timeOfDay = startISO.length >= 16 ? startISO.slice(11, 16) : '18:00';
@@ -214,6 +271,8 @@ export default function WorkshopsPage() {
         spotsTotal: form.values.spotsTotal || 0,
         spotsLeft: form.values.spotsLeft || 0,
         isWeekend: form.values.isWeekend,
+        placeName: data.placeName || '',
+        coverImageUrl: data.coverImageUrl || '',
         descriptionStructured: data.description
           ? {
               ...emptyStructuredDescription(),
@@ -225,7 +284,7 @@ export default function WorkshopsPage() {
     } catch (_err) {
       notifications.show({ message: 'Nepavyko gauti duomenų', color: 'red' });
     } finally {
-      setFetching(false);
+      setFetchingFbEventId(null);
     }
   };
 
@@ -314,11 +373,11 @@ export default function WorkshopsPage() {
         spotsLeft: values.spotsLeft,
         isWeekend: values.isWeekend,
         fbEventId: fbData?.fbEventId,
-        fbEventUrl: values.fbEventUrl || fbData?.fbEventUrl,
-        placeName: fbData?.placeName,
-        description: fbData?.description,
+        fbEventUrl: fbData?.fbEventUrl,
+        placeName: values.placeName || undefined,
+        description: fbData?.description || values.descriptionStructured.intro || undefined,
         descriptionStructured: values.descriptionStructured,
-        coverImageUrl: fbData?.coverImageUrl,
+        coverImageUrl: values.coverImageUrl || undefined,
       };
 
       if (isOngoingBulk) {
@@ -353,6 +412,8 @@ export default function WorkshopsPage() {
       mutate();
       form.reset();
       setFbData(null);
+      setCreateSource('select');
+      setCreateOpened(false);
     } catch (_err) {
       notifications.show({ message: 'Nepavyko išsaugoti', color: 'red' });
     }
@@ -456,7 +517,17 @@ export default function WorkshopsPage() {
     }
   };
 
-  const workshops = data?.workshops || [];
+  const workshops = useMemo(
+    () =>
+      [...(data?.workshops || [])].sort((left: any, right: any) => {
+        const leftStart = Date.parse(left.startISO || '');
+        const rightStart = Date.parse(right.startISO || '');
+        if (Number.isNaN(leftStart)) return 1;
+        if (Number.isNaN(rightStart)) return -1;
+        return rightStart - leftStart;
+      }),
+    [data?.workshops],
+  );
   const bookingStatsByWorkshop = useMemo(() => {
     const statsMap = new Map<string, BookingStats>();
     const bookings = bookingsData?.bookings || [];
@@ -494,268 +565,365 @@ export default function WorkshopsPage() {
   return (
     <Container size="xl" py="md">
       <Stack gap="xl">
-        <Title order={2}>Workshops</Title>
-        <Select
-          label="Project"
-          data={PROJECT_OPTIONS}
-          value={selectedSite}
-          onChange={(value) => setSelectedSite(value === 'yoga' ? 'yoga' : 'ceramics')}
-          allowDeselect={false}
-          w={170}
-        />
+        <Group justify="space-between" align="end">
+          <Stack gap="sm">
+            <Title order={2}>Workshops</Title>
+            <Select
+              label="Project"
+              data={PROJECT_OPTIONS}
+              value={selectedSite}
+              onChange={(value) => setSelectedSite(value === 'yoga' ? 'yoga' : 'ceramics')}
+              allowDeselect={false}
+              w={170}
+            />
+          </Stack>
+          <Button leftSection={<IconPlus size={16} />} onClick={openCreateWorkflow}>
+            Kurti naują
+          </Button>
+        </Group>
 
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Title order={4}>Pridėti iš Facebook renginio</Title>
-            <Text size="sm" c="dimmed">
-              Įklijuokite FB renginio nuorodą (pvz.
-              https://www.facebook.com/events/1572151530598250/...) ir spauskite „Gauti duomenis“.
-              Pavadinimas, laikas ir trukmė bus užpildyti automatiškai. Pridėkite vietų skaičių,
-              kainą ir kitus laukus.
-            </Text>
-            <Group align="flex-end">
-              <TextInput
-                label="FB renginio nuoroda"
-                placeholder="https://www.facebook.com/events/..."
-                style={{ flex: 1, minWidth: 300 }}
-                {...form.getInputProps('fbEventUrl')}
-              />
-              <Button
-                leftSection={fetching ? <Loader size="sm" /> : <IconCalendarEvent size={16} />}
-                onClick={handleFetchFb}
-                loading={fetching}
-              >
-                Gauti duomenis
-              </Button>
-            </Group>
+        {createOpened && (
+          <Card shadow="sm" padding="lg" radius="md" withBorder>
+            <Stack gap="md">
+              <Group justify="space-between" align="center">
+                <div>
+                  <Title order={4}>
+                    {createSource === 'manual'
+                      ? 'Kurti renginį rankiniu būdu'
+                      : createSource === 'facebook'
+                        ? 'Kurti pagal Facebook renginį'
+                        : 'Pasirinkite kūrimo būdą'}
+                  </Title>
+                  <Text size="sm" c="dimmed">
+                    Pasirinkus Facebook renginį jo informacija bus perkelta į formą. Taip pat galite
+                    visus duomenis suvesti rankiniu būdu.
+                  </Text>
+                </div>
+                <Group>
+                  {createSource === 'select' ? (
+                    <>
+                      <Button variant="light" onClick={openManualCreate}>
+                        Kurti rankiniu būdu
+                      </Button>
+                      <Button
+                        variant="light"
+                        leftSection={<IconRefresh size={16} />}
+                        onClick={() => void mutateFbEvents()}
+                        loading={fbEventsLoading}
+                      >
+                        Atnaujinti FB sąrašą
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="light" onClick={chooseAnotherSource}>
+                      Rinktis kitą būdą
+                    </Button>
+                  )}
+                  <Button variant="default" onClick={closeCreateWorkflow}>
+                    Uždaryti
+                  </Button>
+                </Group>
+              </Group>
 
-            {fbData && (
-              <>
-                <Divider />
-                <form onSubmit={form.onSubmit(handleSubmit)}>
-                  <Stack gap="md">
-                    <Title order={5}>Trūkstami laukai</Title>
-                    <Group grow>
-                      <TextInput
-                        label="Pavadinimas (LT)"
-                        required
-                        {...form.getInputProps('titleLt')}
-                      />
-                      <TextInput
-                        label="Pavadinimas (EN)"
-                        required
-                        {...form.getInputProps('titleEn')}
-                      />
+              {createSource === 'select' && (
+                <>
+                  {fbEventsLoading && (
+                    <Group justify="center" py="md">
+                      <Loader size="sm" />
+                      <Text size="sm" c="dimmed">
+                        Kraunami Facebook renginiai...
+                      </Text>
                     </Group>
-                    <Select
-                      label="Rūšis"
-                      data={[
-                        { value: 'oneTime', label: 'Vienkartiniai dirbtuvės' },
-                        { value: 'ongoing', label: 'Nuolatiniai užsiėmimai' },
-                        { value: 'private', label: 'Privatūs užsiėmimai' },
-                      ]}
-                      {...form.getInputProps('eventType')}
-                    />
-                    {form.values.eventType === 'ongoing' ? (
-                      <>
-                        <Text size="sm" c="dimmed">
-                          Bus sukurti užsiėmimai kiekvienai savaitei (įskaitant pradžios ir pabaigos
-                          datas)
-                        </Text>
-                        <Group grow>
-                          <TextInput
-                            label="Pradžios data"
-                            required
-                            type="date"
-                            {...form.getInputProps('startDateISO')}
-                          />
-                          <TextInput
-                            label="Pabaigos data"
-                            required
-                            type="date"
-                            {...form.getInputProps('endDateISO')}
-                          />
-                          <TextInput
-                            label="Laikas"
-                            type="time"
-                            {...form.getInputProps('timeOfDay')}
-                          />
-                        </Group>
-                      </>
-                    ) : (
-                      <TextInput
-                        label="Pradžios laikas (ISO)"
-                        required
-                        placeholder="2026-02-15T10:00:00"
-                        {...form.getInputProps('startISO')}
-                      />
-                    )}
-                    <NumberInput
-                      label="Trukmė (min)"
-                      required
-                      min={1}
-                      {...form.getInputProps('durationMin')}
-                    />
-                    <Group grow>
-                      <NumberInput
-                        label="Užsiėmimų kiekis"
-                        min={1}
-                        {...form.getInputProps('sessionsCount')}
-                      />
-                      <NumberInput
-                        label="Kaina vieno (€)"
-                        required
-                        min={0}
-                        {...form.getInputProps('pricePerSession')}
-                      />
-                      {form.values.sessionsCount > 1 && (
-                        <NumberInput
-                          label="Abonimento kaina (€)"
-                          min={0}
-                          {...form.getInputProps('subscriptionPriceEur')}
-                        />
-                      )}
-                    </Group>
-                    <Group grow>
-                      <NumberInput
-                        label="Vietų sk."
-                        required
-                        min={1}
-                        {...form.getInputProps('spotsTotal')}
-                      />
-                      <NumberInput
-                        label="Laisvų vietų"
-                        required
-                        min={0}
-                        {...form.getInputProps('spotsLeft')}
-                      />
-                    </Group>
-                    <Switch
-                      label="Savaitgalis"
-                      {...form.getInputProps('isWeekend', { type: 'checkbox' })}
-                    />
-                    <Divider />
-                    <Stack gap="sm">
-                      <Group justify="space-between">
-                        <Title order={6}>Renginio aprašymo struktūra</Title>
-                        <Button
-                          size="xs"
-                          variant="light"
-                          onClick={handleParseCreateDescription}
-                          loading={parsingDescription}
-                        >
-                          Suskaidyti iš plain teksto
-                        </Button>
-                      </Group>
-                      <Textarea
-                        label="Įžanginis sakinys"
-                        minRows={2}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.intro')}
-                      />
-                      <Textarea
-                        label="Pirma pastraipa"
-                        minRows={3}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.paragraph1')}
-                      />
-                      <Textarea
-                        label="Antra pastraipa"
-                        minRows={3}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.paragraph2')}
-                      />
-                      <Textarea
-                        label="Trečia pastraipa"
-                        minRows={3}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.paragraph3')}
-                      />
-                      <TextInput
-                        label="Listo antraštė"
-                        {...form.getInputProps('descriptionStructured.listTitle')}
-                      />
-                      <Stack gap="xs">
-                        <Group justify="space-between">
-                          <Text size="sm" fw={500}>
-                            Listo elementai
-                          </Text>
+                  )}
+
+                  {fbEventsError && (
+                    <Text c="red" size="sm">
+                      {fbEventsError.message || 'Nepavyko gauti Facebook renginių sąrašo'}
+                    </Text>
+                  )}
+
+                  {!fbEventsLoading && !fbEventsError && fbEventsData?.events.length === 0 && (
+                    <Text c="dimmed" size="sm">
+                      Artėjančių Facebook renginių nėra. Galite kurti renginį rankiniu būdu.
+                    </Text>
+                  )}
+
+                  {fbEventsData?.events.map((event) => {
+                    const isFetching = fetchingFbEventId === event.fbEventId;
+
+                    return (
+                      <Card key={event.fbEventId} padding="sm" radius="md" withBorder>
+                        <Group justify="space-between" align="center" wrap="nowrap">
+                          <Stack gap={3}>
+                            <Text fw={600}>{event.name}</Text>
+                            <Text size="sm">{formatFbEventDate(event.startTime)}</Text>
+                            {event.placeName && (
+                              <Text size="xs" c="dimmed">
+                                {event.placeName}
+                              </Text>
+                            )}
+                          </Stack>
                           <Button
-                            size="xs"
-                            variant="subtle"
-                            onClick={() =>
-                              form.setFieldValue('descriptionStructured.listItems', [
-                                ...(form.values.descriptionStructured.listItems || []),
-                                '',
-                              ])
-                            }
+                            variant="light"
+                            leftSection={<IconCalendarEvent size={16} />}
+                            onClick={() => handleFetchFb(event.fbEventId)}
+                            loading={isFetching}
+                            disabled={Boolean(fetchingFbEventId) && !isFetching}
                           >
-                            Pridėti elementą
+                            Pasirinkti
                           </Button>
                         </Group>
-                        {(form.values.descriptionStructured.listItems || []).map((item, index) => (
-                          <Group key={`${item}-${item.length}`} grow>
+                      </Card>
+                    );
+                  })}
+                </>
+              )}
+
+              {createSource !== 'select' && (
+                <>
+                  <Divider />
+                  <form onSubmit={form.onSubmit(handleSubmit)}>
+                    <Stack gap="md">
+                      <Title order={5}>
+                        {createSource === 'manual'
+                          ? 'Renginio duomenys'
+                          : 'Patikrinkite ir papildykite'}
+                      </Title>
+                      <Group grow>
+                        <TextInput
+                          label="Pavadinimas (LT)"
+                          required
+                          {...form.getInputProps('titleLt')}
+                        />
+                        <TextInput
+                          label="Pavadinimas (EN)"
+                          required
+                          {...form.getInputProps('titleEn')}
+                        />
+                      </Group>
+                      <Select
+                        label="Rūšis"
+                        data={[
+                          { value: 'oneTime', label: 'Vienkartiniai dirbtuvės' },
+                          { value: 'ongoing', label: 'Nuolatiniai užsiėmimai' },
+                          { value: 'private', label: 'Privatūs užsiėmimai' },
+                        ]}
+                        {...form.getInputProps('eventType')}
+                      />
+                      {form.values.eventType === 'ongoing' ? (
+                        <>
+                          <Text size="sm" c="dimmed">
+                            Bus sukurti užsiėmimai kiekvienai savaitei (įskaitant pradžios ir
+                            pabaigos datas)
+                          </Text>
+                          <Group grow>
                             <TextInput
-                              value={item}
-                              onChange={(event) => {
-                                const next = [
-                                  ...(form.values.descriptionStructured.listItems || []),
-                                ];
-                                next[index] = event.currentTarget.value;
-                                form.setFieldValue('descriptionStructured.listItems', next);
-                              }}
+                              label="Pradžios data"
+                              required
+                              type="date"
+                              {...form.getInputProps('startDateISO')}
                             />
-                            <ActionIcon
-                              color="red"
-                              variant="subtle"
-                              onClick={() => {
-                                const next = [
-                                  ...(form.values.descriptionStructured.listItems || []),
-                                ];
-                                next.splice(index, 1);
-                                form.setFieldValue('descriptionStructured.listItems', next);
-                              }}
-                            >
-                              <IconTrash size={16} />
-                            </ActionIcon>
+                            <TextInput
+                              label="Pabaigos data"
+                              required
+                              type="date"
+                              {...form.getInputProps('endDateISO')}
+                            />
+                            <TextInput
+                              label="Laikas"
+                              type="time"
+                              {...form.getInputProps('timeOfDay')}
+                            />
                           </Group>
-                        ))}
+                        </>
+                      ) : (
+                        <TextInput
+                          label="Pradžios data ir laikas"
+                          required
+                          type="datetime-local"
+                          {...form.getInputProps('startISO')}
+                        />
+                      )}
+                      <NumberInput
+                        label="Trukmė (min)"
+                        required
+                        min={1}
+                        {...form.getInputProps('durationMin')}
+                      />
+                      <Group grow>
+                        <TextInput label="Vieta" {...form.getInputProps('placeName')} />
+                        <TextInput
+                          label="Viršelio nuotraukos URL"
+                          placeholder="https://..."
+                          {...form.getInputProps('coverImageUrl')}
+                        />
+                      </Group>
+                      <Group grow>
+                        <NumberInput
+                          label="Užsiėmimų kiekis"
+                          min={1}
+                          {...form.getInputProps('sessionsCount')}
+                        />
+                        <NumberInput
+                          label="Kaina vieno (€)"
+                          required
+                          min={0}
+                          {...form.getInputProps('pricePerSession')}
+                        />
+                        {form.values.sessionsCount > 1 && (
+                          <NumberInput
+                            label="Abonimento kaina (€)"
+                            min={0}
+                            {...form.getInputProps('subscriptionPriceEur')}
+                          />
+                        )}
+                      </Group>
+                      <Group grow>
+                        <NumberInput
+                          label="Vietų sk."
+                          required
+                          min={1}
+                          {...form.getInputProps('spotsTotal')}
+                        />
+                        <NumberInput
+                          label="Laisvų vietų"
+                          required
+                          min={0}
+                          {...form.getInputProps('spotsLeft')}
+                        />
+                      </Group>
+                      <Switch
+                        label="Savaitgalis"
+                        {...form.getInputProps('isWeekend', { type: 'checkbox' })}
+                      />
+                      <Divider />
+                      <Stack gap="sm">
+                        <Group justify="space-between">
+                          <Title order={6}>Renginio aprašymo struktūra</Title>
+                          <Button
+                            size="xs"
+                            variant="light"
+                            onClick={handleParseCreateDescription}
+                            loading={parsingDescription}
+                          >
+                            Suskaidyti iš plain teksto
+                          </Button>
+                        </Group>
+                        <Textarea
+                          label="Įžanginis sakinys"
+                          minRows={2}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.intro')}
+                        />
+                        <Textarea
+                          label="Pirma pastraipa"
+                          minRows={3}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.paragraph1')}
+                        />
+                        <Textarea
+                          label="Antra pastraipa"
+                          minRows={3}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.paragraph2')}
+                        />
+                        <Textarea
+                          label="Trečia pastraipa"
+                          minRows={3}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.paragraph3')}
+                        />
+                        <TextInput
+                          label="Listo antraštė"
+                          {...form.getInputProps('descriptionStructured.listTitle')}
+                        />
+                        <Stack gap="xs">
+                          <Group justify="space-between">
+                            <Text size="sm" fw={500}>
+                              Listo elementai
+                            </Text>
+                            <Button
+                              size="xs"
+                              variant="subtle"
+                              onClick={() =>
+                                form.setFieldValue('descriptionStructured.listItems', [
+                                  ...(form.values.descriptionStructured.listItems || []),
+                                  '',
+                                ])
+                              }
+                            >
+                              Pridėti elementą
+                            </Button>
+                          </Group>
+                          {(form.values.descriptionStructured.listItems || []).map(
+                            (item, index) => (
+                              <Group key={`${item}-${item.length}`} grow>
+                                <TextInput
+                                  value={item}
+                                  onChange={(event) => {
+                                    const next = [
+                                      ...(form.values.descriptionStructured.listItems || []),
+                                    ];
+                                    next[index] = event.currentTarget.value;
+                                    form.setFieldValue('descriptionStructured.listItems', next);
+                                  }}
+                                />
+                                <ActionIcon
+                                  color="red"
+                                  variant="subtle"
+                                  onClick={() => {
+                                    const next = [
+                                      ...(form.values.descriptionStructured.listItems || []),
+                                    ];
+                                    next.splice(index, 1);
+                                    form.setFieldValue('descriptionStructured.listItems', next);
+                                  }}
+                                >
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Group>
+                            ),
+                          )}
+                        </Stack>
+                        <Textarea
+                          label="Pirma baigiamoji pastraipa"
+                          minRows={2}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.closing1')}
+                        />
+                        <Textarea
+                          label="Antra baigiamoji pastraipa"
+                          minRows={2}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.closing2')}
+                        />
+                        <Textarea
+                          label="Trečia baigiamoji pastraipa"
+                          minRows={2}
+                          autosize
+                          {...form.getInputProps('descriptionStructured.closing3')}
+                        />
                       </Stack>
-                      <Textarea
-                        label="Pirma baigiamoji pastraipa"
-                        minRows={2}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.closing1')}
-                      />
-                      <Textarea
-                        label="Antra baigiamoji pastraipa"
-                        minRows={2}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.closing2')}
-                      />
-                      <Textarea
-                        label="Trečia baigiamoji pastraipa"
-                        minRows={2}
-                        autosize
-                        {...form.getInputProps('descriptionStructured.closing3')}
-                      />
+                      {createSource === 'facebook' && fbData?.placeName && (
+                        <Text size="sm" c="dimmed">
+                          Vieta (iš FB): {fbData.placeName}
+                        </Text>
+                      )}
+                      <Group>
+                        <Button type="submit" leftSection={<IconPlus size={16} />}>
+                          Sukurti užsiėmimą
+                        </Button>
+                        <Button variant="default" onClick={closeCreateWorkflow}>
+                          Atšaukti
+                        </Button>
+                      </Group>
                     </Stack>
-                    {fbData.placeName && (
-                      <Text size="sm" c="dimmed">
-                        Vieta (iš FB): {fbData.placeName}
-                      </Text>
-                    )}
-                    <Group>
-                      <Button type="submit" leftSection={<IconPlus size={16} />}>
-                        Sukurti užsiėmimą
-                      </Button>
-                    </Group>
-                  </Stack>
-                </form>
-              </>
-            )}
-          </Stack>
-        </Card>
+                  </form>
+                </>
+              )}
+            </Stack>
+          </Card>
+        )}
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Title order={4} mb="md">
@@ -788,143 +956,146 @@ export default function WorkshopsPage() {
                   const spotsMismatch = expectedSpotsLeft !== w.spotsLeft;
 
                   return (
-                  <Table.Tr key={w.id}>
-                    <Table.Td>{w.titleLt}</Table.Td>
-                    <Table.Td>
-                      {w.eventType === 'oneTime'
-                        ? 'Vienkart.'
-                        : w.eventType === 'ongoing'
-                          ? 'Nuolatiniai'
-                          : 'Privatūs'}
-                    </Table.Td>
-                    <Table.Td>{formatStartISO(w.startISO)}</Table.Td>
-                    <Table.Td>{w.durationMin} min</Table.Td>
-                    <Table.Td>{w.sessionsCount ?? 1}</Table.Td>
-                    <Table.Td>
-                      {(w.sessionsCount ?? 1) === 1
-                        ? `${w.pricePerSession ?? w.priceEur ?? 0}€`
-                        : `${w.sessionsCount}×${w.pricePerSession ?? w.priceEur ?? 0}€${w.subscriptionPriceEur != null ? ` / abon. ${w.subscriptionPriceEur}€` : ''}`}
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={4}>
-                        <Group gap={4} wrap="nowrap">
-                          <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            onClick={() => handleQuickSpots(w, -1)}
-                            disabled={w.spotsLeft <= 0 || updatingSpots === w.id}
-                            aria-label="Sumažinti laisvų vietų"
-                          >
-                            <IconMinus size={14} />
-                          </ActionIcon>
-                          <Badge
-                            color={w.spotsLeft === 0 ? 'red' : w.spotsLeft <= 2 ? 'orange' : 'green'}
-                            variant="light"
-                          >
-                            laisvos {w.spotsLeft} / {w.spotsTotal}
-                          </Badge>
-                          <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            onClick={() => handleQuickSpots(w, 1)}
-                            disabled={w.spotsLeft >= w.spotsTotal || updatingSpots === w.id}
-                            aria-label="Padidinti laisvų vietų"
-                          >
-                            <IconPlus size={14} />
-                          </ActionIcon>
-                        </Group>
-                        <Group gap={6}>
-                          <Badge variant="light" color="orange">
-                            pending dal. {stats.pendingParticipants}
-                          </Badge>
-                          <Badge variant="light" color="green">
-                            confirmed dal. {stats.confirmedParticipants}
-                          </Badge>
-                        </Group>
-                        <Group gap={6}>
-                          <Badge variant="light" color="blue">
-                            rezervuota {reservedParticipants}
-                          </Badge>
-                          <Badge variant="light" color={spotsMismatch ? 'red' : 'teal'}>
-                            {spotsMismatch
-                              ? `tikėtina ${expectedSpotsLeft}, dabar ${w.spotsLeft}`
-                              : 'sutampa su booking'}
-                          </Badge>
-                        </Group>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={4}>
-                        <Group gap={6}>
-                          <Badge variant="light" color="blue">
-                            viso {stats.all}
-                          </Badge>
-                          <Badge variant="light" color="grape">
-                            dalyviai {stats.participants}
-                          </Badge>
-                        </Group>
-                        <Group gap={6}>
-                          <Badge variant="light" color="orange">
-                            laukia {stats.pending_payment}
-                          </Badge>
-                          <Badge variant="light" color="green">
-                            patvirtinta {stats.confirmed}
-                          </Badge>
-                        </Group>
-                        {(stats.cancelled > 0 || stats.expired > 0 || stats.draft > 0) && (
-                          <Group gap={6}>
-                            {stats.draft > 0 ? (
-                              <Badge variant="light" color="gray">
-                                draft {stats.draft}
-                              </Badge>
-                            ) : null}
-                            {stats.cancelled > 0 ? (
-                              <Badge variant="light" color="red">
-                                atšaukta {stats.cancelled}
-                              </Badge>
-                            ) : null}
-                            {stats.expired > 0 ? (
-                              <Badge variant="light" color="dark">
-                                expired {stats.expired}
-                              </Badge>
-                            ) : null}
+                    <Table.Tr key={w.id}>
+                      <Table.Td>{w.titleLt}</Table.Td>
+                      <Table.Td>
+                        {w.eventType === 'oneTime'
+                          ? 'Vienkart.'
+                          : w.eventType === 'ongoing'
+                            ? 'Nuolatiniai'
+                            : 'Privatūs'}
+                      </Table.Td>
+                      <Table.Td>{formatStartISO(w.startISO)}</Table.Td>
+                      <Table.Td>{formatWorkshopDuration(w.durationMin, 'lt')}</Table.Td>
+                      <Table.Td>{w.sessionsCount ?? 1}</Table.Td>
+                      <Table.Td>
+                        {(w.sessionsCount ?? 1) === 1
+                          ? `${w.pricePerSession ?? w.priceEur ?? 0}€`
+                          : `${w.sessionsCount}×${w.pricePerSession ?? w.priceEur ?? 0}€${w.subscriptionPriceEur != null ? ` / abon. ${w.subscriptionPriceEur}€` : ''}`}
+                      </Table.Td>
+                      <Table.Td>
+                        <Stack gap={4}>
+                          <Group gap={4} wrap="nowrap">
+                            <ActionIcon
+                              variant="subtle"
+                              size="sm"
+                              onClick={() => handleQuickSpots(w, -1)}
+                              disabled={w.spotsLeft <= 0 || updatingSpots === w.id}
+                              aria-label="Sumažinti laisvų vietų"
+                            >
+                              <IconMinus size={14} />
+                            </ActionIcon>
+                            <Badge
+                              color={
+                                w.spotsLeft === 0 ? 'red' : w.spotsLeft <= 2 ? 'orange' : 'green'
+                              }
+                              variant="light"
+                            >
+                              laisvos {w.spotsLeft} / {w.spotsTotal}
+                            </Badge>
+                            <ActionIcon
+                              variant="subtle"
+                              size="sm"
+                              onClick={() => handleQuickSpots(w, 1)}
+                              disabled={w.spotsLeft >= w.spotsTotal || updatingSpots === w.id}
+                              aria-label="Padidinti laisvų vietų"
+                            >
+                              <IconPlus size={14} />
+                            </ActionIcon>
                           </Group>
-                        )}
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>{w.isWeekend ? 'Taip' : 'Ne'}</Table.Td>
-                    <Table.Td>
-                      <Group gap={4}>
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => openEditModal(w)}
-                          aria-label="Redaguoti"
-                        >
-                          <IconEdit size={16} />
-                        </ActionIcon>
-                        <ActionIcon
-                          component={Link}
-                          href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
-                          variant="subtle"
-                          size="sm"
-                          aria-label="Registracijos"
-                        >
-                          <IconTicket size={16} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          size="sm"
-                          onClick={() => handleDelete(w)}
-                          aria-label="Ištrinti"
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                )})}
+                          <Group gap={6}>
+                            <Badge variant="light" color="orange">
+                              pending dal. {stats.pendingParticipants}
+                            </Badge>
+                            <Badge variant="light" color="green">
+                              confirmed dal. {stats.confirmedParticipants}
+                            </Badge>
+                          </Group>
+                          <Group gap={6}>
+                            <Badge variant="light" color="blue">
+                              rezervuota {reservedParticipants}
+                            </Badge>
+                            <Badge variant="light" color={spotsMismatch ? 'red' : 'teal'}>
+                              {spotsMismatch
+                                ? `tikėtina ${expectedSpotsLeft}, dabar ${w.spotsLeft}`
+                                : 'sutampa su booking'}
+                            </Badge>
+                          </Group>
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>
+                        <Stack gap={4}>
+                          <Group gap={6}>
+                            <Badge variant="light" color="blue">
+                              viso {stats.all}
+                            </Badge>
+                            <Badge variant="light" color="grape">
+                              dalyviai {stats.participants}
+                            </Badge>
+                          </Group>
+                          <Group gap={6}>
+                            <Badge variant="light" color="orange">
+                              laukia {stats.pending_payment}
+                            </Badge>
+                            <Badge variant="light" color="green">
+                              patvirtinta {stats.confirmed}
+                            </Badge>
+                          </Group>
+                          {(stats.cancelled > 0 || stats.expired > 0 || stats.draft > 0) && (
+                            <Group gap={6}>
+                              {stats.draft > 0 ? (
+                                <Badge variant="light" color="gray">
+                                  draft {stats.draft}
+                                </Badge>
+                              ) : null}
+                              {stats.cancelled > 0 ? (
+                                <Badge variant="light" color="red">
+                                  atšaukta {stats.cancelled}
+                                </Badge>
+                              ) : null}
+                              {stats.expired > 0 ? (
+                                <Badge variant="light" color="dark">
+                                  expired {stats.expired}
+                                </Badge>
+                              ) : null}
+                            </Group>
+                          )}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>{w.isWeekend ? 'Taip' : 'Ne'}</Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            onClick={() => openEditModal(w)}
+                            aria-label="Redaguoti"
+                          >
+                            <IconEdit size={16} />
+                          </ActionIcon>
+                          <ActionIcon
+                            component={Link}
+                            href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
+                            variant="subtle"
+                            size="sm"
+                            aria-label="Registracijos"
+                          >
+                            <IconTicket size={16} />
+                          </ActionIcon>
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="sm"
+                            onClick={() => handleDelete(w)}
+                            aria-label="Ištrinti"
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
             </Table>
           )}

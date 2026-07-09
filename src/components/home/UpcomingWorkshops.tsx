@@ -36,6 +36,7 @@ import { getConfiguredSiteKey } from '@/lib/site';
 import { useArtboardReady } from '@/src/components/background/ArtboardReadyProvider';
 import type { Workshop } from '@/src/data/workshops';
 import { getTranslations, type Locale } from '@/src/i18n';
+import { formatWorkshopDuration } from '@/src/lib/workshops/format-duration';
 import styles from './UpcomingWorkshops.module.css';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -371,7 +372,7 @@ export function UpcomingWorkshops({ locale }: UpcomingWorkshopsProps) {
                           : locale === 'lt'
                             ? 'Trukmė'
                             : 'Duration'}
-                        : {workshop.durationMin} {locale === 'lt' ? 'min' : 'min'}
+                        : {formatWorkshopDuration(workshop.durationMin, locale)}
                       </Text>
                     </Stack>
                     <Group justify="space-between" mt="auto" wrap="wrap" gap="xs">
@@ -518,7 +519,7 @@ export function UpcomingWorkshops({ locale }: UpcomingWorkshopsProps) {
                           : locale === 'lt'
                             ? 'Trukmė'
                             : 'Duration'}
-                        : {activeWorkshop.durationMin} {locale === 'lt' ? 'min' : 'min'}
+                        : {formatWorkshopDuration(activeWorkshop.durationMin, locale)}
                       </Text>
                     </Group>
                     <Group gap="xs" align="center">

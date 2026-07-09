@@ -1,18 +1,26 @@
 'use client';
 
 import {
+  ActionIcon,
+  Alert,
   Badge,
   Button,
   Card,
   Container,
+  Divider,
   Group,
+  Loader,
+  Modal,
   Select,
   Stack,
   Table,
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconEye, IconMailForward, IconX } from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -68,15 +76,17 @@ function BookingsPageContent() {
   );
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [workshopId, setWorkshopId] = useState(searchParams.get('workshopId') || '');
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [bookingAction, setBookingAction] = useState<'cancel' | 'email' | null>(null);
 
-  const bookingsApiUrl = buildApiUrl('/api/bookings', {
-    site,
-    status: status || undefined,
-    workshopId: workshopId || undefined,
-  });
+  const bookingParams = new URLSearchParams({ site });
+  if (status) bookingParams.set('status', status);
+  if (workshopId) bookingParams.set('workshopId', workshopId);
+  const bookingsApiUrl = `/api/admin/bookings?${bookingParams.toString()}`;
   const workshopsApiUrl = buildApiUrl('/api/workshops', { site });
 
-  const { data, error, isLoading } = useSWR(bookingsApiUrl, bookingFetcher);
+  const { data, error, isLoading, mutate } = useSWR(bookingsApiUrl, bookingFetcher);
   const { data: workshopsData } = useSWR(workshopsApiUrl, bookingFetcher);
 
   const workshopOptions = useMemo(() => {
@@ -108,6 +118,55 @@ function BookingsPageContent() {
   };
 
   const bookings = data?.bookings || [];
+
+  const openBookingDetails = async (bookingId: string) => {
+    setIsLoadingDetails(true);
+    setSelectedBooking({ id: bookingId });
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingId}`, { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || !result.booking) {
+        throw new Error(result.error || 'Nepavyko gauti registracijos');
+      }
+      setSelectedBooking(result.booking);
+    } catch (nextError: any) {
+      setSelectedBooking(null);
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const runBookingAction = async (action: 'cancel' | 'email') => {
+    if (!selectedBooking?.id) return;
+    if (action === 'cancel' && !confirm('Atšaukti šią neapmokėtą registraciją?')) return;
+
+    setBookingAction(action);
+    try {
+      const suffix = action === 'cancel' ? 'cancel' : 'resend-confirmation';
+      const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/${suffix}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: '{}',
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Veiksmas nepavyko');
+
+      notifications.show({
+        message: action === 'cancel' ? 'Registracija atšaukta' : 'Laiško siuntimas pakartotas',
+        color: 'green',
+      });
+      await mutate();
+      await openBookingDetails(selectedBooking.id);
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setBookingAction(null);
+    }
+  };
 
   return (
     <Container size="xl" py="md">
@@ -186,8 +245,10 @@ function BookingsPageContent() {
                   <Table.Th>Renginys</Table.Th>
                   <Table.Th>Dalyviai</Table.Th>
                   <Table.Th>Suma</Table.Th>
+                  <Table.Th>Mokėjimas</Table.Th>
                   <Table.Th>Statusas</Table.Th>
                   <Table.Th>Sukurta</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -220,17 +281,152 @@ function BookingsPageContent() {
                       {booking.totalAmount} {booking.currency}
                     </Table.Td>
                     <Table.Td>
+                      <Badge
+                        color={
+                          booking.payment?.status === 'paid'
+                            ? 'green'
+                            : booking.payment?.status === 'refunded'
+                              ? 'grape'
+                              : booking.payment?.status === 'failed'
+                                ? 'red'
+                                : 'gray'
+                        }
+                        variant="light"
+                      >
+                        {booking.payment?.status || 'nėra'}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
                       <Badge color={statusColor(booking.status)} variant="light">
                         {booking.status}
                       </Badge>
                     </Table.Td>
                     <Table.Td>{formatDateTime(booking.createdAt)}</Table.Td>
+                    <Table.Td>
+                      <Tooltip label="Registracijos detalės">
+                        <ActionIcon
+                          variant="subtle"
+                          aria-label="Registracijos detalės"
+                          onClick={() => openBookingDetails(booking.id)}
+                        >
+                          <IconEye size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
           )}
         </Card>
+
+        <Modal
+          opened={Boolean(selectedBooking)}
+          onClose={() => setSelectedBooking(null)}
+          title="Registracijos detalės"
+          size="lg"
+        >
+          {isLoadingDetails || !selectedBooking?.status ? (
+            <Group justify="center" py="xl">
+              <Loader />
+            </Group>
+          ) : (
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-start">
+                <div>
+                  <Text fw={700}>{selectedBooking.customerName}</Text>
+                  <Text size="sm">{selectedBooking.customerEmail}</Text>
+                  <Text size="sm">{selectedBooking.customerPhone}</Text>
+                </div>
+                <Badge color={statusColor(selectedBooking.status)} variant="light">
+                  {selectedBooking.status}
+                </Badge>
+              </Group>
+
+              <Divider />
+              <Stack gap={4}>
+                <Text size="sm">
+                  <strong>Renginys:</strong>{' '}
+                  {selectedBooking.workshop?.titleLt || selectedBooking.workshopId}
+                </Text>
+                <Text size="sm">
+                  <strong>Dalyviai:</strong> {selectedBooking.participantsCount}
+                </Text>
+                <Text size="sm">
+                  <strong>Suma:</strong> {selectedBooking.totalAmount}{' '}
+                  {selectedBooking.currency}
+                </Text>
+                <Text size="sm">
+                  <strong>Galioja iki:</strong> {formatDateTime(selectedBooking.expiresAt)}
+                </Text>
+                {selectedBooking.notes ? (
+                  <Text size="sm">
+                    <strong>Pastabos:</strong> {selectedBooking.notes}
+                  </Text>
+                ) : null}
+              </Stack>
+
+              <Divider />
+              <Group grow align="stretch">
+                <Card withBorder padding="sm" radius="sm">
+                  <Text size="xs" c="dimmed">Mokėjimas</Text>
+                  <Text fw={600}>{selectedBooking.payment?.status || 'Nėra'}</Text>
+                  {selectedBooking.payment ? (
+                    <Text size="xs" c="dimmed">
+                      {selectedBooking.payment.provider} · {selectedBooking.payment.amount}{' '}
+                      {selectedBooking.payment.currency}
+                    </Text>
+                  ) : null}
+                </Card>
+                <Card withBorder padding="sm" radius="sm">
+                  <Text size="xs" c="dimmed">Bilietas</Text>
+                  <Text fw={600}>{selectedBooking.ticket?.status || 'Nėra'}</Text>
+                  {selectedBooking.ticket?.code ? (
+                    <Text size="xs" c="dimmed">{selectedBooking.ticket.code}</Text>
+                  ) : null}
+                </Card>
+                <Card withBorder padding="sm" radius="sm">
+                  <Text size="xs" c="dimmed">Laiškas</Text>
+                  <Text fw={600}>{selectedBooking.confirmationEmail?.status || 'Nėra'}</Text>
+                  {selectedBooking.confirmationEmail?.attempts != null ? (
+                    <Text size="xs" c="dimmed">
+                      Bandymai: {selectedBooking.confirmationEmail.attempts}
+                    </Text>
+                  ) : null}
+                </Card>
+              </Group>
+
+              {selectedBooking.confirmationEmail?.lastError ? (
+                <Alert color="orange">{selectedBooking.confirmationEmail.lastError}</Alert>
+              ) : null}
+
+              <Group justify="flex-end">
+                {selectedBooking.status === 'confirmed' &&
+                selectedBooking.confirmationEmail?.status !== 'sent' ? (
+                  <Button
+                    variant="light"
+                    leftSection={<IconMailForward size={16} />}
+                    loading={bookingAction === 'email'}
+                    onClick={() => runBookingAction('email')}
+                  >
+                    Pakartoti laišką
+                  </Button>
+                ) : null}
+                {selectedBooking.status === 'pending_payment' ? (
+                  <Button
+                    color="red"
+                    variant="light"
+                    leftSection={<IconX size={16} />}
+                    loading={bookingAction === 'cancel'}
+                    onClick={() => runBookingAction('cancel')}
+                  >
+                    Atšaukti registraciją
+                  </Button>
+                ) : null}
+              </Group>
+            </Stack>
+          )}
+        </Modal>
       </Stack>
     </Container>
   );

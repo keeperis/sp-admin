@@ -7,8 +7,9 @@
 - `sp-api` turi `Booking` modelį.
 - Yra `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/:id`, `POST /api/bookings/:id/cancel`.
 - Booking kūrimo metu vietos rezervuojamos per backend mažinant `spotsLeft`.
-- `sp-ceramics` ir `sp-yoga` turi viešą checkout route:
-  - `/[locale]/checkout/[workshopId]`
+- `sp-ceramics` ir `sp-yoga` turi vieną viešą užsiėmimo ir checkout route:
+  - `/[locale]/workshops/[workshopId]`
+  - registracijos būsena atidaroma su `?view=booking`
 - Viešas checkout jau:
   - sukuria booking;
   - inicijuoja Stripe Checkout session;
@@ -160,9 +161,10 @@ Pakeisti CTA:
   - `Pirkti bilietą`
   - jei vietų nėra: `Grupė pilna`
 
-Naujas puslapis:
+Vieningas užsiėmimo ir checkout puslapis:
 
-- `/[locale]/checkout/[workshopId]`
+- `/[locale]/workshops/[workshopId]`
+- registracijos būsena: `?view=booking`
 
 Checkout forma:
 

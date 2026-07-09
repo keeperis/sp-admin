@@ -1,26 +1,34 @@
 'use client';
 
 import { AppShell, Avatar, Burger, Group, MantineProvider, Menu, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
 import {
+  IconBellRinging,
+  IconBrandFacebook,
   IconCalendarEvent,
   IconEdit,
+  IconFileDescription,
   IconLogout,
   IconMoon,
+  IconQrcode,
   IconSun,
   IconTicket,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
-import { useDisclosure } from '@mantine/hooks';
 import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
 
 const navItems = [
   { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
   { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
+  { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
+  { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
   { href: '/admin/content', label: 'Content', icon: IconEdit },
+  { href: '/admin/legal', label: 'Teisinė informacija', icon: IconFileDescription },
+  { href: '/admin/meta', label: 'Meta', icon: IconBrandFacebook },
 ];
 
 const adminLightBg = '#ffffff';
