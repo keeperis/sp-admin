@@ -221,8 +221,14 @@ export default function WorkshopsPage() {
   const adminWorkshopsApiUrl = `/api/admin/workshops?site=${selectedSite}`;
   const bookingsApiUrl = `/api/admin/bookings?site=${selectedSite}`;
   const fbEventsApiUrl = `/api/admin/workshops/fetch-fb?site=${selectedSite}`;
-  const { data, error: workshopsError, mutate } = useSWR(adminWorkshopsApiUrl, fetcher);
-  const { data: bookingsData, error: bookingsError } = useSWR(bookingsApiUrl, fetcher);
+  const { data, error: workshopsError, mutate } = useSWR<{ workshops: any[] }>(
+    adminWorkshopsApiUrl,
+    fetcher,
+  );
+  const { data: bookingsData, error: bookingsError } = useSWR<{ bookings: any[] }>(
+    bookingsApiUrl,
+    fetcher,
+  );
   const {
     data: fbEventsData,
     error: fbEventsError,
