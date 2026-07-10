@@ -12,15 +12,33 @@ async function targetPath(request: NextRequest, params: Promise<{ id: string }>)
 }
 
 export async function GET(request: NextRequest, { params }: WorkshopProxyRouteProps) {
-  return proxyAdminApiRequest(request, await targetPath(request, params));
+  const target = await targetPath(request, params);
+  console.info('[sp-admin:workshops-id-route] GET hit', {
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    targetPath: target,
+  });
+  return proxyAdminApiRequest(request, target);
 }
 
 export async function PATCH(request: NextRequest, { params }: WorkshopProxyRouteProps) {
-  return proxyAdminApiRequest(request, await targetPath(request, params), {
+  const target = await targetPath(request, params);
+  console.info('[sp-admin:workshops-id-route] PATCH hit', {
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    targetPath: target,
+  });
+  return proxyAdminApiRequest(request, target, {
     maxBodyBytes: 256 * 1024,
   });
 }
 
 export async function DELETE(request: NextRequest, { params }: WorkshopProxyRouteProps) {
-  return proxyAdminApiRequest(request, await targetPath(request, params));
+  const target = await targetPath(request, params);
+  console.info('[sp-admin:workshops-id-route] DELETE hit', {
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    targetPath: target,
+  });
+  return proxyAdminApiRequest(request, target);
 }
