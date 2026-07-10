@@ -475,8 +475,7 @@ export default function WorkshopsPage() {
       });
 
       const data = await responsePayload(response);
-
-      const count = data.count ?? 1;
+      const count = typeof data.count === 'number' ? data.count : 1;
       notifications.show({
         message: count > 1 ? `Sukurti ${count} užsiėmimai` : 'Užsiėmimas sukurtas',
         color: 'green',
