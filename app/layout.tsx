@@ -9,6 +9,7 @@ import {
 } from 'next/font/google';
 import './globals.css';
 import { MantineProvider } from '@mantine/core';
+import '@mantine/notifications/styles.css';
 import { ThemeWrapper } from '@/src/components/theme/ThemeWrapper';
 import '@mantine/core/styles.css';
 import { appTheme } from '@/src/theme';

@@ -42,6 +42,11 @@ type CredentialStatus = {
   } | null;
 };
 
+type OperationFeedback =
+  | { tone: 'green'; title: string; message: string }
+  | { tone: 'red'; title: string; message: string }
+  | null;
+
 const fetcher = async (url: string) => {
   const response = await fetch(url, { cache: 'no-store' });
   const payload = await response.json();
@@ -74,12 +79,33 @@ function statusLabel(status?: CredentialStatus['status']) {
 }
 
 async function responsePayload(response: Response) {
-  const payload = await response.json();
+  const raw = await response.text();
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(raw || `Serveris grąžino ${response.status} atsakymą be JSON klaidos.`);
+  }
   if (!response.ok) {
     const details = [payload.category, payload.stage, payload.error].filter(Boolean).join(' · ');
     throw new Error(details || 'Operacija nepavyko');
   }
   return payload;
+}
+
+function exchangeSuccessMessage(payload: Record<string, unknown>): string {
+  const page =
+    payload.page && typeof payload.page === 'object' ? (payload.page as Record<string, unknown>) : {};
+  const pageName = typeof page.name === 'string' && page.name ? page.name : 'Meta Page';
+  const eventsCount =
+    typeof payload.eventsCount === 'number' ? payload.eventsCount : String(payload.eventsCount || '0');
+  return `${pageName}: Page ir events patikros sėkmingos (${eventsCount} eventai).`;
+}
+
+function validateSuccessMessage(payload: Record<string, unknown>): string {
+  const eventsCount =
+    typeof payload.eventsCount === 'number' ? payload.eventsCount : String(payload.eventsCount || '0');
+  return `Page ir events patikros sėkmingos (${eventsCount} eventai).`;
 }
 
 export default function MetaIntegrationPage() {
@@ -91,6 +117,7 @@ export default function MetaIntegrationPage() {
   const [temporaryToken, setTemporaryToken] = useState('');
   const [exchanging, setExchanging] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [feedback, setFeedback] = useState<OperationFeedback>(null);
   const credential = data?.credential;
 
   const exchangeToken = async () => {
@@ -98,6 +125,7 @@ export default function MetaIntegrationPage() {
     if (!submittedToken) return;
     setTemporaryToken('');
     setExchanging(true);
+    setFeedback(null);
     try {
       const response = await fetch('/api/admin/meta/credentials/exchange', {
         method: 'POST',
@@ -105,17 +133,29 @@ export default function MetaIntegrationPage() {
         body: JSON.stringify({ temporaryToken: submittedToken }),
       });
       const payload = await responsePayload(response);
+      const message = exchangeSuccessMessage(payload);
       notifications.show({
         color: 'green',
         title: 'Meta tokenas atnaujintas',
-        message: `${payload.page.name}: Page ir events patikros sėkmingos (${payload.eventsCount} eventai).`,
+        message,
+      });
+      setFeedback({
+        tone: 'green',
+        title: 'Meta tokenas atnaujintas',
+        message,
       });
       await mutate();
     } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Nežinoma klaida';
       notifications.show({
         color: 'red',
         title: 'Tokeno atnaujinti nepavyko',
-        message: cause instanceof Error ? cause.message : 'Nežinoma klaida',
+        message,
+      });
+      setFeedback({
+        tone: 'red',
+        title: 'Tokeno atnaujinti nepavyko',
+        message,
       });
     } finally {
       setExchanging(false);
@@ -124,6 +164,7 @@ export default function MetaIntegrationPage() {
 
   const validateToken = async () => {
     setValidating(true);
+    setFeedback(null);
     try {
       const response = await fetch('/api/admin/meta/credentials/validate', {
         method: 'POST',
@@ -131,17 +172,29 @@ export default function MetaIntegrationPage() {
         body: '{}',
       });
       const payload = await responsePayload(response);
+      const message = validateSuccessMessage(payload);
       notifications.show({
         color: 'green',
         title: 'Meta credentialas galioja',
-        message: `Page ir events patikros sėkmingos (${payload.eventsCount} eventai).`,
+        message,
+      });
+      setFeedback({
+        tone: 'green',
+        title: 'Meta credentialas galioja',
+        message,
       });
       await mutate();
     } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Nežinoma klaida';
       notifications.show({
         color: 'red',
         title: 'Credentialo patikra nepavyko',
-        message: cause instanceof Error ? cause.message : 'Nežinoma klaida',
+        message,
+      });
+      setFeedback({
+        tone: 'red',
+        title: 'Credentialo patikra nepavyko',
+        message,
       });
       await mutate();
     } finally {
@@ -161,6 +214,15 @@ export default function MetaIntegrationPage() {
         </Group>
 
         {error ? <Alert color="red">{error.message}</Alert> : null}
+        {feedback ? (
+          <Alert
+            color={feedback.tone}
+            title={feedback.title}
+            icon={feedback.tone === 'red' ? <IconAlertTriangle size={18} /> : undefined}
+          >
+            {feedback.message}
+          </Alert>
+        ) : null}
 
         <Card withBorder padding="lg">
           <Stack>
