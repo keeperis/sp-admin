@@ -2,6 +2,7 @@
 
 import {
   ActionIcon,
+  Alert,
   Badge,
   Button,
   Card,
@@ -34,15 +35,22 @@ import {
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { buildApiUrl } from '@/lib/api';
 import type { SiteKey } from '@/lib/site';
 import { formatWorkshopDuration } from '@/src/lib/workshops/format-duration';
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store' });
-  const data = await res.json();
+  const raw = await res.text();
+  let data: Record<string, unknown> = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(raw || `Serveris grąžino HTTP ${res.status} be JSON atsakymo.`);
+  }
   if (!res.ok) {
-    throw new Error(data.error || 'Nepavyko gauti duomenų');
+    throw new Error(
+      typeof data.error === 'string' ? data.error : `Nepavyko gauti duomenų (HTTP ${res.status})`,
+    );
   }
   return data;
 };
@@ -110,6 +118,51 @@ const emptyStructuredDescription = (): StructuredDescription => ({
   closing3: '',
 });
 
+function normalizeStructuredDescription(value: unknown): StructuredDescription {
+  const input = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const asString = (field: string) => (typeof input[field] === 'string' ? input[field] : '');
+  const listItems = Array.isArray(input.listItems)
+    ? input.listItems.map((item) => (typeof item === 'string' ? item : String(item ?? '')))
+    : [];
+
+  return {
+    intro: asString('intro'),
+    paragraph1: asString('paragraph1'),
+    paragraph2: asString('paragraph2'),
+    paragraph3: asString('paragraph3'),
+    listTitle: asString('listTitle'),
+    listItems,
+    closing1: asString('closing1'),
+    closing2: asString('closing2'),
+    closing3: asString('closing3'),
+  };
+}
+
+function normalizeWorkshop(workshop: any) {
+  return {
+    ...workshop,
+    id: typeof workshop?.id === 'string' ? workshop.id : String(workshop?.id ?? ''),
+    titleLt: typeof workshop?.titleLt === 'string' ? workshop.titleLt : '',
+    titleEn: typeof workshop?.titleEn === 'string' ? workshop.titleEn : '',
+    startISO: typeof workshop?.startISO === 'string' ? workshop.startISO : '',
+    durationMin: Number(workshop?.durationMin ?? 0) || 0,
+    eventType:
+      workshop?.eventType === 'ongoing' || workshop?.eventType === 'private'
+        ? workshop.eventType
+        : 'oneTime',
+    sessionsCount: Number(workshop?.sessionsCount ?? 1) || 1,
+    pricePerSession: Number(workshop?.pricePerSession ?? workshop?.priceEur ?? 0) || 0,
+    priceEur: Number(workshop?.priceEur ?? workshop?.pricePerSession ?? 0) || 0,
+    subscriptionPriceEur:
+      workshop?.subscriptionPriceEur == null ? null : Number(workshop.subscriptionPriceEur) || 0,
+    spotsTotal: Number(workshop?.spotsTotal ?? 0) || 0,
+    spotsLeft: Number(workshop?.spotsLeft ?? 0) || 0,
+    isWeekend: Boolean(workshop?.isWeekend),
+    description: typeof workshop?.description === 'string' ? workshop.description : '',
+    descriptionStructured: normalizeStructuredDescription(workshop?.descriptionStructured),
+  };
+}
+
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
   { value: 'ceramics', label: 'Ceramics' },
   { value: 'yoga', label: 'Yoga' },
@@ -165,12 +218,11 @@ export default function WorkshopsPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
   const [createOpened, setCreateOpened] = useState(false);
   const [createSource, setCreateSource] = useState<'select' | 'facebook' | 'manual'>('select');
-  const workshopsApiUrl = buildApiUrl('/api/workshops', { site: selectedSite });
   const adminWorkshopsApiUrl = `/api/admin/workshops?site=${selectedSite}`;
   const bookingsApiUrl = `/api/admin/bookings?site=${selectedSite}`;
   const fbEventsApiUrl = `/api/admin/workshops/fetch-fb?site=${selectedSite}`;
-  const { data, mutate } = useSWR(workshopsApiUrl, fetcher);
-  const { data: bookingsData } = useSWR(bookingsApiUrl, fetcher);
+  const { data, error: workshopsError, mutate } = useSWR(adminWorkshopsApiUrl, fetcher);
+  const { data: bookingsData, error: bookingsError } = useSWR(bookingsApiUrl, fetcher);
   const {
     data: fbEventsData,
     error: fbEventsError,
@@ -453,10 +505,12 @@ export default function WorkshopsPage() {
       spotsTotal: w.spotsTotal ?? 0,
       spotsLeft: w.spotsLeft ?? 0,
       isWeekend: w.isWeekend ?? false,
-      descriptionStructured: w.descriptionStructured || {
-        ...emptyStructuredDescription(),
-        intro: w.description || '',
-      },
+      descriptionStructured: normalizeStructuredDescription(
+        w.descriptionStructured || {
+          ...emptyStructuredDescription(),
+          intro: w.description || '',
+        },
+      ),
     });
   };
 
@@ -537,7 +591,9 @@ export default function WorkshopsPage() {
 
   const workshops = useMemo(
     () =>
-      [...(data?.workshops || [])].sort((left: any, right: any) => {
+      (Array.isArray(data?.workshops) ? data.workshops : [])
+        .map((workshop: any) => normalizeWorkshop(workshop))
+        .sort((left: any, right: any) => {
         const leftStart = Date.parse(left.startISO || '');
         const rightStart = Date.parse(right.startISO || '');
         if (Number.isNaN(leftStart)) return 1;
@@ -548,7 +604,7 @@ export default function WorkshopsPage() {
   );
   const bookingStatsByWorkshop = useMemo(() => {
     const statsMap = new Map<string, BookingStats>();
-    const bookings = bookingsData?.bookings || [];
+    const bookings = Array.isArray(bookingsData?.bookings) ? bookingsData.bookings : [];
 
     for (const booking of bookings) {
       const workshopId =
@@ -875,7 +931,7 @@ export default function WorkshopsPage() {
                           </Group>
                           {(form.values.descriptionStructured.listItems || []).map(
                             (item, index) => (
-                              <Group key={`${item}-${item.length}`} grow>
+                              <Group key={`${String(item)}-${index}`} grow>
                                 <TextInput
                                   value={item}
                                   onChange={(event) => {
@@ -947,6 +1003,16 @@ export default function WorkshopsPage() {
           <Title order={4} mb="md">
             Esami užsiėmimai
           </Title>
+          {workshopsError ? (
+            <Alert color="red" mb="md" title="Nepavyko gauti užsiėmimų">
+              {workshopsError.message}
+            </Alert>
+          ) : null}
+          {bookingsError ? (
+            <Alert color="orange" mb="md" title="Nepavyko gauti registracijų statistikos">
+              {bookingsError.message}
+            </Alert>
+          ) : null}
           {workshops.length === 0 ? (
             <Text c="dimmed">Užsiėmimų dar nėra.</Text>
           ) : (
@@ -1258,7 +1324,7 @@ export default function WorkshopsPage() {
                     </Button>
                   </Group>
                   {(editForm.values.descriptionStructured.listItems || []).map((item, index) => (
-                    <Group key={`${item}-${item.length}`} grow>
+                    <Group key={`${String(item)}-${index}`} grow>
                       <TextInput
                         value={item}
                         onChange={(event) => {
