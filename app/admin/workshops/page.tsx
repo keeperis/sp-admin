@@ -38,6 +38,43 @@ import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
 import { formatWorkshopDuration } from '@/src/lib/workshops/format-duration';
 
+function htmlTitle(raw: string) {
+  return raw
+    .match(/<title[^>]*>(.*?)<\/title>/is)?.[1]
+    ?.replace(/\s+/g, ' ')
+    .trim();
+}
+
+function apiErrorMessage(response: Response, payload: Record<string, unknown>, fallback: string) {
+  const details = payload.details && typeof payload.details === 'object' ? payload.details : null;
+  const code = typeof payload.code === 'string' ? payload.code : '';
+  const detailParts: string[] = [];
+
+  if (code) detailParts.push(`code=${code}`);
+  if (details && 'upstreamStatus' in details) {
+    detailParts.push(`upstream=${String(details.upstreamStatus)}`);
+  }
+  if (details && 'apiBaseOrigin' in details) {
+    detailParts.push(`apiBase=${String(details.apiBaseOrigin)}`);
+  }
+
+  const detailText = detailParts.length ? ` (${detailParts.join(', ')})` : '';
+  return `${typeof payload.error === 'string' ? payload.error : fallback} [HTTP ${
+    response.status
+  }]${detailText}`;
+}
+
+function nonJsonErrorMessage(response: Response, raw: string, fallback: string) {
+  const title = htmlTitle(raw);
+  const looksLikeHtml = /<!doctype html|<html[\s>]/i.test(raw);
+  if (looksLikeHtml) {
+    return `${fallback}: serveris grąžino HTML${
+      title ? ` (${title})` : ''
+    } vietoje JSON [HTTP ${response.status}]. Patikrink, ar production turi naują sp-admin deploy ir ar API_BASE_URL rodo į sp-api.`;
+  }
+  return raw || `${fallback}: serveris grąžino HTTP ${response.status} be JSON atsakymo.`;
+}
+
 const fetcher = async <T = Record<string, unknown>>(url: string): Promise<T> => {
   const res = await fetch(url, { cache: 'no-store' });
   const raw = await res.text();
@@ -45,12 +82,10 @@ const fetcher = async <T = Record<string, unknown>>(url: string): Promise<T> => 
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
-    throw new Error(raw || `Serveris grąžino HTTP ${res.status} be JSON atsakymo.`);
+    throw new Error(nonJsonErrorMessage(res, raw, 'Nepavyko gauti duomenų'));
   }
   if (!res.ok) {
-    throw new Error(
-      typeof data.error === 'string' ? data.error : `Nepavyko gauti duomenų (HTTP ${res.status})`,
-    );
+    throw new Error(apiErrorMessage(res, data, 'Nepavyko gauti duomenų'));
   }
   return data as T;
 };
@@ -61,13 +96,11 @@ const responsePayload = async (response: Response) => {
   try {
     payload = raw ? JSON.parse(raw) : {};
   } catch {
-    throw new Error(raw || `Serveris grąžino HTTP ${response.status} be JSON klaidos.`);
+    throw new Error(nonJsonErrorMessage(response, raw, 'Nepavyko atlikti veiksmo'));
   }
 
   if (!response.ok) {
-    throw new Error(
-      typeof payload.error === 'string' ? payload.error : `Klaida (HTTP ${response.status})`,
-    );
+    throw new Error(apiErrorMessage(response, payload, 'Nepavyko atlikti veiksmo'));
   }
 
   return payload;
