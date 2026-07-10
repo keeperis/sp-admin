@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { proxyAdminApiRequest } from '@/lib/admin-api-proxy';
 
 function targetPath(request: NextRequest) {
@@ -11,5 +11,5 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return proxyAdminApiRequest(request, targetPath(request));
+  return proxyAdminApiRequest(request, targetPath(request), { maxBodyBytes: 4096 });
 }

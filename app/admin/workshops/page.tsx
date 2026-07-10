@@ -73,6 +73,24 @@ const responsePayload = async (response: Response) => {
   return payload;
 };
 
+const adminApiUrl = (
+  path: string,
+  query?: Record<string, string | number | boolean | null | undefined>,
+) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query || {})) {
+    if (value !== null && value !== undefined) params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `${normalizedPath}?${qs}` : normalizedPath;
+};
+
+const mutationHeaders = {
+  'Content-Type': 'application/json',
+  'X-Requested-With': 'XMLHttpRequest',
+};
+
 const formatStartISO = (value: string) => value.replace('T', ' ');
 
 const formatFbEventDate = (value: string) => {
@@ -218,13 +236,14 @@ export default function WorkshopsPage() {
   const [selectedSite, setSelectedSite] = useState<SiteKey>('ceramics');
   const [createOpened, setCreateOpened] = useState(false);
   const [createSource, setCreateSource] = useState<'select' | 'facebook' | 'manual'>('select');
-  const adminWorkshopsApiUrl = `/api/admin/workshops?site=${selectedSite}`;
-  const bookingsApiUrl = `/api/admin/bookings?site=${selectedSite}`;
-  const fbEventsApiUrl = `/api/admin/workshops/fetch-fb?site=${selectedSite}`;
-  const { data, error: workshopsError, mutate } = useSWR<{ workshops: any[] }>(
-    adminWorkshopsApiUrl,
-    fetcher,
-  );
+  const adminWorkshopsApiUrl = adminApiUrl('/api/admin/workshops', { site: selectedSite });
+  const bookingsApiUrl = adminApiUrl('/api/admin/bookings', { site: selectedSite });
+  const fbEventsApiUrl = adminApiUrl('/api/admin/workshops/fetch-fb', { site: selectedSite });
+  const {
+    data,
+    error: workshopsError,
+    mutate,
+  } = useSWR<{ workshops: any[] }>(adminWorkshopsApiUrl, fetcher);
   const { data: bookingsData, error: bookingsError } = useSWR<{ bookings: any[] }>(
     bookingsApiUrl,
     fetcher,
@@ -317,10 +336,7 @@ export default function WorkshopsPage() {
     try {
       const res = await fetch(fbEventsApiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: mutationHeaders,
         body: JSON.stringify({ fbEventId }),
       });
 
@@ -373,9 +389,9 @@ export default function WorkshopsPage() {
   ): Promise<StructuredDescription | null> => {
     if (!rawText?.trim()) return null;
 
-    const res = await fetch('/api/admin/workshops/parse-description', {
+    const res = await fetch(adminApiUrl('/api/admin/workshops/parse-description'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: mutationHeaders,
       body: JSON.stringify({ rawText }),
     });
 
@@ -470,10 +486,7 @@ export default function WorkshopsPage() {
 
       const response = await fetch(adminWorkshopsApiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: mutationHeaders,
         body: JSON.stringify({
           ...payload,
           site: selectedSite,
@@ -535,13 +548,10 @@ export default function WorkshopsPage() {
     }
     try {
       const res = await fetch(
-        `/api/admin/workshops/${editingWorkshop.id}?site=${selectedSite}`,
+        adminApiUrl(`/api/admin/workshops/${editingWorkshop.id}`, { site: selectedSite }),
         {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
+          headers: mutationHeaders,
           body: JSON.stringify(payload),
         },
       );
@@ -559,12 +569,9 @@ export default function WorkshopsPage() {
     if (next === w.spotsLeft) return;
     setUpdatingSpots(w.id);
     try {
-      const res = await fetch(`/api/admin/workshops/${w.id}?site=${selectedSite}`, {
+      const res = await fetch(adminApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }), {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: mutationHeaders,
         body: JSON.stringify({ spotsLeft: next }),
       });
       await responsePayload(res);
@@ -579,12 +586,9 @@ export default function WorkshopsPage() {
   const handleDelete = async (w: any) => {
     if (!confirm('Ar tikrai norite ištrinti šį užsiėmimą?')) return;
     try {
-      const res = await fetch(`/api/admin/workshops/${w.id}?site=${selectedSite}`, {
+      const res = await fetch(adminApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }), {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: mutationHeaders,
       });
       await responsePayload(res);
       notifications.show({ message: 'Ištrinta', color: 'green' });
@@ -599,12 +603,12 @@ export default function WorkshopsPage() {
       (Array.isArray(data?.workshops) ? data.workshops : [])
         .map((workshop: any) => normalizeWorkshop(workshop))
         .sort((left: any, right: any) => {
-        const leftStart = Date.parse(left.startISO || '');
-        const rightStart = Date.parse(right.startISO || '');
-        if (Number.isNaN(leftStart)) return 1;
-        if (Number.isNaN(rightStart)) return -1;
-        return rightStart - leftStart;
-      }),
+          const leftStart = Date.parse(left.startISO || '');
+          const rightStart = Date.parse(right.startISO || '');
+          if (Number.isNaN(leftStart)) return 1;
+          if (Number.isNaN(rightStart)) return -1;
+          return rightStart - leftStart;
+        }),
     [data?.workshops],
   );
   const bookingStatsByWorkshop = useMemo(() => {
