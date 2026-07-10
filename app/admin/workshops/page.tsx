@@ -148,6 +148,7 @@ export default function WorkshopsPage() {
   const [createOpened, setCreateOpened] = useState(false);
   const [createSource, setCreateSource] = useState<'select' | 'facebook' | 'manual'>('select');
   const workshopsApiUrl = buildApiUrl('/api/workshops', { site: selectedSite });
+  const adminWorkshopsApiUrl = buildApiUrl('/api/admin/workshops', { site: selectedSite });
   const bookingsApiUrl = buildApiUrl('/api/bookings', { site: selectedSite });
   const fbEventsApiUrl = buildApiUrl('/api/admin/workshops/fetch-fb', { site: selectedSite });
   const { data, mutate } = useSWR(workshopsApiUrl, fetcher);
@@ -391,9 +392,12 @@ export default function WorkshopsPage() {
         payload.startISO = values.startISO;
       }
 
-      const response = await fetch(workshopsApiUrl, {
+      const response = await fetch(adminWorkshopsApiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         body: JSON.stringify({
           ...payload,
           site: selectedSite,
@@ -459,10 +463,13 @@ export default function WorkshopsPage() {
     }
     try {
       const res = await fetch(
-        buildApiUrl(`/api/workshops/${editingWorkshop.id}`, { site: selectedSite }),
+        buildApiUrl(`/api/admin/workshops/${editingWorkshop.id}`, { site: selectedSite }),
         {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
           body: JSON.stringify(payload),
         },
       );
@@ -484,9 +491,12 @@ export default function WorkshopsPage() {
     if (next === w.spotsLeft) return;
     setUpdatingSpots(w.id);
     try {
-      const res = await fetch(buildApiUrl(`/api/workshops/${w.id}`, { site: selectedSite }), {
+      const res = await fetch(buildApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         body: JSON.stringify({ spotsLeft: next }),
       });
       if (!res.ok) {
@@ -505,8 +515,9 @@ export default function WorkshopsPage() {
   const handleDelete = async (w: any) => {
     if (!confirm('Ar tikrai norite ištrinti šį užsiėmimą?')) return;
     try {
-      const res = await fetch(buildApiUrl(`/api/workshops/${w.id}`, { site: selectedSite }), {
+      const res = await fetch(buildApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }), {
         method: 'DELETE',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
       if (!res.ok) {
         const data = await res.json();
