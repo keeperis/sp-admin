@@ -148,9 +148,9 @@ export default function WorkshopsPage() {
   const [createOpened, setCreateOpened] = useState(false);
   const [createSource, setCreateSource] = useState<'select' | 'facebook' | 'manual'>('select');
   const workshopsApiUrl = buildApiUrl('/api/workshops', { site: selectedSite });
-  const adminWorkshopsApiUrl = buildApiUrl('/api/admin/workshops', { site: selectedSite });
-  const bookingsApiUrl = buildApiUrl('/api/admin/bookings', { site: selectedSite });
-  const fbEventsApiUrl = buildApiUrl('/api/admin/workshops/fetch-fb', { site: selectedSite });
+  const adminWorkshopsApiUrl = `/api/admin/workshops?site=${selectedSite}`;
+  const bookingsApiUrl = `/api/admin/bookings?site=${selectedSite}`;
+  const fbEventsApiUrl = `/api/admin/workshops/fetch-fb?site=${selectedSite}`;
   const { data, mutate } = useSWR(workshopsApiUrl, fetcher);
   const { data: bookingsData } = useSWR(bookingsApiUrl, fetcher);
   const {
@@ -297,7 +297,7 @@ export default function WorkshopsPage() {
   ): Promise<StructuredDescription | null> => {
     if (!rawText?.trim()) return null;
 
-    const res = await fetch(buildApiUrl('/api/admin/workshops/parse-description'), {
+    const res = await fetch('/api/admin/workshops/parse-description', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rawText }),
@@ -463,7 +463,7 @@ export default function WorkshopsPage() {
     }
     try {
       const res = await fetch(
-        buildApiUrl(`/api/admin/workshops/${editingWorkshop.id}`, { site: selectedSite }),
+        `/api/admin/workshops/${editingWorkshop.id}?site=${selectedSite}`,
         {
           method: 'PATCH',
           headers: {
@@ -491,7 +491,7 @@ export default function WorkshopsPage() {
     if (next === w.spotsLeft) return;
     setUpdatingSpots(w.id);
     try {
-      const res = await fetch(buildApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }), {
+      const res = await fetch(`/api/admin/workshops/${w.id}?site=${selectedSite}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -515,7 +515,7 @@ export default function WorkshopsPage() {
   const handleDelete = async (w: any) => {
     if (!confirm('Ar tikrai norite ištrinti šį užsiėmimą?')) return;
     try {
-      const res = await fetch(buildApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }), {
+      const res = await fetch(`/api/admin/workshops/${w.id}?site=${selectedSite}`, {
         method: 'DELETE',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
