@@ -9,9 +9,9 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      // Keep local NextAuth routes in sp-admin.
+      // Keep local NextAuth and admin proxy routes in sp-admin.
       {
-        source: '/api/:path((?!auth).*)',
+        source: '/api/:path((?!auth|admin).*)',
         destination: 'http://localhost:4100/api/:path*',
       },
     ];
