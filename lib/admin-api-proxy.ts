@@ -3,10 +3,27 @@ import { auth } from '@/lib/auth/config';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4100';
 
+function publicOriginCandidates(request: NextRequest): string[] {
+  const candidates = new Set<string>([request.nextUrl.origin]);
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  if (forwardedProto && forwardedHost) {
+    candidates.add(`${forwardedProto}://${forwardedHost}`);
+  }
+  const host = request.headers.get('host');
+  if (forwardedProto && host) {
+    candidates.add(`${forwardedProto}://${host}`);
+  }
+  return [...candidates];
+}
+
 function mutationRequestIsSafe(request: NextRequest) {
   if (request.method === 'GET' || request.method === 'HEAD') return true;
+  const origin = request.headers.get('origin');
+  const allowedOrigins = publicOriginCandidates(request);
   return (
-    request.headers.get('origin') === request.nextUrl.origin &&
+    !!origin &&
+    allowedOrigins.includes(origin) &&
     request.headers.get('x-requested-with') === 'XMLHttpRequest' &&
     request.headers.get('content-type')?.toLowerCase().startsWith('application/json') === true
   );
