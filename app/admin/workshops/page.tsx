@@ -38,7 +38,7 @@ import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
 import { formatWorkshopDuration } from '@/src/lib/workshops/format-duration';
 
-const fetcher = async (url: string) => {
+const fetcher = async <T = Record<string, unknown>>(url: string): Promise<T> => {
   const res = await fetch(url, { cache: 'no-store' });
   const raw = await res.text();
   let data: Record<string, unknown> = {};
@@ -52,7 +52,7 @@ const fetcher = async (url: string) => {
       typeof data.error === 'string' ? data.error : `Nepavyko gauti duomenų (HTTP ${res.status})`,
     );
   }
-  return data;
+  return data as T;
 };
 
 const responsePayload = async (response: Response) => {
