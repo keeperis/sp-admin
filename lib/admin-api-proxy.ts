@@ -21,11 +21,14 @@ function mutationRequestIsSafe(request: NextRequest) {
   if (request.method === 'GET' || request.method === 'HEAD') return true;
   const origin = request.headers.get('origin');
   const allowedOrigins = publicOriginCandidates(request);
+  const contentType = request.headers.get('content-type')?.toLowerCase() || '';
+  const contentLength = Number(request.headers.get('content-length') || '0');
+  const hasBody = Number.isFinite(contentLength) ? contentLength > 0 : false;
   return (
     !!origin &&
     allowedOrigins.includes(origin) &&
     request.headers.get('x-requested-with') === 'XMLHttpRequest' &&
-    request.headers.get('content-type')?.toLowerCase().startsWith('application/json') === true
+    (!hasBody || contentType.startsWith('application/json'))
   );
 }
 

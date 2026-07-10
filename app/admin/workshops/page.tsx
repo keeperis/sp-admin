@@ -47,6 +47,24 @@ const fetcher = async (url: string) => {
   return data;
 };
 
+const responsePayload = async (response: Response) => {
+  const raw = await response.text();
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(raw || `Serveris grąžino HTTP ${response.status} be JSON klaidos.`);
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === 'string' ? payload.error : `Klaida (HTTP ${response.status})`,
+    );
+  }
+
+  return payload;
+};
+
 const formatStartISO = (value: string) => value.replace('T', ' ');
 
 const formatFbEventDate = (value: string) => {
@@ -404,12 +422,7 @@ export default function WorkshopsPage() {
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        notifications.show({ message: data.error || 'Klaida', color: 'red' });
-        return;
-      }
+      const data = await responsePayload(response);
 
       const count = data.count ?? 1;
       notifications.show({
@@ -421,8 +434,8 @@ export default function WorkshopsPage() {
       setFbData(null);
       setCreateSource('select');
       setCreateOpened(false);
-    } catch (_err) {
-      notifications.show({ message: 'Nepavyko išsaugoti', color: 'red' });
+    } catch (error: any) {
+      notifications.show({ message: error?.message || 'Nepavyko išsaugoti', color: 'red' });
     }
   };
 
@@ -473,16 +486,12 @@ export default function WorkshopsPage() {
           body: JSON.stringify(payload),
         },
       );
-      const data = await res.json();
-      if (!res.ok) {
-        notifications.show({ message: data.error || 'Klaida', color: 'red' });
-        return;
-      }
+      await responsePayload(res);
       notifications.show({ message: 'Atnaujinta', color: 'green' });
       await mutate();
       setEditingWorkshop(null);
-    } catch (_err) {
-      notifications.show({ message: 'Nepavyko atnaujinti', color: 'red' });
+    } catch (error: any) {
+      notifications.show({ message: error?.message || 'Nepavyko atnaujinti', color: 'red' });
     }
   };
 
@@ -499,14 +508,10 @@ export default function WorkshopsPage() {
         },
         body: JSON.stringify({ spotsLeft: next }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        notifications.show({ message: data.error || 'Klaida', color: 'red' });
-        return;
-      }
+      await responsePayload(res);
       mutate();
-    } catch (_err) {
-      notifications.show({ message: 'Nepavyko atnaujinti', color: 'red' });
+    } catch (error: any) {
+      notifications.show({ message: error?.message || 'Nepavyko atnaujinti', color: 'red' });
     } finally {
       setUpdatingSpots(null);
     }
@@ -517,17 +522,16 @@ export default function WorkshopsPage() {
     try {
       const res = await fetch(`/api/admin/workshops/${w.id}?site=${selectedSite}`, {
         method: 'DELETE',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
       });
-      if (!res.ok) {
-        const data = await res.json();
-        notifications.show({ message: data.error || 'Klaida', color: 'red' });
-        return;
-      }
+      await responsePayload(res);
       notifications.show({ message: 'Ištrinta', color: 'green' });
       mutate();
-    } catch (_err) {
-      notifications.show({ message: 'Nepavyko ištrinti', color: 'red' });
+    } catch (error: any) {
+      notifications.show({ message: error?.message || 'Nepavyko ištrinti', color: 'red' });
     }
   };
 
