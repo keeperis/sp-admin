@@ -149,7 +149,7 @@ export default function WorkshopsPage() {
   const [createSource, setCreateSource] = useState<'select' | 'facebook' | 'manual'>('select');
   const workshopsApiUrl = buildApiUrl('/api/workshops', { site: selectedSite });
   const adminWorkshopsApiUrl = buildApiUrl('/api/admin/workshops', { site: selectedSite });
-  const bookingsApiUrl = buildApiUrl('/api/bookings', { site: selectedSite });
+  const bookingsApiUrl = buildApiUrl('/api/admin/bookings', { site: selectedSite });
   const fbEventsApiUrl = buildApiUrl('/api/admin/workshops/fetch-fb', { site: selectedSite });
   const { data, mutate } = useSWR(workshopsApiUrl, fetcher);
   const { data: bookingsData } = useSWR(bookingsApiUrl, fetcher);
