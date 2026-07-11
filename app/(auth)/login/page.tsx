@@ -23,7 +23,7 @@ export default function LoginPage() {
           </Text>
           <Button
             leftSection={<IconBrandGoogle size={18} />}
-            onClick={() => signIn('google', { callbackUrl: '/admin/content' })}
+            onClick={() => signIn('google', { callbackUrl: '/admin' })}
             fullWidth
             size="md"
           >

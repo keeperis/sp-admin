@@ -7,6 +7,7 @@ import {
   IconBellRinging,
   IconBrandFacebook,
   IconCalendarEvent,
+  IconDashboard,
   IconEdit,
   IconFileDescription,
   IconLogout,
@@ -22,6 +23,7 @@ import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
 
 const navItems = [
+  { href: '/admin', label: 'Dashboard', icon: IconDashboard },
   { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
   { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
