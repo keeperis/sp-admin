@@ -17,7 +17,7 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAlertCircle, IconLanguage, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 
@@ -62,12 +62,72 @@ function cloneSettings(data: LegalSettingsData) {
   return structuredClone(data);
 }
 
+function getDocumentTranslationTexts(document: LegalDocument) {
+  return [
+    document.title,
+    ...document.sections.flatMap((section) => [section.title, ...section.paragraphs]),
+  ];
+}
+
+function buildTranslatedDocument(
+  source: LegalDocument,
+  currentEnglish: LegalDocument,
+  translations: string[],
+) {
+  let index = 0;
+  return {
+    ...currentEnglish,
+    effectiveDate: source.effectiveDate,
+    kind: source.kind,
+    title: translations[index++] || currentEnglish.title || source.title,
+    sections: source.sections.map((section, sectionIndex) => ({
+      title: translations[index++] || currentEnglish.sections[sectionIndex]?.title || section.title,
+      paragraphs: section.paragraphs.map(
+        (paragraph, paragraphIndex) =>
+          translations[index++] ||
+          currentEnglish.sections[sectionIndex]?.paragraphs[paragraphIndex] ||
+          paragraph,
+      ),
+    })),
+  };
+}
+
+async function translateLegalLtToEn(texts: string[]) {
+  const translations: string[] = [];
+  const batchSize = 20;
+
+  for (let index = 0; index < texts.length; index += batchSize) {
+    const batch = texts.slice(index, index + batchSize);
+    const response = await fetch('/api/admin/legal/translate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({ texts: batch }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body?.error || 'Vertimas nepavyko');
+    translations.push(...((body?.translations || []) as string[]));
+  }
+
+  if (translations.length !== texts.length) {
+    throw new Error('Vertimo rezultato ilgis nesutampa su dokumento struktūra');
+  }
+
+  return translations;
+}
+
 function DocumentEditor({
   document,
+  isTranslating,
   onChange,
+  onTranslateToEnglish,
 }: {
   document: LegalDocument;
+  isTranslating?: boolean;
   onChange: (next: LegalDocument) => void;
+  onTranslateToEnglish?: () => void;
 }) {
   const updateSection = (
     sectionIndex: number,
@@ -95,6 +155,19 @@ function DocumentEditor({
           onChange={(event) => onChange({ ...document, effectiveDate: event.currentTarget.value })}
         />
       </Group>
+      {onTranslateToEnglish ? (
+        <Group justify="flex-end">
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconLanguage size={14} />}
+            loading={isTranslating}
+            onClick={onTranslateToEnglish}
+          >
+            Versti į EN ir išsaugoti
+          </Button>
+        </Group>
+      ) : null}
       <Text size="sm" c="dimmed">
         Dabartinė redakcija: {document.version}. Išsaugojus redakcijos numeris bus sugeneruotas
         automatiškai.
@@ -208,6 +281,7 @@ export default function LegalSettingsPage() {
   const [draft, setDraft] = useState<LegalSettingsData | null>(null);
   const [version, setVersion] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState<DocumentKind | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -222,8 +296,11 @@ export default function LegalSettingsPage() {
     setDraft(next);
   };
 
-  const save = async () => {
-    if (!draft || version === null) return;
+  const saveSettings = async (
+    nextDraft: LegalSettingsData,
+    successMessage = 'Teisinė informacija išsaugota',
+  ) => {
+    if (version === null) return;
     setSaving(true);
     try {
       const response = await fetch(`/api/admin/legal?site=${site}`, {
@@ -232,7 +309,7 @@ export default function LegalSettingsPage() {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: JSON.stringify({ version, data: draft }),
+        body: JSON.stringify({ version, data: nextDraft }),
       });
       const body = await response.json();
       if (!response.ok) {
@@ -242,7 +319,7 @@ export default function LegalSettingsPage() {
       setDraft(cloneSettings(body.data));
       setVersion(body.version);
       await mutate(body, { revalidate: false });
-      notifications.show({ color: 'green', message: 'Teisinė informacija išsaugota' });
+      notifications.show({ color: 'green', message: successMessage });
     } catch (cause: any) {
       notifications.show({
         color: 'red',
@@ -250,6 +327,35 @@ export default function LegalSettingsPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const save = async () => {
+    if (!draft) return;
+    await saveSettings(draft);
+  };
+
+  const translateDocumentToEnglish = async (kind: DocumentKind) => {
+    if (!draft) return;
+    setTranslating(kind);
+    try {
+      const translations = await translateLegalLtToEn(getDocumentTranslationTexts(draft[kind].lt));
+      const next = cloneSettings(draft);
+      next[kind].en = buildTranslatedDocument(draft[kind].lt, draft[kind].en, translations);
+      setDraft(next);
+      await saveSettings(
+        next,
+        kind === 'terms'
+          ? 'Paslaugų teikimo sąlygos išverstos į EN ir išsaugotos'
+          : 'Privatumo politika išversta į EN ir išsaugota',
+      );
+    } catch (cause: any) {
+      notifications.show({
+        color: 'red',
+        message: cause?.message || 'Vertimas nepavyko',
+      });
+    } finally {
+      setTranslating(null);
     }
   };
 
@@ -375,7 +481,11 @@ export default function LegalSettingsPage() {
                   <Tabs.Panel key={`${kind}-${locale}`} value={`${kind}-${locale}`} pt="lg">
                     <DocumentEditor
                       document={draft[kind][locale]}
+                      isTranslating={translating === kind}
                       onChange={(document) => updateDocument(kind, locale, document)}
+                      onTranslateToEnglish={
+                        locale === 'lt' ? () => translateDocumentToEnglish(kind) : undefined
+                      }
                     />
                   </Tabs.Panel>
                 )),
