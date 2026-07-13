@@ -45,6 +45,10 @@ export function LocationContact({ locale, footerOnly = false }: LocationContactP
           </Text>
           <Stack gap="sm" align="flex-start">
             <Button
+              component="a"
+              href="https://www.instagram.com/soulpoetry.love"
+              target="_blank"
+              rel="noreferrer"
               color="gray"
               variant="outline"
               size="sm"
@@ -56,6 +60,10 @@ export function LocationContact({ locale, footerOnly = false }: LocationContactP
               {t.location.email}
             </Button>
             <Button
+              component="a"
+              href="https://www.facebook.com/potterylikepoetry"
+              target="_blank"
+              rel="noreferrer"
               color="gray"
               variant="outline"
               size="sm"
@@ -102,9 +110,7 @@ export function LocationContact({ locale, footerOnly = false }: LocationContactP
           </Stack>
         </div>
       </div>
-      <Text className={styles.copyright}>
-        © {new Date().getFullYear()} SOUL POETRY.
-      </Text>
+      <Text className={styles.copyright}>© {new Date().getFullYear()} SOUL POETRY.</Text>
     </Box>
   );
 

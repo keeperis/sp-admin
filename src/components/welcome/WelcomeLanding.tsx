@@ -150,14 +150,12 @@ export function WelcomeLanding({ ceramicsUrl, yogaUrl }: WelcomeLandingProps) {
 
         <footer ref={footerRef} className={styles.footer}>
           <div className={styles.footerInner}>
-            <p className={styles.footerPoem}>
-              Erdvė, kur judesys, kūrybiškumas ir ramybė susitinka švelniam buvimui su savimi.
-            </p>
+            <p className={styles.footerPoem}>Keramikos ir jogos namai - jaukiam laikui su savimi</p>
 
             <nav className={styles.footerContact} aria-label="Soul Poetry kontaktai">
               <div className={styles.footerContactList}>
                 <a
-                  href="https://www.instagram.com/soulpoetry.lt/"
+                  href="https://www.instagram.com/soulpoetry.love"
                   className={styles.footerContactLink}
                   target="_blank"
                   rel="noreferrer"
@@ -166,7 +164,7 @@ export function WelcomeLanding({ ceramicsUrl, yogaUrl }: WelcomeLandingProps) {
                   Instagram
                 </a>
                 <a
-                  href="https://www.facebook.com/soulpoetry.lt/"
+                  href="https://www.facebook.com/potterylikepoetry"
                   className={styles.footerContactLink}
                   target="_blank"
                   rel="noreferrer"
