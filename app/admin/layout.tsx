@@ -6,6 +6,7 @@ import { Notifications } from '@mantine/notifications';
 import {
   IconBellRinging,
   IconBrandFacebook,
+  IconBuildingBank,
   IconCalendarEvent,
   IconDashboard,
   IconEdit,
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/admin', label: 'Dashboard', icon: IconDashboard },
   { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
   { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
+  { href: '/admin/bank-transfer', label: 'Pavedimo rekvizitai', icon: IconBuildingBank },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
   { href: '/admin/content', label: 'Content', icon: IconEdit },

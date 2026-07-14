@@ -7,20 +7,34 @@ import {
   Button,
   Card,
   Container,
+  CopyButton,
   Divider,
   Group,
   Loader,
   Modal,
+  NumberInput,
   Select,
   Stack,
+  Switch,
   Table,
   Text,
+  Textarea,
   TextInput,
   Title,
   Tooltip,
 } from '@mantine/core';
+import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconEye, IconMailForward, IconX } from '@tabler/icons-react';
+import {
+  IconCircleCheck,
+  IconCopy,
+  IconExternalLink,
+  IconEye,
+  IconLink,
+  IconMailForward,
+  IconPlus,
+  IconX,
+} from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -48,6 +62,11 @@ const bookingFetcher = async (url: string) => {
     throw new Error(data.error || 'Failed to fetch bookings');
   }
   return data;
+};
+
+const mutationHeaders = {
+  'Content-Type': 'application/json',
+  'X-Requested-With': 'XMLHttpRequest',
 };
 
 const formatDateTime = (value: string) => {
@@ -78,7 +97,37 @@ function BookingsPageContent() {
   const [workshopId, setWorkshopId] = useState(searchParams.get('workshopId') || '');
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [bookingAction, setBookingAction] = useState<'cancel' | 'email' | null>(null);
+  const [bookingAction, setBookingAction] = useState<
+    'cancel' | 'email' | 'paid' | 'payment-link' | null
+  >(null);
+  const [manualBookingOpened, setManualBookingOpened] = useState(false);
+  const [isCreatingManualBooking, setIsCreatingManualBooking] = useState(false);
+  const [createdPaymentUrl, setCreatedPaymentUrl] = useState('');
+  const [detailPaymentUrl, setDetailPaymentUrl] = useState('');
+
+  const manualBookingForm = useForm({
+    initialValues: {
+      workshopId: searchParams.get('workshopId') || '',
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      participantsCount: 1,
+      paid: false,
+      notes: '',
+    },
+    validate: {
+      workshopId: (value) => (value ? null : 'Pasirinkite užsiėmimą'),
+      customerName: (value) => (value.trim().length >= 2 ? null : 'Įveskite vardą ir pavardę'),
+      customerEmail: (value) =>
+        /^\S+@\S+$/.test(value.trim()) ? null : 'Įveskite teisingą el. paštą',
+      customerPhone: (value) =>
+        !value.trim() || value.trim().length >= 6
+          ? null
+          : 'Telefonas turi būti tuščias arba bent 6 simbolių',
+      participantsCount: (value) =>
+        Number.isInteger(value) && value >= 1 ? null : 'Dalyvių skaičius turi būti bent 1',
+    },
+  });
 
   const bookingParams = new URLSearchParams({ site });
   if (status) bookingParams.set('status', status);
@@ -118,10 +167,76 @@ function BookingsPageContent() {
   };
 
   const bookings = data?.bookings || [];
+  const selectedWorkshopForManualBooking = useMemo(() => {
+    const workshops = workshopsData?.workshops || [];
+    return workshops.find((workshop: any) => workshop.id === manualBookingForm.values.workshopId);
+  }, [manualBookingForm.values.workshopId, workshopsData]);
+
+  const openManualBookingModal = () => {
+    manualBookingForm.setValues({
+      workshopId,
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      participantsCount: 1,
+      paid: false,
+      notes: '',
+    });
+    manualBookingForm.clearErrors();
+    setCreatedPaymentUrl('');
+    setManualBookingOpened(true);
+  };
+
+  const createManualBooking = manualBookingForm.onSubmit(async (values) => {
+    setIsCreatingManualBooking(true);
+    setCreatedPaymentUrl('');
+    try {
+      const response = await fetch('/api/admin/bookings', {
+        method: 'POST',
+        headers: mutationHeaders,
+        body: JSON.stringify({
+          site,
+          locale: 'lt',
+          workshopId: values.workshopId,
+          customerName: values.customerName.trim(),
+          customerEmail: values.customerEmail.trim(),
+          customerPhone: values.customerPhone.trim(),
+          participantsCount: values.participantsCount,
+          paid: values.paid,
+          notes: values.notes.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.booking) {
+        throw new Error(result.error || 'Nepavyko sukurti registracijos');
+      }
+
+      setCreatedPaymentUrl(result.paymentUrl || '');
+      notifications.show({
+        message: values.paid
+          ? 'Apmokėta registracija sukurta, bilietas ir laiškas paruošti'
+          : 'Neapmokėta registracija sukurta',
+        color: 'green',
+      });
+      await mutate();
+      if (values.paid) {
+        setManualBookingOpened(false);
+        await openBookingDetails(result.booking.id);
+      } else {
+        manualBookingForm.reset();
+        manualBookingForm.setFieldValue('workshopId', values.workshopId);
+      }
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setIsCreatingManualBooking(false);
+    }
+  });
 
   const openBookingDetails = async (bookingId: string) => {
     setIsLoadingDetails(true);
     setSelectedBooking({ id: bookingId });
+    setDetailPaymentUrl('');
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}`, { cache: 'no-store' });
       const result = await response.json();
@@ -147,8 +262,7 @@ function BookingsPageContent() {
       const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/${suffix}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
+          ...mutationHeaders,
         },
         body: '{}',
       });
@@ -168,14 +282,76 @@ function BookingsPageContent() {
     }
   };
 
+  const generatePaymentLink = async () => {
+    if (!selectedBooking?.id) return;
+
+    setBookingAction('payment-link');
+    setDetailPaymentUrl('');
+    try {
+      const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/payment-link`, {
+        method: 'POST',
+        headers: mutationHeaders,
+        body: '{}',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.paymentUrl) {
+        throw new Error(result.error || 'Nepavyko sugeneruoti nuorodos');
+      }
+      setDetailPaymentUrl(result.paymentUrl);
+      notifications.show({ message: 'Apmokėjimo nuoroda sugeneruota', color: 'green' });
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
+  const markBookingPaid = async () => {
+    if (!selectedBooking?.id) return;
+    if (
+      !confirm(
+        'Pažymėti registraciją kaip apmokėtą? Bus sugeneruotas bilietas ir siunčiamas patvirtinimo laiškas.',
+      )
+    ) {
+      return;
+    }
+
+    setBookingAction('paid');
+    try {
+      const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/mark-paid`, {
+        method: 'POST',
+        headers: mutationHeaders,
+        body: '{}',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.booking) {
+        throw new Error(result.error || 'Nepavyko pažymėti kaip apmokėta');
+      }
+
+      notifications.show({ message: 'Registracija pažymėta kaip apmokėta', color: 'green' });
+      setDetailPaymentUrl('');
+      await mutate();
+      await openBookingDetails(selectedBooking.id);
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
   return (
     <Container size="xl" py="md">
       <Stack gap="xl">
         <Group justify="space-between" align="flex-end">
           <Title order={2}>Bookings</Title>
-          <Button variant="light" onClick={clearFilters}>
-            Išvalyti filtrus
-          </Button>
+          <Group>
+            <Button leftSection={<IconPlus size={16} />} onClick={openManualBookingModal}>
+              Pridėti registraciją
+            </Button>
+            <Button variant="light" onClick={clearFilters}>
+              Išvalyti filtrus
+            </Button>
+          </Group>
         </Group>
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>
@@ -353,8 +529,7 @@ function BookingsPageContent() {
                   <strong>Dalyviai:</strong> {selectedBooking.participantsCount}
                 </Text>
                 <Text size="sm">
-                  <strong>Suma:</strong> {selectedBooking.totalAmount}{' '}
-                  {selectedBooking.currency}
+                  <strong>Suma:</strong> {selectedBooking.totalAmount} {selectedBooking.currency}
                 </Text>
                 <Text size="sm">
                   <strong>Galioja iki:</strong> {formatDateTime(selectedBooking.expiresAt)}
@@ -369,7 +544,9 @@ function BookingsPageContent() {
               <Divider />
               <Group grow align="stretch">
                 <Card withBorder padding="sm" radius="sm">
-                  <Text size="xs" c="dimmed">Mokėjimas</Text>
+                  <Text size="xs" c="dimmed">
+                    Mokėjimas
+                  </Text>
                   <Text fw={600}>{selectedBooking.payment?.status || 'Nėra'}</Text>
                   {selectedBooking.payment ? (
                     <Text size="xs" c="dimmed">
@@ -379,14 +556,20 @@ function BookingsPageContent() {
                   ) : null}
                 </Card>
                 <Card withBorder padding="sm" radius="sm">
-                  <Text size="xs" c="dimmed">Bilietas</Text>
+                  <Text size="xs" c="dimmed">
+                    Bilietas
+                  </Text>
                   <Text fw={600}>{selectedBooking.ticket?.status || 'Nėra'}</Text>
                   {selectedBooking.ticket?.code ? (
-                    <Text size="xs" c="dimmed">{selectedBooking.ticket.code}</Text>
+                    <Text size="xs" c="dimmed">
+                      {selectedBooking.ticket.code}
+                    </Text>
                   ) : null}
                 </Card>
                 <Card withBorder padding="sm" radius="sm">
-                  <Text size="xs" c="dimmed">Laiškas</Text>
+                  <Text size="xs" c="dimmed">
+                    Laiškas
+                  </Text>
                   <Text fw={600}>{selectedBooking.confirmationEmail?.status || 'Nėra'}</Text>
                   {selectedBooking.confirmationEmail?.attempts != null ? (
                     <Text size="xs" c="dimmed">
@@ -400,7 +583,65 @@ function BookingsPageContent() {
                 <Alert color="orange">{selectedBooking.confirmationEmail.lastError}</Alert>
               ) : null}
 
+              {detailPaymentUrl ? (
+                <Alert color="blue" title="Apmokėjimo nuoroda">
+                  <Stack gap="sm">
+                    <Text size="sm">
+                      Šią nuorodą galima siųsti klientui. Ji atidarys registracijos būsenos langą su
+                      pavedimo rekvizitais ir Stripe apmokėjimo mygtuku.
+                    </Text>
+                    <TextInput value={detailPaymentUrl} readOnly />
+                    <Group gap="sm">
+                      <CopyButton value={detailPaymentUrl}>
+                        {({ copied, copy }) => (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            leftSection={<IconCopy size={14} />}
+                            onClick={copy}
+                          >
+                            {copied ? 'Nukopijuota' : 'Kopijuoti'}
+                          </Button>
+                        )}
+                      </CopyButton>
+                      <Button
+                        component="a"
+                        href={detailPaymentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconExternalLink size={14} />}
+                      >
+                        Atidaryti
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Alert>
+              ) : null}
+
               <Group justify="flex-end">
+                {selectedBooking.status === 'pending_payment' ? (
+                  <Button
+                    color="green"
+                    variant="light"
+                    leftSection={<IconCircleCheck size={16} />}
+                    loading={bookingAction === 'paid'}
+                    onClick={markBookingPaid}
+                  >
+                    Pažymėti apmokėta
+                  </Button>
+                ) : null}
+                {selectedBooking.status === 'pending_payment' ? (
+                  <Button
+                    variant="light"
+                    leftSection={<IconLink size={16} />}
+                    loading={bookingAction === 'payment-link'}
+                    onClick={generatePaymentLink}
+                  >
+                    Apmokėjimo nuoroda
+                  </Button>
+                ) : null}
                 {selectedBooking.status === 'confirmed' &&
                 selectedBooking.confirmationEmail?.status !== 'sent' ? (
                   <Button
@@ -426,6 +667,131 @@ function BookingsPageContent() {
               </Group>
             </Stack>
           )}
+        </Modal>
+
+        <Modal
+          opened={manualBookingOpened}
+          onClose={() => setManualBookingOpened(false)}
+          title="Pridėti registraciją"
+          size="lg"
+        >
+          <form onSubmit={createManualBooking}>
+            <Stack gap="md">
+              <Select
+                label="Užsiėmimas"
+                data={workshopOptions.filter((option) => option.value)}
+                value={manualBookingForm.values.workshopId}
+                onChange={(value) => manualBookingForm.setFieldValue('workshopId', value || '')}
+                searchable
+                required
+                error={manualBookingForm.errors.workshopId}
+              />
+              {selectedWorkshopForManualBooking ? (
+                <Alert color="gray">
+                  Laisvos vietos: {selectedWorkshopForManualBooking.spotsLeft} /{' '}
+                  {selectedWorkshopForManualBooking.spotsTotal}
+                </Alert>
+              ) : null}
+              <Group grow>
+                <TextInput
+                  label="Vardas ir pavardė"
+                  required
+                  {...manualBookingForm.getInputProps('customerName')}
+                />
+                <TextInput
+                  label="El. paštas"
+                  required
+                  placeholder="name@example.com"
+                  {...manualBookingForm.getInputProps('customerEmail')}
+                />
+              </Group>
+              <Group grow align="flex-start">
+                <TextInput
+                  label="Telefonas"
+                  placeholder="+370..."
+                  description="Neprivalomas"
+                  {...manualBookingForm.getInputProps('customerPhone')}
+                />
+                <NumberInput
+                  label="Dalyvių skaičius"
+                  required
+                  min={1}
+                  max={
+                    selectedWorkshopForManualBooking
+                      ? Math.max(1, Number(selectedWorkshopForManualBooking.spotsLeft) || 0)
+                      : undefined
+                  }
+                  allowDecimal={false}
+                  allowNegative={false}
+                  value={manualBookingForm.values.participantsCount}
+                  onChange={(value) =>
+                    manualBookingForm.setFieldValue(
+                      'participantsCount',
+                      Number(value) > 0 ? Number(value) : 1,
+                    )
+                  }
+                  error={manualBookingForm.errors.participantsCount}
+                />
+              </Group>
+              <Switch
+                label="Jau apmokėta"
+                description="Jei įjungta, iškart bus sugeneruotas bilietas ir siunčiamas patvirtinimo laiškas."
+                {...manualBookingForm.getInputProps('paid', { type: 'checkbox' })}
+              />
+              <Textarea
+                label="Pastabos"
+                minRows={3}
+                autosize
+                {...manualBookingForm.getInputProps('notes')}
+              />
+
+              {createdPaymentUrl ? (
+                <Alert color="blue" title="Apmokėjimo nuoroda klientui">
+                  <Stack gap="sm">
+                    <TextInput value={createdPaymentUrl} readOnly />
+                    <Group gap="sm">
+                      <CopyButton value={createdPaymentUrl}>
+                        {({ copied, copy }) => (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            leftSection={<IconCopy size={14} />}
+                            onClick={copy}
+                          >
+                            {copied ? 'Nukopijuota' : 'Kopijuoti'}
+                          </Button>
+                        )}
+                      </CopyButton>
+                      <Button
+                        component="a"
+                        href={createdPaymentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconExternalLink size={14} />}
+                      >
+                        Atidaryti
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Alert>
+              ) : null}
+
+              <Group justify="flex-end">
+                <Button variant="default" onClick={() => setManualBookingOpened(false)}>
+                  Uždaryti
+                </Button>
+                <Button
+                  type="submit"
+                  loading={isCreatingManualBooking}
+                  leftSection={<IconPlus size={16} />}
+                >
+                  Sukurti registraciją
+                </Button>
+              </Group>
+            </Stack>
+          </form>
         </Modal>
       </Stack>
     </Container>
