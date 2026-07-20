@@ -295,6 +295,7 @@ export default function WorkshopsPage() {
   const [fbData, setFbData] = useState<any>(null);
   const [editingWorkshop, setEditingWorkshop] = useState<any>(null);
   const [updatingSpots, setUpdatingSpots] = useState<string | null>(null);
+  const [refreshingFacebookCoverId, setRefreshingFacebookCoverId] = useState<string | null>(null);
   const [parsingDescription, setParsingDescription] = useState(false);
   const [parsingEditDescription, setParsingEditDescription] = useState(false);
 
@@ -503,6 +504,7 @@ export default function WorkshopsPage() {
         isWeekend: values.isWeekend,
         fbEventId: fbData?.fbEventId,
         fbEventUrl: fbData?.fbEventUrl,
+        fbUpdatedTime: fbData?.updatedTime,
         placeName: values.placeName || undefined,
         description: fbData?.description || values.descriptionStructured.intro || undefined,
         descriptionStructured: values.descriptionStructured,
@@ -613,6 +615,30 @@ export default function WorkshopsPage() {
       notifications.show({ message: error?.message || 'Nepavyko atnaujinti', color: 'red' });
     } finally {
       setUpdatingSpots(null);
+    }
+  };
+
+  const handleRefreshFacebookCover = async (w: any) => {
+    setRefreshingFacebookCoverId(w.id);
+    try {
+      const response = await fetch(
+        adminApiUrl(`/api/admin/workshops/${w.id}`, { site: selectedSite }),
+        {
+          method: 'PATCH',
+          headers: mutationHeaders,
+          body: JSON.stringify({ refreshFacebookCover: true }),
+        },
+      );
+      await responsePayload(response);
+      notifications.show({ message: 'Facebook nuotrauka nukopijuota į saugyklą', color: 'green' });
+      await mutate();
+    } catch (error: any) {
+      notifications.show({
+        message: error?.message || 'Nepavyko atnaujinti Facebook nuotraukos',
+        color: 'red',
+      });
+    } finally {
+      setRefreshingFacebookCoverId(null);
     }
   };
 
@@ -1208,6 +1234,19 @@ export default function WorkshopsPage() {
                           >
                             <IconTicket size={16} />
                           </ActionIcon>
+                          {w.fbEventId ? (
+                            <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              size="sm"
+                              loading={refreshingFacebookCoverId === w.id}
+                              onClick={() => handleRefreshFacebookCover(w)}
+                              aria-label="Atnaujinti Facebook nuotrauką"
+                              title="Atnaujinti Facebook nuotrauką"
+                            >
+                              <IconRefresh size={16} />
+                            </ActionIcon>
+                          ) : null}
                           <ActionIcon
                             variant="subtle"
                             color="red"
