@@ -33,6 +33,7 @@ import {
   IconLink,
   IconMailForward,
   IconPlus,
+  IconTrash,
   IconX,
 } from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -87,6 +88,31 @@ const statusColor = (status: string) => {
   return 'blue';
 };
 
+const deletedWorkshopLabel = 'Ištrintas užsiėmimas';
+
+const bookingWorkshopName = (booking: any) => {
+  if (booking?.workshop) {
+    return booking.workshop.titleLt || booking.workshop.titleEn || booking.workshopId || '-';
+  }
+
+  if (booking?.workshop === null) {
+    const snapshotName =
+      typeof booking.contractSnapshot?.serviceName === 'string'
+        ? booking.contractSnapshot.serviceName.trim()
+        : '';
+    return snapshotName || booking.workshopId || '-';
+  }
+
+  return booking?.workshopId || '-';
+};
+
+const bookingWorkshopStartISO = (booking: any) => {
+  const value =
+    booking?.workshop?.startISO ||
+    (booking?.workshop === null ? booking.contractSnapshot?.startISO : '');
+  return typeof value === 'string' ? value : '';
+};
+
 function BookingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -98,7 +124,7 @@ function BookingsPageContent() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [bookingAction, setBookingAction] = useState<
-    'cancel' | 'email' | 'paid' | 'payment-link' | null
+    'cancel' | 'delete' | 'email' | 'paid' | 'payment-link' | null
   >(null);
   const [manualBookingOpened, setManualBookingOpened] = useState(false);
   const [isCreatingManualBooking, setIsCreatingManualBooking] = useState(false);
@@ -339,6 +365,39 @@ function BookingsPageContent() {
     }
   };
 
+  const deleteOrphanBooking = async () => {
+    if (!selectedBooking?.id || selectedBooking.workshop !== null) return;
+    if (
+      !confirm(
+        'Negrįžtamai ištrinti šią našlaitę registraciją? Užsiėmimas jau ištrintas, o šio veiksmo atšaukti nebus galima.',
+      )
+    ) {
+      return;
+    }
+
+    const bookingId = selectedBooking.id;
+    setBookingAction('delete');
+    try {
+      const response = await fetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+        method: 'DELETE',
+        headers: mutationHeaders,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Nepavyko ištrinti našlaitės registracijos');
+      }
+
+      await mutate();
+      setSelectedBooking(null);
+      setDetailPaymentUrl('');
+      notifications.show({ message: 'Našlaitė registracija ištrinta', color: 'green' });
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
   return (
     <Container size="xl" py="md">
       <Stack gap="xl">
@@ -443,14 +502,21 @@ function BookingsPageContent() {
                       </Stack>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm" fw={500}>
-                        {booking.workshop?.titleLt || booking.workshopId}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {booking.workshop?.startISO
-                          ? booking.workshop.startISO.replace('T', ' ')
-                          : '-'}
-                      </Text>
+                      <Stack gap={2} align="flex-start">
+                        <Text size="sm" fw={500}>
+                          {bookingWorkshopName(booking)}
+                        </Text>
+                        {booking.workshop === null ? (
+                          <Badge color="red" variant="light" size="xs">
+                            {deletedWorkshopLabel}
+                          </Badge>
+                        ) : null}
+                        <Text size="xs" c="dimmed">
+                          {bookingWorkshopStartISO(booking)
+                            ? bookingWorkshopStartISO(booking).replace('T', ' ')
+                            : '-'}
+                        </Text>
+                      </Stack>
                     </Table.Td>
                     <Table.Td>{booking.participantsCount}</Table.Td>
                     <Table.Td>
@@ -521,10 +587,16 @@ function BookingsPageContent() {
 
               <Divider />
               <Stack gap={4}>
-                <Text size="sm">
-                  <strong>Renginys:</strong>{' '}
-                  {selectedBooking.workshop?.titleLt || selectedBooking.workshopId}
-                </Text>
+                <Group gap="xs" align="center">
+                  <Text size="sm">
+                    <strong>Renginys:</strong> {bookingWorkshopName(selectedBooking)}
+                  </Text>
+                  {selectedBooking.workshop === null ? (
+                    <Badge color="red" variant="light" size="sm">
+                      {deletedWorkshopLabel}
+                    </Badge>
+                  ) : null}
+                </Group>
                 <Text size="sm">
                   <strong>Dalyviai:</strong> {selectedBooking.participantsCount}
                 </Text>
@@ -621,6 +693,16 @@ function BookingsPageContent() {
               ) : null}
 
               <Group justify="flex-end">
+                {selectedBooking.workshop === null ? (
+                  <Button
+                    color="red"
+                    leftSection={<IconTrash size={16} />}
+                    loading={bookingAction === 'delete'}
+                    onClick={deleteOrphanBooking}
+                  >
+                    Ištrinti našlaitę registraciją
+                  </Button>
+                ) : null}
                 {selectedBooking.status === 'pending_payment' ? (
                   <Button
                     color="green"
