@@ -47,7 +47,7 @@ const emptySettings = (): BankTransferSettingsData => ({
   beneficiaryCode: '',
   beneficiaryName: '',
   iban: '',
-  paymentPurposePrefix: 'Registracija',
+  paymentPurposePrefix: 'Rezervacija',
 });
 
 const fetcher = async (url: string) => {
@@ -91,7 +91,7 @@ export default function BankTransferSettingsPage() {
   }, [data]);
 
   const previewPurpose = useMemo(() => {
-    const prefix = form.values.paymentPurposePrefix.trim() || 'Registracija';
+    const prefix = form.values.paymentPurposePrefix.trim() || 'Rezervacija';
     return `${prefix} 2026-08-08 10:00`;
   }, [form.values.paymentPurposePrefix]);
 
@@ -151,7 +151,7 @@ export default function BankTransferSettingsPage() {
               <Title order={1}>Pavedimo rekvizitai</Title>
             </Group>
             <Text c="dimmed">
-              Šie rekvizitai rodomi klientui neapmokėtos admin registracijos lange.
+              Šie rekvizitai rodomi klientui neapmokėtos administratoriaus rezervacijos lange.
             </Text>
           </div>
           <Group align="flex-end">

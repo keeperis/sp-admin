@@ -1077,7 +1077,7 @@ export default function WorkshopsPage() {
             </Alert>
           ) : null}
           {bookingsError ? (
-            <Alert color="orange" mb="md" title="Nepavyko gauti registracijų statistikos">
+            <Alert color="orange" mb="md" title="Nepavyko gauti rezervacijų statistikos">
               {bookingsError.message}
             </Alert>
           ) : null}
@@ -1094,7 +1094,7 @@ export default function WorkshopsPage() {
                   <Table.Th>Užsiėmimų kiekis</Table.Th>
                   <Table.Th>Kaina</Table.Th>
                   <Table.Th>Vietos</Table.Th>
-                  <Table.Th>Registracijos</Table.Th>
+                  <Table.Th>Rezervacijos</Table.Th>
                   <Table.Th>Savaitgalis</Table.Th>
                   <Table.Th>Veiksmai</Table.Th>
                 </Table.Tr>
@@ -1227,10 +1227,10 @@ export default function WorkshopsPage() {
                           </ActionIcon>
                           <ActionIcon
                             component={Link}
-                            href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
+                            href={`/admin/reservations?site=${selectedSite}&workshopId=${w.id}`}
                             variant="subtle"
                             size="sm"
-                            aria-label="Registracijos"
+                            aria-label="Rezervacijos"
                           >
                             <IconTicket size={16} />
                           </ActionIcon>

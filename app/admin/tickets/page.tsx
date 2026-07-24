@@ -609,7 +609,7 @@ function TicketsPageContent() {
 
             {candidate.bookingStatus !== 'confirmed' ? (
               <Alert color="red" icon={<IconAlertCircle size={18} />}>
-                Registracija nėra patvirtinta. Dalyvavimo žymėti negalima.
+                Rezervacija nėra patvirtinta. Dalyvavimo žymėti negalima.
               </Alert>
             ) : null}
 

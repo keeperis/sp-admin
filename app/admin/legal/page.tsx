@@ -365,7 +365,7 @@ export default function LegalSettingsPage() {
         <Group justify="space-between" align="flex-end">
           <div>
             <Title order={1}>Teisinė informacija</Title>
-            <Text c="dimmed">Paslaugų teikėjo rekvizitai, sąlygos ir privatumo pranešimas</Text>
+            <Text c="dimmed">Paslaugų teikėjo rekvizitai, sąlygos ir privatumo politika</Text>
           </div>
           <Select
             label="Projektas"

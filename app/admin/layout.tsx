@@ -26,7 +26,7 @@ import { appTheme } from '@/src/theme';
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: IconDashboard },
   { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
-  { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
+  { href: '/admin/reservations', label: 'Rezervacijos', icon: IconTicket },
   { href: '/admin/bank-transfer', label: 'Pavedimo rekvizitai', icon: IconBuildingBank },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
