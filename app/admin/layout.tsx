@@ -1,11 +1,12 @@
 'use client';
 
-import { AppShell, Avatar, Burger, Group, MantineProvider, Menu, Text } from '@mantine/core';
+import { AppShell, Avatar, Burger, Center, Group, Loader, MantineProvider, Menu, Stack, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
 import {
   IconBellRinging,
   IconBrandFacebook,
+  IconBuildingBank,
   IconCalendarEvent,
   IconDashboard,
   IconEdit,
@@ -13,12 +14,14 @@ import {
   IconLogout,
   IconMoon,
   IconQrcode,
+  IconRepeat,
   IconSun,
   IconTicket,
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
 
@@ -26,6 +29,8 @@ const navItems = [
   { href: '/admin', label: 'Dashboard', icon: IconDashboard },
   { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
   { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
+  { href: '/admin/recurring', label: 'Recurring', icon: IconRepeat },
+  { href: '/admin/corporate', label: 'Corporate', icon: IconBuildingBank },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
   { href: '/admin/content', label: 'Content', icon: IconEdit },
@@ -36,13 +41,87 @@ const navItems = [
 const adminLightBg = '#ffffff';
 const adminDarkBg = '#1a1b1e';
 
+type AdminGateState = 'checking' | 'granted' | 'redirecting';
+
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [opened, { toggle, close }] = useDisclosure(false);
+  const [gateState, setGateState] = useState<AdminGateState>('checking');
   const isDark = theme === 'dark';
   const bg = isDark ? adminDarkBg : adminLightBg;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function guardAdminAccess() {
+      const callbackUrl = pathname || '/admin';
+
+      if (status === 'loading') {
+        setGateState('checking');
+        return;
+      }
+
+      if (status === 'unauthenticated') {
+        setGateState('redirecting');
+        router.replace(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        return;
+      }
+
+      setGateState('checking');
+
+      try {
+        const response = await fetch('/api/admin/status', { cache: 'no-store' });
+        const payload = (await response.json()) as { code?: string; error?: string };
+
+        if (cancelled) return;
+
+        if (response.ok) {
+          setGateState('granted');
+          return;
+        }
+
+        setGateState('redirecting');
+        await signOut({ redirect: false });
+        if (cancelled) return;
+
+        const loginUrl = new URL('/login', window.location.origin);
+        loginUrl.searchParams.set('callbackUrl', callbackUrl);
+        if (payload.code) {
+          loginUrl.searchParams.set('reason', payload.code);
+        }
+        router.replace(`${loginUrl.pathname}${loginUrl.search}`);
+      } catch {
+        if (!cancelled) {
+          setGateState('granted');
+        }
+      }
+    }
+
+    void guardAdminAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, router, status]);
+
+  if (gateState !== 'granted') {
+    return (
+      <MantineProvider theme={appTheme} forceColorScheme={isDark ? 'dark' : 'light'}>
+        <Notifications />
+        <Center mih="100vh" bg={bg}>
+          <Stack align="center" gap="sm">
+            <Loader size="md" />
+            <Text size="sm" c="dimmed">
+              {gateState === 'redirecting' ? 'Tikrinama prieiga ir nukreipiama…' : 'Tikrinama prieiga…'}
+            </Text>
+          </Stack>
+        </Center>
+      </MantineProvider>
+    );
+  }
 
   return (
     <MantineProvider theme={appTheme} forceColorScheme={isDark ? 'dark' : 'light'}>

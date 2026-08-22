@@ -1,3 +1,11 @@
+function trimTrailingSlash(value) {
+  return value.replace(/\/+$/, '');
+}
+
+const apiOrigin = trimTrailingSlash(
+  process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4100',
+);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -12,7 +20,7 @@ const nextConfig = {
       // Keep local NextAuth and admin proxy routes in sp-admin.
       {
         source: '/api/:path((?!auth|admin).*)',
-        destination: 'http://localhost:4100/api/:path*',
+        destination: `${apiOrigin}/api/:path*`,
       },
     ];
   },

@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@zxing/browser": ["./src/lib/shims/zxing-browser.ts"]
     }
   },
   "include": [

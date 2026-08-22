@@ -131,7 +131,7 @@ export function WelcomeLanding({ ceramicsUrl, yogaUrl }: WelcomeLandingProps) {
               href={ceramicsUrl}
               target="_blank"
               rel="noreferrer"
-              aria-label="Open Ceramics site"
+              aria-label="Open Keramika site"
             >
               <span className={styles.cardLabelWrap}>
                 <span className={styles.cardLabel}>Keramika</span>

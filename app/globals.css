@@ -28,6 +28,27 @@ body {
   background: #0a0a0c;
 }
 
+[data-mantine-color-scheme='dark'] .mantine-Alert-root:not([data-variant='filled']) {
+  background: color-mix(in srgb, var(--alert-color) 18%, white 82%);
+  border-color: color-mix(in srgb, var(--alert-color) 32%, white 68%);
+  color: color-mix(in srgb, var(--alert-color) 58%, black 42%);
+}
+
+[data-mantine-color-scheme='dark']
+  .mantine-Alert-root:not([data-variant='filled'])
+  .mantine-Alert-title,
+[data-mantine-color-scheme='dark']
+  .mantine-Alert-root:not([data-variant='filled'])
+  .mantine-Alert-message,
+[data-mantine-color-scheme='dark']
+  .mantine-Alert-root:not([data-variant='filled'])
+  .mantine-Alert-icon,
+[data-mantine-color-scheme='dark']
+  .mantine-Alert-root:not([data-variant='filled'])
+  .mantine-Alert-closeButton {
+  color: color-mix(in srgb, var(--alert-color) 58%, black 42%);
+}
+
 a {
   color: inherit;
   text-decoration: none;

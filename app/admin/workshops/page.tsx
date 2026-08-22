@@ -214,6 +214,26 @@ function normalizeWorkshop(workshop: any) {
   };
 }
 
+function workshopTypeLabel(eventType: 'oneTime' | 'ongoing' | 'private') {
+  if (eventType === 'oneTime') return 'Vienkart.';
+  if (eventType === 'ongoing') return 'Nuolatiniai';
+  return 'Privatūs';
+}
+
+function workshopPriceLabel(workshop: {
+  sessionsCount?: number;
+  pricePerSession?: number;
+  priceEur?: number;
+  subscriptionPriceEur?: number | null;
+}) {
+  const sessionsCount = workshop.sessionsCount ?? 1;
+  const pricePerSession = workshop.pricePerSession ?? workshop.priceEur ?? 0;
+  if (sessionsCount === 1) return `${pricePerSession}€`;
+  return `${sessionsCount}×${pricePerSession}€${
+    workshop.subscriptionPriceEur != null ? ` / abon. ${workshop.subscriptionPriceEur}€` : ''
+  }`;
+}
+
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
   { value: 'ceramics', label: 'Ceramics' },
   { value: 'yoga', label: 'Yoga' },
@@ -1058,22 +1078,8 @@ export default function WorkshopsPage() {
           {workshops.length === 0 ? (
             <Text c="dimmed">Užsiėmimų dar nėra.</Text>
           ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Pavadinimas</Table.Th>
-                  <Table.Th>Tipas</Table.Th>
-                  <Table.Th>Pradžia</Table.Th>
-                  <Table.Th>Trukmė</Table.Th>
-                  <Table.Th>Užsiėmimų kiekis</Table.Th>
-                  <Table.Th>Kaina</Table.Th>
-                  <Table.Th>Vietos</Table.Th>
-                  <Table.Th>Registracijos</Table.Th>
-                  <Table.Th>Savaitgalis</Table.Th>
-                  <Table.Th>Veiksmai</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
+            <>
+              <Stack gap="md" hiddenFrom="sm">
                 {workshops.map((w: any) => {
                   const stats = bookingStatsByWorkshop.get(w.id) || EMPTY_BOOKING_STATS;
                   const reservedParticipants =
@@ -1082,25 +1088,76 @@ export default function WorkshopsPage() {
                   const spotsMismatch = expectedSpotsLeft !== w.spotsLeft;
 
                   return (
-                    <Table.Tr key={w.id}>
-                      <Table.Td>{w.titleLt}</Table.Td>
-                      <Table.Td>
-                        {w.eventType === 'oneTime'
-                          ? 'Vienkart.'
-                          : w.eventType === 'ongoing'
-                            ? 'Nuolatiniai'
-                            : 'Privatūs'}
-                      </Table.Td>
-                      <Table.Td>{formatStartISO(w.startISO)}</Table.Td>
-                      <Table.Td>{formatWorkshopDuration(w.durationMin, 'lt')}</Table.Td>
-                      <Table.Td>{w.sessionsCount ?? 1}</Table.Td>
-                      <Table.Td>
-                        {(w.sessionsCount ?? 1) === 1
-                          ? `${w.pricePerSession ?? w.priceEur ?? 0}€`
-                          : `${w.sessionsCount}×${w.pricePerSession ?? w.priceEur ?? 0}€${w.subscriptionPriceEur != null ? ` / abon. ${w.subscriptionPriceEur}€` : ''}`}
-                      </Table.Td>
-                      <Table.Td>
-                        <Stack gap={4}>
+                    <Card key={w.id} withBorder padding="md">
+                      <Stack gap="sm">
+                        <Group justify="space-between" align="start" wrap="nowrap">
+                          <Stack gap={4} style={{ flex: 1 }}>
+                            <Text fw={700}>{w.titleLt}</Text>
+                            <Group gap={6}>
+                              <Badge variant="light">{workshopTypeLabel(w.eventType)}</Badge>
+                              <Badge variant="light" color={w.isWeekend ? 'blue' : 'gray'}>
+                                {w.isWeekend ? 'Savaitgalis' : 'Darbo diena'}
+                              </Badge>
+                            </Group>
+                          </Stack>
+                          <Group gap={4}>
+                            <ActionIcon
+                              variant="subtle"
+                              size="sm"
+                              onClick={() => openEditModal(w)}
+                              aria-label="Redaguoti"
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon
+                              component={Link}
+                              href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
+                              variant="subtle"
+                              size="sm"
+                              aria-label="Registracijos"
+                            >
+                              <IconTicket size={16} />
+                            </ActionIcon>
+                            <ActionIcon
+                              variant="subtle"
+                              color="red"
+                              size="sm"
+                              onClick={() => handleDelete(w)}
+                              aria-label="Ištrinti"
+                            >
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
+                        </Group>
+
+                        <Stack gap={2}>
+                          <Text size="sm">
+                            <Text span c="dimmed">
+                              Pradžia:
+                            </Text>{' '}
+                            {formatStartISO(w.startISO)}
+                          </Text>
+                          <Text size="sm">
+                            <Text span c="dimmed">
+                              Trukmė:
+                            </Text>{' '}
+                            {formatWorkshopDuration(w.durationMin, 'lt')}
+                          </Text>
+                          <Text size="sm">
+                            <Text span c="dimmed">
+                              Kiekis:
+                            </Text>{' '}
+                            {w.sessionsCount ?? 1}
+                          </Text>
+                          <Text size="sm">
+                            <Text span c="dimmed">
+                              Kaina:
+                            </Text>{' '}
+                            {workshopPriceLabel(w)}
+                          </Text>
+                        </Stack>
+
+                        <Stack gap={6}>
                           <Group gap={4} wrap="nowrap">
                             <ActionIcon
                               variant="subtle"
@@ -1148,9 +1205,8 @@ export default function WorkshopsPage() {
                             </Badge>
                           </Group>
                         </Stack>
-                      </Table.Td>
-                      <Table.Td>
-                        <Stack gap={4}>
+
+                        <Stack gap={6}>
                           <Group gap={6}>
                             <Badge variant="light" color="blue">
                               viso {stats.all}
@@ -1187,43 +1243,173 @@ export default function WorkshopsPage() {
                             </Group>
                           )}
                         </Stack>
-                      </Table.Td>
-                      <Table.Td>{w.isWeekend ? 'Taip' : 'Ne'}</Table.Td>
-                      <Table.Td>
-                        <Group gap={4}>
-                          <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            onClick={() => openEditModal(w)}
-                            aria-label="Redaguoti"
-                          >
-                            <IconEdit size={16} />
-                          </ActionIcon>
-                          <ActionIcon
-                            component={Link}
-                            href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
-                            variant="subtle"
-                            size="sm"
-                            aria-label="Registracijos"
-                          >
-                            <IconTicket size={16} />
-                          </ActionIcon>
-                          <ActionIcon
-                            variant="subtle"
-                            color="red"
-                            size="sm"
-                            onClick={() => handleDelete(w)}
-                            aria-label="Ištrinti"
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
+                      </Stack>
+                    </Card>
                   );
                 })}
-              </Table.Tbody>
-            </Table>
+              </Stack>
+
+              <Table striped highlightOnHover visibleFrom="sm">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Pavadinimas</Table.Th>
+                    <Table.Th>Tipas</Table.Th>
+                    <Table.Th>Pradžia</Table.Th>
+                    <Table.Th>Trukmė</Table.Th>
+                    <Table.Th>Užsiėmimų kiekis</Table.Th>
+                    <Table.Th>Kaina</Table.Th>
+                    <Table.Th>Vietos</Table.Th>
+                    <Table.Th>Registracijos</Table.Th>
+                    <Table.Th>Savaitgalis</Table.Th>
+                    <Table.Th>Veiksmai</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {workshops.map((w: any) => {
+                    const stats = bookingStatsByWorkshop.get(w.id) || EMPTY_BOOKING_STATS;
+                    const reservedParticipants =
+                      stats.pendingParticipants + stats.confirmedParticipants;
+                    const expectedSpotsLeft = Math.max(w.spotsTotal - reservedParticipants, 0);
+                    const spotsMismatch = expectedSpotsLeft !== w.spotsLeft;
+
+                    return (
+                      <Table.Tr key={w.id}>
+                        <Table.Td>{w.titleLt}</Table.Td>
+                        <Table.Td>{workshopTypeLabel(w.eventType)}</Table.Td>
+                        <Table.Td>{formatStartISO(w.startISO)}</Table.Td>
+                        <Table.Td>{formatWorkshopDuration(w.durationMin, 'lt')}</Table.Td>
+                        <Table.Td>{w.sessionsCount ?? 1}</Table.Td>
+                        <Table.Td>{workshopPriceLabel(w)}</Table.Td>
+                        <Table.Td>
+                          <Stack gap={4}>
+                            <Group gap={4} wrap="nowrap">
+                              <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                onClick={() => handleQuickSpots(w, -1)}
+                                disabled={w.spotsLeft <= 0 || updatingSpots === w.id}
+                                aria-label="Sumažinti laisvų vietų"
+                              >
+                                <IconMinus size={14} />
+                              </ActionIcon>
+                              <Badge
+                                color={
+                                  w.spotsLeft === 0
+                                    ? 'red'
+                                    : w.spotsLeft <= 2
+                                      ? 'orange'
+                                      : 'green'
+                                }
+                                variant="light"
+                              >
+                                laisvos {w.spotsLeft} / {w.spotsTotal}
+                              </Badge>
+                              <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                onClick={() => handleQuickSpots(w, 1)}
+                                disabled={w.spotsLeft >= w.spotsTotal || updatingSpots === w.id}
+                                aria-label="Padidinti laisvų vietų"
+                              >
+                                <IconPlus size={14} />
+                              </ActionIcon>
+                            </Group>
+                            <Group gap={6}>
+                              <Badge variant="light" color="orange">
+                                pending dal. {stats.pendingParticipants}
+                              </Badge>
+                              <Badge variant="light" color="green">
+                                confirmed dal. {stats.confirmedParticipants}
+                              </Badge>
+                            </Group>
+                            <Group gap={6}>
+                              <Badge variant="light" color="blue">
+                                rezervuota {reservedParticipants}
+                              </Badge>
+                              <Badge variant="light" color={spotsMismatch ? 'red' : 'teal'}>
+                                {spotsMismatch
+                                  ? `tikėtina ${expectedSpotsLeft}, dabar ${w.spotsLeft}`
+                                  : 'sutampa su booking'}
+                              </Badge>
+                            </Group>
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td>
+                          <Stack gap={4}>
+                            <Group gap={6}>
+                              <Badge variant="light" color="blue">
+                                viso {stats.all}
+                              </Badge>
+                              <Badge variant="light" color="grape">
+                                dalyviai {stats.participants}
+                              </Badge>
+                            </Group>
+                            <Group gap={6}>
+                              <Badge variant="light" color="orange">
+                                laukia {stats.pending_payment}
+                              </Badge>
+                              <Badge variant="light" color="green">
+                                patvirtinta {stats.confirmed}
+                              </Badge>
+                            </Group>
+                            {(stats.cancelled > 0 || stats.expired > 0 || stats.draft > 0) && (
+                              <Group gap={6}>
+                                {stats.draft > 0 ? (
+                                  <Badge variant="light" color="gray">
+                                    draft {stats.draft}
+                                  </Badge>
+                                ) : null}
+                                {stats.cancelled > 0 ? (
+                                  <Badge variant="light" color="red">
+                                    atšaukta {stats.cancelled}
+                                  </Badge>
+                                ) : null}
+                                {stats.expired > 0 ? (
+                                  <Badge variant="light" color="dark">
+                                    expired {stats.expired}
+                                  </Badge>
+                                ) : null}
+                              </Group>
+                            )}
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td>{w.isWeekend ? 'Taip' : 'Ne'}</Table.Td>
+                        <Table.Td>
+                          <Group gap={4}>
+                            <ActionIcon
+                              variant="subtle"
+                              size="sm"
+                              onClick={() => openEditModal(w)}
+                              aria-label="Redaguoti"
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon
+                              component={Link}
+                              href={`/admin/bookings?site=${selectedSite}&workshopId=${w.id}`}
+                              variant="subtle"
+                              size="sm"
+                              aria-label="Registracijos"
+                            >
+                              <IconTicket size={16} />
+                            </ActionIcon>
+                            <ActionIcon
+                              variant="subtle"
+                              color="red"
+                              size="sm"
+                              onClick={() => handleDelete(w)}
+                              aria-label="Ištrinti"
+                            >
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            </>
           )}
         </Card>
 
