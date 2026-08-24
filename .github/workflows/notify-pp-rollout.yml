@@ -1,0 +1,45 @@
+name: notify-pp-rollout
+
+on:
+  workflow_run:
+    workflows:
+      - ci
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch pp rollout request
+        env:
+          CONTROL_REPO_TOKEN: ${{ secrets.PP_CONTROL_REPO_TOKEN }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          SOURCE_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          test -n "$CONTROL_REPO_TOKEN"
+
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $CONTROL_REPO_TOKEN" \
+            https://api.github.com/repos/keeperis/soulpoetry-preprod-control/dispatches \
+            -d @- <<JSON
+          {
+            "event_type": "pp_rollout_requested",
+            "client_payload": {
+              "source_repository": "$SOURCE_REPOSITORY",
+              "source_sha": "$SOURCE_SHA",
+              "source_branch": "$SOURCE_BRANCH",
+              "workflow_run_id": "$WORKFLOW_RUN_ID"
+            }
+          }
+JSON
