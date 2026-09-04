@@ -12,9 +12,11 @@ import {
   Group,
   Loader,
   Modal,
+  NumberInput,
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Table,
   Text,
   Textarea,
@@ -34,11 +36,34 @@ import {
   IconReceiptRefund,
   IconRefresh,
 } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import type { SiteKey } from '@/lib/site';
 
 type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent';
+
+type ClassGroupDto = {
+  id: string;
+  programId: string;
+  site: SiteKey;
+  name: string;
+  status: string;
+  weekday: number;
+  startTime: string;
+  durationMin: number;
+  capacity: number;
+  locationName: string;
+  teacherName: string | null;
+  singleVisitEnabled: boolean;
+  singleVisitPriceEur: number | null;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+};
+
+type GroupSingleVisitDraft = {
+  singleVisitEnabled: boolean;
+  singleVisitPriceEur: number | '';
+};
 
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
   { value: 'ceramics', label: 'Ceramics' },
@@ -72,6 +97,16 @@ const REFUND_EXCEPTION_OPTIONS = [
   { value: 'manual_refund_required', label: 'Manual refund required' },
   { value: 'bank_side_followup', label: 'Bank side follow-up' },
   { value: 'stripe_refund_failed', label: 'Stripe refund failed' },
+];
+
+const WEEKDAY_LABELS = [
+  'Pirmadienis',
+  'Antradienis',
+  'Trečiadienis',
+  'Ketvirtadienis',
+  'Penktadienis',
+  'Šeštadienis',
+  'Sekmadienis',
 ];
 
 const fetcher = async (url: string) => {
@@ -159,6 +194,9 @@ export default function RecurringAdminPage() {
   const [refundExceptionMessage, setRefundExceptionMessage] = useState('');
   const [reservationActionNotes, setReservationActionNotes] = useState('');
   const [reservationCancelReason, setReservationCancelReason] = useState('');
+  const [groupSingleVisitDrafts, setGroupSingleVisitDrafts] = useState<
+    Record<string, GroupSingleVisitDraft>
+  >({});
   const [manualMagicLinkRequest, setManualMagicLinkRequest] = useState<null | {
     subscriptionId: string;
   }>(null);
@@ -182,6 +220,10 @@ export default function RecurringAdminPage() {
     const params = new URLSearchParams({ site });
     return `/api/admin/recurring/observability?${params.toString()}`;
   }, [site]);
+  const groupsConfigApiUrl = useMemo(() => {
+    const params = new URLSearchParams({ site });
+    return `/api/admin/recurring/groups?${params.toString()}`;
+  }, [site]);
 
   const { data, error, isLoading, mutate } = useSWR(subscriptionsApiUrl, fetcher);
   const {
@@ -190,7 +232,14 @@ export default function RecurringAdminPage() {
     isLoading: isLoadingObservability,
     mutate: mutateObservability,
   } = useSWR(observabilityApiUrl, fetcher);
+  const {
+    data: groupsConfigData,
+    error: groupsConfigError,
+    isLoading: isLoadingGroupsConfig,
+    mutate: mutateGroupsConfig,
+  } = useSWR<{ groups: ClassGroupDto[] }>(groupsConfigApiUrl, fetcher);
   const subscriptions = data?.subscriptions || [];
+  const recurringGroups = useMemo(() => groupsConfigData?.groups || [], [groupsConfigData]);
   const observabilitySummary = observabilityData?.summary || null;
   const observabilityQueues = observabilityData?.queues || {};
   const selectedSubscriptionId = selectedSubscription?.subscription?.id || null;
@@ -237,6 +286,33 @@ export default function RecurringAdminPage() {
   const hasReservationActionNotes = reservationActionNotesTrimmed.length > 0;
   const manualMagicLinkReasonTrimmed = manualMagicLinkReason.trim();
   const canConfirmManualMagicLinkReveal = manualMagicLinkReasonTrimmed.length >= 8;
+
+  useEffect(() => {
+    setGroupSingleVisitDrafts((current) => {
+      const next: Record<string, GroupSingleVisitDraft> = {};
+      for (const group of recurringGroups) {
+        next[group.id] = current[group.id] || {
+          singleVisitEnabled: Boolean(group.singleVisitEnabled),
+          singleVisitPriceEur:
+            typeof group.singleVisitPriceEur === 'number' ? group.singleVisitPriceEur : '',
+        };
+      }
+      return next;
+    });
+  }, [recurringGroups]);
+
+  const updateGroupSingleVisitDraft = (
+    groupId: string,
+    patch: Partial<GroupSingleVisitDraft>,
+  ) => {
+    setGroupSingleVisitDrafts((current) => ({
+      ...current,
+      [groupId]: {
+        ...(current[groupId] || { singleVisitEnabled: false, singleVisitPriceEur: '' }),
+        ...patch,
+      },
+    }));
+  };
 
   const resetActionInputs = (detail: any) => {
     const firstEligiblePlan = detail?.lifecycle?.planOptions?.find(
@@ -304,6 +380,46 @@ export default function RecurringAdminPage() {
       notifications.show({ message: successMessage, color: 'green' });
       await Promise.all([mutate(), mutateObservability()]);
       await openSubscriptionDetails(selectedSubscription.subscription.id);
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const saveGroupSingleVisitConfig = async (groupId: string) => {
+    const draft = groupSingleVisitDrafts[groupId];
+    if (!draft) return;
+
+    const price =
+      typeof draft.singleVisitPriceEur === 'number' ? draft.singleVisitPriceEur : Number.NaN;
+    if (draft.singleVisitEnabled && (!Number.isFinite(price) || price <= 0)) {
+      notifications.show({
+        message: 'Įrašyk teigiamą vieno karto apsilankymo kainą',
+        color: 'yellow',
+      });
+      return;
+    }
+
+    setActionLoading(`group-single-visit-${groupId}`);
+    try {
+      const response = await fetch(`/api/admin/recurring/groups/${groupId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          singleVisitEnabled: draft.singleVisitEnabled,
+          singleVisitPriceEur: Number.isFinite(price) ? price : 0,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Nepavyko atnaujinti grupės');
+      }
+      notifications.show({ message: 'Vieno karto apsilankymai atnaujinti', color: 'green' });
+      await mutateGroupsConfig();
     } catch (nextError: any) {
       notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
     } finally {
@@ -607,6 +723,125 @@ export default function RecurringAdminPage() {
               style={{ flex: 1, minWidth: 280 }}
             />
           </Group>
+        </Card>
+
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <div>
+                <Title order={4}>Recurring grupių vieno karto apsilankymai</Title>
+                <Text size="sm" c="dimmed">
+                  Čia nustatoma, ar konkrečiame savaitės laike galima pirkti vieną apsilankymą ir
+                  kokia jam taikoma kaina.
+                </Text>
+              </div>
+              <Button
+                variant="light"
+                leftSection={<IconRefresh size={16} />}
+                onClick={() => void mutateGroupsConfig()}
+              >
+                Atnaujinti
+              </Button>
+            </Group>
+
+            {groupsConfigError ? (
+              <Alert color="red" title="Grupių konfigūracijos klaida">
+                {groupsConfigError.message}
+              </Alert>
+            ) : recurringGroups.length === 0 && !isLoadingGroupsConfig ? (
+              <Text c="dimmed">Recurring grupių šiam projektui nėra.</Text>
+            ) : (
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Grupė</Table.Th>
+                    <Table.Th>Laikas</Table.Th>
+                    <Table.Th>Vienas apsilankymas</Table.Th>
+                    <Table.Th>Kaina</Table.Th>
+                    <Table.Th />
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {recurringGroups.map((group) => {
+                    const draft =
+                      groupSingleVisitDrafts[group.id] || {
+                        singleVisitEnabled: Boolean(group.singleVisitEnabled),
+                        singleVisitPriceEur:
+                          typeof group.singleVisitPriceEur === 'number'
+                            ? group.singleVisitPriceEur
+                            : '',
+                      };
+                    return (
+                      <Table.Tr key={group.id}>
+                        <Table.Td>
+                          <Stack gap={2}>
+                            <Text fw={600}>{group.name}</Text>
+                            <Text size="xs" c="dimmed">
+                              {group.locationName}
+                            </Text>
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td>
+                          <Stack gap={2}>
+                            <Text size="sm">
+                              {WEEKDAY_LABELS[group.weekday - 1] || group.weekday} ·{' '}
+                              {group.startTime}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              {group.durationMin} min · capacity {group.capacity}
+                            </Text>
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td>
+                          <Switch
+                            checked={draft.singleVisitEnabled}
+                            onChange={(event) =>
+                              updateGroupSingleVisitDraft(group.id, {
+                                singleVisitEnabled: event.currentTarget.checked,
+                              })
+                            }
+                            label={draft.singleVisitEnabled ? 'Leidžiama' : 'Neleidžiama'}
+                          />
+                        </Table.Td>
+                        <Table.Td>
+                          <NumberInput
+                            aria-label="Vieno karto apsilankymo kaina"
+                            value={draft.singleVisitPriceEur}
+                            onChange={(value) =>
+                              updateGroupSingleVisitDraft(group.id, {
+                                singleVisitPriceEur:
+                                  typeof value === 'number' && Number.isFinite(value) ? value : '',
+                              })
+                            }
+                            min={0}
+                            step={1}
+                            suffix=" EUR"
+                            disabled={!draft.singleVisitEnabled}
+                            w={150}
+                          />
+                        </Table.Td>
+                        <Table.Td>
+                          <Button
+                            size="xs"
+                            loading={actionLoading === `group-single-visit-${group.id}`}
+                            onClick={() => void saveGroupSingleVisitConfig(group.id)}
+                          >
+                            Išsaugoti
+                          </Button>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            )}
+
+            {isLoadingGroupsConfig ? (
+              <Group justify="center">
+                <Loader size="sm" />
+              </Group>
+            ) : null}
+          </Stack>
         </Card>
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>
