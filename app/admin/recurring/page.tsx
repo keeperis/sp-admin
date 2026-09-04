@@ -27,6 +27,7 @@ import { notifications } from '@mantine/notifications';
 import {
   IconArrowsExchange,
   IconCancel,
+  IconCheck,
   IconCopy,
   IconEye,
   IconLink,
@@ -420,6 +421,32 @@ export default function RecurringAdminPage() {
       }
       notifications.show({ message: 'Vieno karto apsilankymai atnaujinti', color: 'green' });
       await mutateGroupsConfig();
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const markManualRecurringPurchasePaid = async (purchaseId: string) => {
+    setActionLoading(`manual-purchase-paid-${purchaseId}`);
+    try {
+      const response = await fetch(`/api/admin/recurring/purchases/${purchaseId}/mark-paid`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Nepavyko pažymėti recurring mokėjimo');
+      }
+      notifications.show({ message: 'Recurring pavedimas pažymėtas apmokėtu', color: 'green' });
+      await Promise.all([mutate(), mutateObservability()]);
+      if (result.subscription?.id) {
+        await openSubscriptionDetails(result.subscription.id);
+      }
     } catch (nextError: any) {
       notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
     } finally {
@@ -867,7 +894,7 @@ export default function RecurringAdminPage() {
               </Alert>
             ) : (
               <>
-                <SimpleGrid cols={{ base: 2, md: 3, xl: 6 }}>
+                <SimpleGrid cols={{ base: 2, md: 3, xl: 7 }}>
                   <Card withBorder>
                     <Stack gap={2}>
                       <Text size="xs" c="dimmed">
@@ -936,6 +963,19 @@ export default function RecurringAdminPage() {
                   <Card withBorder>
                     <Stack gap={2}>
                       <Text size="xs" c="dimmed">
+                        Manual pavedimai
+                      </Text>
+                      <Text fw={700} size="xl">
+                        {observabilitySummary?.manualPendingTransfers ?? '-'}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Laukia įskaitymo
+                      </Text>
+                    </Stack>
+                  </Card>
+                  <Card withBorder>
+                    <Stack gap={2}>
+                      <Text size="xs" c="dimmed">
                         Lifecycle attention 24h
                       </Text>
                       <Text fw={700} size="xl">
@@ -949,6 +989,71 @@ export default function RecurringAdminPage() {
                 </SimpleGrid>
 
                 <SimpleGrid cols={{ base: 1, xl: 2 }}>
+                  <Card withBorder>
+                    <Stack gap="sm">
+                      <Title order={5}>Manual pavedimai</Title>
+                      {observabilityQueues.manualPendingTransfers?.length ? (
+                        <Table striped highlightOnHover>
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th>Klientas</Table.Th>
+                              <Table.Th>Suma</Table.Th>
+                              <Table.Th>Amžius</Table.Th>
+                              <Table.Th>Veiksmai</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {observabilityQueues.manualPendingTransfers.map((item: any) => (
+                              <Table.Tr key={item.purchase.id}>
+                                <Table.Td>
+                                  <Stack gap={2}>
+                                    <Text size="sm" fw={600}>
+                                      {item.purchase.customerName}
+                                    </Text>
+                                    <Text size="xs" c="dimmed">
+                                      {item.purchase.customerEmail}
+                                    </Text>
+                                  </Stack>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Stack gap={2}>
+                                    <Text size="sm">{formatMoney(item.purchase.priceEur)}</Text>
+                                    <Text size="xs" c="dimmed">
+                                      {item.purchase.selectedStartDate}
+                                    </Text>
+                                  </Stack>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Stack gap={2}>
+                                    <Text size="sm">{formatAgeMinutes(item.ageMinutes)}</Text>
+                                    <Code>{item.purchase.id}</Code>
+                                  </Stack>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Button
+                                    size="xs"
+                                    leftSection={<IconCheck size={14} />}
+                                    loading={
+                                      actionLoading ===
+                                      `manual-purchase-paid-${item.purchase.id}`
+                                    }
+                                    onClick={() =>
+                                      void markManualRecurringPurchasePaid(item.purchase.id)
+                                    }
+                                  >
+                                    Pažymėti apmokėta
+                                  </Button>
+                                </Table.Td>
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      ) : (
+                        <Text c="dimmed">Nėra laukiančių recurring pavedimų.</Text>
+                      )}
+                    </Stack>
+                  </Card>
+
                   <Card withBorder>
                     <Stack gap="sm">
                       <Title order={5}>Fulfillment attention</Title>
