@@ -95,17 +95,23 @@ async function responsePayload(response: Response) {
 
 function exchangeSuccessMessage(payload: Record<string, unknown>): string {
   const page =
-    payload.page && typeof payload.page === 'object' ? (payload.page as Record<string, unknown>) : {};
-  const pageName = typeof page.name === 'string' && page.name ? page.name : 'Meta Page';
+    payload.page && typeof payload.page === 'object'
+      ? (payload.page as Record<string, unknown>)
+      : {};
+  const pageName = typeof page.name === 'string' && page.name ? page.name : '„Meta“ puslapis';
   const eventsCount =
-    typeof payload.eventsCount === 'number' ? payload.eventsCount : String(payload.eventsCount || '0');
-  return `${pageName}: Page ir events patikros sėkmingos (${eventsCount} eventai).`;
+    typeof payload.eventsCount === 'number'
+      ? payload.eventsCount
+      : String(payload.eventsCount || '0');
+  return `${pageName}: puslapio ir įvykių patikros sėkmingos (įvykių: ${eventsCount}).`;
 }
 
 function validateSuccessMessage(payload: Record<string, unknown>): string {
   const eventsCount =
-    typeof payload.eventsCount === 'number' ? payload.eventsCount : String(payload.eventsCount || '0');
-  return `Page ir events patikros sėkmingos (${eventsCount} eventai).`;
+    typeof payload.eventsCount === 'number'
+      ? payload.eventsCount
+      : String(payload.eventsCount || '0');
+  return `Puslapio ir įvykių patikros sėkmingos (įvykių: ${eventsCount}).`;
 }
 
 export default function MetaIntegrationPage() {
@@ -136,12 +142,12 @@ export default function MetaIntegrationPage() {
       const message = exchangeSuccessMessage(payload);
       notifications.show({
         color: 'green',
-        title: 'Meta tokenas atnaujintas',
+        title: '„Meta“ prieigos raktas atnaujintas',
         message,
       });
       setFeedback({
         tone: 'green',
-        title: 'Meta tokenas atnaujintas',
+        title: '„Meta“ prieigos raktas atnaujintas',
         message,
       });
       await mutate();
@@ -149,12 +155,12 @@ export default function MetaIntegrationPage() {
       const message = cause instanceof Error ? cause.message : 'Nežinoma klaida';
       notifications.show({
         color: 'red',
-        title: 'Tokeno atnaujinti nepavyko',
+        title: 'Prieigos rakto atnaujinti nepavyko',
         message,
       });
       setFeedback({
         tone: 'red',
-        title: 'Tokeno atnaujinti nepavyko',
+        title: 'Prieigos rakto atnaujinti nepavyko',
         message,
       });
     } finally {
@@ -175,12 +181,12 @@ export default function MetaIntegrationPage() {
       const message = validateSuccessMessage(payload);
       notifications.show({
         color: 'green',
-        title: 'Meta credentialas galioja',
+        title: '„Meta“ prisijungimo duomenys galioja',
         message,
       });
       setFeedback({
         tone: 'green',
-        title: 'Meta credentialas galioja',
+        title: '„Meta“ prisijungimo duomenys galioja',
         message,
       });
       await mutate();
@@ -188,12 +194,12 @@ export default function MetaIntegrationPage() {
       const message = cause instanceof Error ? cause.message : 'Nežinoma klaida';
       notifications.show({
         color: 'red',
-        title: 'Credentialo patikra nepavyko',
+        title: 'Prisijungimo duomenų patikra nepavyko',
         message,
       });
       setFeedback({
         tone: 'red',
-        title: 'Credentialo patikra nepavyko',
+        title: 'Prisijungimo duomenų patikra nepavyko',
         message,
       });
       await mutate();
@@ -208,7 +214,7 @@ export default function MetaIntegrationPage() {
         <Group justify="space-between">
           <div>
             <Title order={1}>Meta integracija</Title>
-            <Text c="dimmed">Facebook Page tokeno valdymas ir patikra.</Text>
+            <Text c="dimmed">„Facebook“ puslapio prieigos rakto valdymas ir patikra.</Text>
           </div>
           <IconBrandFacebook size={36} />
         </Group>
@@ -227,7 +233,7 @@ export default function MetaIntegrationPage() {
         <Card withBorder padding="lg">
           <Stack>
             <Group justify="space-between">
-              <Title order={3}>Credential būsena</Title>
+              <Title order={3}>Prisijungimo duomenų būsena</Title>
               <Badge color={statusColor(credential?.status)} variant="light">
                 {isLoading ? 'Tikrinama' : statusLabel(credential?.status)}
               </Badge>
@@ -235,7 +241,7 @@ export default function MetaIntegrationPage() {
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <div>
                 <Text size="sm" c="dimmed">
-                  Page
+                  Puslapis
                 </Text>
                 <Text fw={600}>
                   {credential?.pageName || credential?.pageId || 'Nesukonfigūruota'}
@@ -258,7 +264,7 @@ export default function MetaIntegrationPage() {
                 </Text>
                 {credential?.configured && !credential.expiresAt ? (
                   <Text size="xs" c="dimmed">
-                    Meta grąžina expires_at=0. Tokenas vis tiek gali būti atšauktas.
+                    „Meta“ grąžina expires_at=0. Prieigos raktas vis tiek gali būti atšauktas.
                   </Text>
                 ) : null}
               </div>
@@ -276,10 +282,10 @@ export default function MetaIntegrationPage() {
               </div>
             </SimpleGrid>
             {credential?.configured && credential.lastValidationOk !== false ? (
-              <Alert color="green" title="Tokenas veikia">
-                Page ir Events patikros sėkmingos
+              <Alert color="green" title="Prieigos raktas veikia">
+                Puslapio ir įvykių patikros sėkmingos
                 {credential.lastEventsCount !== null && credential.lastEventsCount !== undefined
-                  ? `. Rasta eventų: ${credential.lastEventsCount}.`
+                  ? `. Rasta įvykių: ${credential.lastEventsCount}.`
                   : '.'}
               </Alert>
             ) : null}
@@ -287,9 +293,9 @@ export default function MetaIntegrationPage() {
               <Alert
                 color="red"
                 icon={<IconAlertTriangle size={18} />}
-                title="Tokeno patikra nepavyko"
+                title="Prieigos rakto patikra nepavyko"
               >
-                Peržiūrėk žemiau pateiktą Meta diagnostiką ir atnaujink tokeną.
+                Peržiūrėk žemiau pateiktą „Meta“ diagnostiką ir atnaujink prieigos raktą.
               </Alert>
             ) : null}
             {credential?.lastError ? (
@@ -312,13 +318,13 @@ export default function MetaIntegrationPage() {
 
         <Card withBorder padding="lg">
           <Stack>
-            <Title order={3}>Atnaujinti Page tokeną</Title>
+            <Title order={3}>Atnaujinti puslapio prieigos raktą</Title>
             <Text size="sm" c="dimmed">
-              Laikinas tokenas siunčiamas tik į serverį, naršyklėje neišsaugomas ir po pateikimo
-              išvalomas.
+              Laikinas prieigos raktas siunčiamas tik į serverį, naršyklėje neišsaugomas ir po
+              pateikimo išvalomas.
             </Text>
             <PasswordInput
-              label="Laikinas User arba Page Access Token"
+              label="Laikinas naudotojo arba puslapio prieigos raktas"
               value={temporaryToken}
               onChange={(event) => setTemporaryToken(event.currentTarget.value)}
               autoComplete="off"

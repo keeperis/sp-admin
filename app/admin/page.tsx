@@ -51,7 +51,7 @@ const fetcher = async (url: string) => {
   const response = await fetch(url, { cache: 'no-store' });
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload?.error || 'Nepavyko gauti dashboard būsenos');
+    throw new Error(payload?.error || 'Nepavyko gauti sistemos būsenos');
   }
   return payload as StatusResponse;
 };
@@ -99,10 +99,10 @@ function detailRows(check: StatusCheck): Array<[string, unknown]> {
     const page = check.details.page as Record<string, unknown> | undefined;
     return [
       ['Puslapis', page?.name || credential?.pageName || credential?.pageId],
-      ['Credential būsena', credential?.status],
+      ['Prisijungimo duomenų būsena', credential?.status],
       ['Paskutinė patikra', formatDateTime(credential?.lastValidatedAt as string | undefined)],
       ['Galioja iki', formatDateTime(credential?.expiresAt as string | undefined)],
-      ['Events kiekis', credential?.lastEventsCount],
+      ['Įvykių kiekis', credential?.lastEventsCount],
     ];
   }
 
@@ -110,10 +110,10 @@ function detailRows(check: StatusCheck): Array<[string, unknown]> {
     const smtp = check.details.smtp as Record<string, unknown> | undefined;
     const sites = check.details.sites as Record<string, Record<string, unknown>> | undefined;
     return [
-      ['SMTP host', smtp?.host || sites?.ceramics?.host || sites?.yoga?.host],
-      ['SMTP port', smtp?.port || sites?.ceramics?.port || sites?.yoga?.port],
-      ['Ceramics from', sites?.ceramics?.fromEmail],
-      ['Yoga from', sites?.yoga?.fromEmail],
+      ['SMTP serveris', smtp?.host || sites?.ceramics?.host || sites?.yoga?.host],
+      ['SMTP prievadas', smtp?.port || sites?.ceramics?.port || sites?.yoga?.port],
+      ['Keramikos siuntėjo adresas', sites?.ceramics?.fromEmail],
+      ['Jogos siuntėjo adresas', sites?.yoga?.fromEmail],
       ['Nepavykę per 24 val.', check.details.failedLast24h],
     ];
   }
@@ -189,8 +189,8 @@ export default function AdminDashboardPage() {
       <Stack gap="xl">
         <Group justify="space-between" align="flex-end">
           <div>
-            <Title order={1}>Dashboard</Title>
-            <Text c="dimmed">Bendra prisijungimų, integracijų ir servisų būsena.</Text>
+            <Title order={1}>Apžvalga</Title>
+            <Text c="dimmed">Bendra prisijungimų, integracijų ir paslaugų būsena.</Text>
           </div>
           <Button
             leftSection={<IconRefresh size={16} />}

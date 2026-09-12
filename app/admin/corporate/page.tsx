@@ -414,70 +414,70 @@ type RecurringSubscriptionDetailDto = {
 };
 
 const SITE_OPTIONS: Array<{ value: SiteKey; label: string }> = [
-  { value: 'ceramics', label: 'Ceramics' },
-  { value: 'yoga', label: 'Yoga' },
+  { value: 'ceramics', label: 'Keramika' },
+  { value: 'yoga', label: 'Joga' },
 ];
 
 const COMPANY_STATUS_OPTIONS: Array<{ value: CompanyStatus; label: string }> = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'active', label: 'Active' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'draft', label: 'Juodraštis' },
+  { value: 'active', label: 'Aktyvi' },
+  { value: 'archived', label: 'Archyvuota' },
 ];
 
 const MEMBER_ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'member', label: 'Member' },
+  { value: 'admin', label: 'Administratorius' },
+  { value: 'member', label: 'Narys' },
 ];
 
 const MEMBER_STATUS_OPTIONS: Array<{ value: MemberStatus; label: string }> = [
-  { value: 'invited', label: 'Invited' },
-  { value: 'active', label: 'Active' },
-  { value: 'suspended', label: 'Suspended' },
+  { value: 'invited', label: 'Pakviestas' },
+  { value: 'active', label: 'Aktyvus' },
+  { value: 'suspended', label: 'Sustabdytas' },
 ];
 
 const LEDGER_DIRECTION_OPTIONS: Array<{ value: LedgerDirection; label: string }> = [
-  { value: 'credit', label: 'Credit' },
-  { value: 'debit', label: 'Debit' },
+  { value: 'credit', label: 'Papildymas' },
+  { value: 'debit', label: 'Nurašymas' },
 ];
 
 const LEDGER_CATEGORY_OPTIONS: Array<{ value: LedgerCategory; label: string }> = [
-  { value: 'funding', label: 'Funding' },
-  { value: 'adjustment', label: 'Adjustment' },
+  { value: 'funding', label: 'Finansavimas' },
+  { value: 'adjustment', label: 'Korekcija' },
 ];
 
 const LOCALE_OPTIONS = [
   { value: 'lt', label: 'Lietuvių' },
-  { value: 'en', label: 'English' },
+  { value: 'en', label: 'Anglų' },
 ];
 
 const POLICY_STATUS_OPTIONS: Array<{ value: CorporatePolicyStatus; label: string }> = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'active', label: 'Active' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'draft', label: 'Juodraštis' },
+  { value: 'active', label: 'Aktyvi' },
+  { value: 'archived', label: 'Archyvuota' },
 ];
 
 const PRODUCT_KIND_OPTIONS: Array<{ value: CorporateProductKind; label: string }> = [
-  { value: 'workshop', label: 'Workshop' },
-  { value: 'recurring', label: 'Recurring' },
+  { value: 'workshop', label: 'Vienkartinis užsiėmimas' },
+  { value: 'recurring', label: 'Abonementas' },
 ];
 
 const REFUND_STATUS_OPTIONS: Array<{ value: RefundStatus; label: string }> = [
   { value: 'not_applicable', label: 'Netaikoma' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'declined', label: 'Declined' },
+  { value: 'pending', label: 'Laukiama' },
+  { value: 'completed', label: 'Atlikta' },
+  { value: 'declined', label: 'Atmesta' },
 ];
 
 const REFUND_REASON_OPTIONS: Array<{ value: RefundReason; label: string }> = [
-  { value: 'requested_by_customer', label: 'Requested by customer' },
-  { value: 'duplicate', label: 'Duplicate' },
-  { value: 'fraudulent', label: 'Fraudulent' },
+  { value: 'requested_by_customer', label: 'Kliento prašymu' },
+  { value: 'duplicate', label: 'Besidubliuojantis mokėjimas' },
+  { value: 'fraudulent', label: 'Galimai apgaulingas mokėjimas' },
 ];
 
 const REFUND_EXCEPTION_OPTIONS = [
-  { value: 'manual_refund_required', label: 'Manual refund required' },
-  { value: 'bank_side_followup', label: 'Bank side follow-up' },
-  { value: 'stripe_refund_failed', label: 'Stripe refund failed' },
+  { value: 'manual_refund_required', label: 'Reikia grąžinti rankiniu būdu' },
+  { value: 'bank_side_followup', label: 'Reikia susisiekti su banku' },
+  { value: 'stripe_refund_failed', label: '„Stripe“ grąžinimas nepavyko' },
 ];
 
 const emptyCreateCompanyForm = (): CreateCompanyForm => ({
@@ -565,7 +565,7 @@ const fetcher = async <T,>(url: string) => {
   const response = await fetch(url, { cache: 'no-store' });
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload?.error || 'Nepavyko gauti corporate duomenų');
+    throw new Error(payload?.error || 'Nepavyko gauti įmonių duomenų');
   }
   return payload as T;
 };
@@ -630,9 +630,61 @@ function statusColor(status?: string | null) {
   return 'gray';
 }
 
+function valueLabel(value?: string | null) {
+  const labels: Record<string, string> = {
+    active: 'Aktyvus',
+    adjustment: 'Korekcija',
+    admin: 'Administratorius',
+    archived: 'Archyvuotas',
+    attended: 'Dalyvavo',
+    cancel: 'Atšaukimas',
+    cancelled: 'Atšauktas',
+    cancelled_early: 'Atšauktas laiku',
+    change_plan: 'Plano keitimas',
+    completed: 'Užbaigtas',
+    credit: 'Papildymas',
+    debit: 'Nurašymas',
+    default: 'Reguliarus užsiėmimas',
+    declined: 'Atmesta',
+    draft: 'Juodraštis',
+    failed: 'Nepavyko',
+    fulfilled: 'Įvykdyta',
+    funded: 'Finansuota',
+    funding: 'Finansavimas',
+    invited: 'Pakviestas',
+    issue_magic_link: 'Prisijungimo nuorodos išdavimas',
+    late_cancel: 'Atšauktas per vėlai',
+    makeup: 'Perkeltas užsiėmimas',
+    manual: 'Rankinis veiksmas',
+    manual_reveal: 'Parodyta rankiniu būdu',
+    member: 'Narys',
+    no_show: 'Neatvyko',
+    not_applicable: 'Netaikoma',
+    not_started: 'Nepradėta',
+    paid: 'Apmokėta',
+    pause: 'Pristabdymas',
+    paused: 'Pristabdytas',
+    pending: 'Laukiama',
+    pending_payment: 'Laukia mokėjimo',
+    refund: 'Pinigų grąžinimas',
+    refund_exception: 'Pinigų grąžinimo išimtis',
+    refunded: 'Pinigai grąžinti',
+    resume: 'Atnaujinimas',
+    rolled_back: 'Atšaukta',
+    scheduled: 'Suplanuota',
+    self_service: 'Savitarna',
+    sent: 'Išsiųsta',
+    stripe: 'Stripe',
+    succeeded: 'Pavyko',
+    suspended: 'Sustabdytas',
+    system: 'Sistema',
+    update_contact: 'Kontaktų atnaujinimas',
+  };
+  return value ? labels[value] || value : '-';
+}
+
 function productKindLabel(kind: string) {
-  if (kind === 'recurring') return 'Recurring';
-  return kind;
+  return PRODUCT_KIND_OPTIONS.find((option) => option.value === kind)?.label || kind;
 }
 
 function siteLabel(site?: SiteKey | null) {
@@ -642,7 +694,7 @@ function siteLabel(site?: SiteKey | null) {
 function formatSummaryPairs(summary: Record<string, number>) {
   const pairs = Object.entries(summary).filter(([, count]) => Boolean(count));
   if (pairs.length === 0) return '-';
-  return pairs.map(([key, count]) => `${key}: ${count}`).join(' • ');
+  return pairs.map(([key, count]) => `${valueLabel(key)}: ${count}`).join(' • ');
 }
 
 function asTextList(values?: Array<string | null | undefined>) {
@@ -939,7 +991,7 @@ export default function CorporateAdminPage() {
     if (!activeMembers.length) {
       notifications.show({
         color: 'yellow',
-        message: 'Corporate recurring pirkimui reikia bent vieno active company member.',
+        message: 'Įmonės finansuojamam abonementui reikia bent vieno aktyvaus įmonės nario.',
       });
       return;
     }
@@ -960,7 +1012,7 @@ export default function CorporateAdminPage() {
     if ((primaryAdminName && !primaryAdminEmail) || (!primaryAdminName && primaryAdminEmail)) {
       notifications.show({
         color: 'red',
-        message: 'Primary admin vardas ir el. paštas turi būti pildomi kartu.',
+        message: 'Pagrindinio administratoriaus vardas ir el. paštas turi būti pildomi kartu.',
       });
       return;
     }
@@ -1036,9 +1088,9 @@ export default function CorporateAdminPage() {
       );
       setWalletAdjustmentOpened(false);
       await refreshSelectedCompany();
-      notifications.show({ color: 'green', message: 'Wallet korekcija išsaugota.' });
+      notifications.show({ color: 'green', message: 'Balanso korekcija išsaugota.' });
     } catch (error: any) {
-      notifications.show({ color: 'red', message: error.message || 'Nepavyko koreguoti wallet' });
+      notifications.show({ color: 'red', message: error.message || 'Nepavyko koreguoti balanso' });
     } finally {
       setActionLoading(null);
     }
@@ -1047,11 +1099,11 @@ export default function CorporateAdminPage() {
   const handleUpdateCompany = async () => {
     if (!selectedCompanyId) return;
     if (!editCompanyForm.allowedSites.length) {
-      notifications.show({ color: 'red', message: 'Reikia bent vieno allowed site.' });
+      notifications.show({ color: 'red', message: 'Reikia bent vieno leidžiamo projekto.' });
       return;
     }
     if (!editCompanyForm.allowedProductKinds.length) {
-      notifications.show({ color: 'red', message: 'Reikia bent vieno allowed product kind.' });
+      notifications.show({ color: 'red', message: 'Reikia bent vieno leidžiamo produkto tipo.' });
       return;
     }
 
@@ -1075,7 +1127,10 @@ export default function CorporateAdminPage() {
       });
       setEditCompanyOpened(false);
       await refreshSelectedCompany();
-      notifications.show({ color: 'green', message: 'Įmonės ir policy duomenys atnaujinti.' });
+      notifications.show({
+        color: 'green',
+        message: 'Įmonės ir jos taisyklių duomenys atnaujinti.',
+      });
     } catch (error: any) {
       notifications.show({
         color: 'red',
@@ -1165,12 +1220,12 @@ export default function CorporateAdminPage() {
       await refreshSelectedCompany();
       notifications.show({
         color: 'green',
-        message: `Corporate recurring sukurtas. Purchase ${payload.purchase.id}, subscription ${payload.subscription.id}.`,
+        message: `Įmonės finansuojamas abonementas sukurtas. Pirkimas ${payload.purchase.id}, abonementas ${payload.subscription.id}.`,
       });
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko sukurti corporate recurring pirkimo',
+        message: error.message || 'Nepavyko sukurti įmonės finansuojamo abonemento',
       });
     } finally {
       setActionLoading(null);
@@ -1188,7 +1243,10 @@ export default function CorporateAdminPage() {
     if (action === 'cancel') {
       const refundAmount = parseMoneyInput(subscriptionCancelRefundAmount);
       if (Number.isNaN(refundAmount)) {
-        notifications.show({ color: 'red', message: 'Refund suma turi būti teisingas skaičius.' });
+        notifications.show({
+          color: 'red',
+          message: 'Grąžinama suma turi būti teisingas skaičius.',
+        });
         return;
       }
 
@@ -1213,16 +1271,16 @@ export default function CorporateAdminPage() {
         color: 'green',
         message:
           action === 'pause'
-            ? 'Subscription pristabdytas.'
+            ? 'Abonementas pristabdytas.'
             : action === 'resume'
-              ? 'Subscription atnaujintas.'
-              : 'Subscription atšauktas.',
+              ? 'Abonementas atnaujintas.'
+              : 'Abonementas atšauktas.',
       });
       await mutateSubscriptionActionDetail();
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko atlikti subscription veiksmo',
+        message: error.message || 'Nepavyko atlikti abonemento veiksmo',
       });
     } finally {
       setActionLoading(null);
@@ -1234,7 +1292,7 @@ export default function CorporateAdminPage() {
     if (deliveryMode === 'manual' && subscriptionManualMagicLinkReason.trim().length < 8) {
       notifications.show({
         color: 'yellow',
-        message: 'Manual magic link reveal reikia bent 8 simbolių priežasties.',
+        message: 'Rankiniam prisijungimo nuorodos parodymui reikia bent 8 simbolių priežasties.',
       });
       return;
     }
@@ -1262,20 +1320,20 @@ export default function CorporateAdminPage() {
 
       if (deliveryMode === 'manual') {
         if (!payload.magicLink) {
-          throw new Error('Magic link negrąžintas');
+          throw new Error('Prisijungimo nuoroda negrąžinta');
         }
         setGeneratedMagicLink(payload.magicLink);
         setIsGeneratedMagicLinkVisible(false);
         notifications.show({
           color: 'green',
-          message: 'Manual magic link paruoštas saugiai peržiūrai.',
+          message: 'Rankinė prisijungimo nuoroda paruošta saugiai peržiūrai.',
         });
       } else {
         setGeneratedMagicLink(null);
         setIsGeneratedMagicLinkVisible(false);
         notifications.show({
           color: 'green',
-          message: 'Recurring magic link išsiųstas el. paštu.',
+          message: 'Abonemento prisijungimo nuoroda išsiųsta el. paštu.',
         });
       }
 
@@ -1283,7 +1341,7 @@ export default function CorporateAdminPage() {
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko išduoti magic link',
+        message: error.message || 'Nepavyko išduoti prisijungimo nuorodos',
       });
     } finally {
       setActionLoading(null);
@@ -1305,12 +1363,12 @@ export default function CorporateAdminPage() {
       await Promise.all([refreshSelectedCompany(), mutateSubscriptionActionDetail()]);
       notifications.show({
         color: 'green',
-        message: 'Subscription grafikas perplanuotas.',
+        message: 'Abonemento tvarkaraštis perplanuotas.',
       });
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko perplanuoti subscription grafiko',
+        message: error.message || 'Nepavyko perplanuoti abonemento tvarkaraščio',
       });
     } finally {
       setActionLoading(null);
@@ -1335,12 +1393,12 @@ export default function CorporateAdminPage() {
       await Promise.all([refreshSelectedCompany(), mutateSubscriptionActionDetail()]);
       notifications.show({
         color: 'green',
-        message: 'Subscription planas pakeistas.',
+        message: 'Abonemento planas pakeistas.',
       });
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko pakeisti subscription plano',
+        message: error.message || 'Nepavyko pakeisti abonemento plano',
       });
     } finally {
       setActionLoading(null);
@@ -1366,12 +1424,12 @@ export default function CorporateAdminPage() {
       await Promise.all([refreshSelectedCompany(), mutateSubscriptionActionDetail()]);
       notifications.show({
         color: 'green',
-        message: 'Refund vykdymas užregistruotas.',
+        message: 'Pinigų grąžinimas užregistruotas.',
       });
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko paleisti refund vykdymo',
+        message: error.message || 'Nepavyko pradėti pinigų grąžinimo',
       });
     } finally {
       setActionLoading(null);
@@ -1398,12 +1456,12 @@ export default function CorporateAdminPage() {
       await Promise.all([refreshSelectedCompany(), mutateSubscriptionActionDetail()]);
       notifications.show({
         color: 'green',
-        message: 'Refund exception užregistruotas.',
+        message: 'Pinigų grąžinimo išimtis užregistruota.',
       });
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko užregistruoti refund exception',
+        message: error.message || 'Nepavyko užregistruoti pinigų grąžinimo išimties',
       });
     } finally {
       setActionLoading(null);
@@ -1415,7 +1473,9 @@ export default function CorporateAdminPage() {
     const copied = await copyToClipboard(generatedMagicLink.consumeUrl);
     notifications.show({
       color: copied ? 'green' : 'yellow',
-      message: copied ? 'Magic link nukopijuotas.' : 'Nepavyko nukopijuoti magic link.',
+      message: copied
+        ? 'Prisijungimo nuoroda nukopijuota.'
+        : 'Nepavyko nukopijuoti prisijungimo nuorodos.',
     });
   };
 
@@ -1431,7 +1491,7 @@ export default function CorporateAdminPage() {
     if (!reservationActionNotes.trim()) {
       notifications.show({
         color: 'yellow',
-        message: 'Įrašyk attendance / cancel notes prieš atlikdamas veiksmą.',
+        message: 'Prieš atlikdamas veiksmą įrašyk dalyvavimo arba atšaukimo pastabą.',
       });
       return;
     }
@@ -1451,7 +1511,7 @@ export default function CorporateAdminPage() {
         });
       } else {
         if (!occurrenceId) {
-          throw new Error('Trūksta occurrence id attendance veiksmui');
+          throw new Error('Dalyvavimo veiksmui trūksta užsiėmimo ID');
         }
         await adminJsonRequest(`/api/admin/recurring/occurrences/${occurrenceId}/attendance`, {
           method: 'POST',
@@ -1473,12 +1533,12 @@ export default function CorporateAdminPage() {
       setReservationCancelReason('');
       notifications.show({
         color: 'green',
-        message: 'Reservation / attendance veiksmas išsaugotas.',
+        message: 'Rezervacijos arba dalyvavimo veiksmas išsaugotas.',
       });
     } catch (error: any) {
       notifications.show({
         color: 'red',
-        message: error.message || 'Nepavyko atlikti reservation veiksmo',
+        message: error.message || 'Nepavyko atlikti rezervacijos veiksmo',
       });
     } finally {
       setActionLoading(null);
@@ -1490,9 +1550,9 @@ export default function CorporateAdminPage() {
       <Stack gap="xl">
         <Group justify="space-between" align="flex-end">
           <div>
-            <Title order={1}>Corporate</Title>
+            <Title order={1}>Įmonės</Title>
             <Text c="dimmed">
-              Company, wallet, members ir corporate-funded recurring administravimas vienoje
+              Įmonių, balansų, darbuotojų ir įmonės finansuojamų abonementų administravimas vienoje
               vietoje.
             </Text>
           </div>
@@ -1524,7 +1584,7 @@ export default function CorporateAdminPage() {
             />
             <TextInput
               label="Paieška"
-              placeholder="Pavadinimas, kodas, billing email"
+              placeholder="Pavadinimas, kodas, sąskaitų el. paštas"
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
               style={{ flex: 1 }}
@@ -1552,17 +1612,17 @@ export default function CorporateAdminPage() {
                 <Loader size="sm" />
               </Group>
             ) : companies.length === 0 ? (
-              <Text c="dimmed">Dar nėra corporate įmonių.</Text>
+              <Text c="dimmed">Dar nėra įmonių.</Text>
             ) : (
               <Table withTableBorder withColumnBorders striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Įmonė</Table.Th>
                     <Table.Th>Statusas</Table.Th>
-                    <Table.Th>Wallet</Table.Th>
-                    <Table.Th>Admins</Table.Th>
-                    <Table.Th>Members</Table.Th>
-                    <Table.Th>Allowed sites</Table.Th>
+                    <Table.Th>Balansas</Table.Th>
+                    <Table.Th>Administratoriai</Table.Th>
+                    <Table.Th>Nariai</Table.Th>
+                    <Table.Th>Leidžiami projektai</Table.Th>
                     <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
@@ -1576,13 +1636,13 @@ export default function CorporateAdminPage() {
                             {company.code}
                           </Text>
                           <Text size="xs" c="dimmed">
-                            {company.billingEmail || 'Be billing email'}
+                            {company.billingEmail || 'Sąskaitų el. paštas nenurodytas'}
                           </Text>
                         </Stack>
                       </Table.Td>
                       <Table.Td>
                         <Badge color={statusColor(company.status)} variant="light">
-                          {company.status}
+                          {valueLabel(company.status)}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -1619,14 +1679,14 @@ export default function CorporateAdminPage() {
 
         {!selectedCompanyId ? (
           <Alert color="blue" icon={<IconBuildingBank size={18} />} title="Pasirink įmonę">
-            Atsidaryk konkrečią company, kad galėtum valdyti wallet, members ir corporate-funded
-            recurring pirkimus.
+            Atsidaryk konkrečią įmonę, kad galėtum valdyti jos balansą, narius ir įmonės
+            finansuojamus abonementus.
           </Alert>
         ) : detailError ? (
           <Alert
             color="red"
             icon={<IconAlertTriangle size={18} />}
-            title="Nepavyko įkelti company detalės"
+            title="Nepavyko įkelti įmonės informacijos"
           >
             {detailError.message}
           </Alert>
@@ -1646,11 +1706,11 @@ export default function CorporateAdminPage() {
                       </Title>
                       <Badge variant="light">{selectedCompany.code}</Badge>
                       <Badge color={statusColor(selectedCompany.status)} variant="light">
-                        {selectedCompany.status}
+                        {valueLabel(selectedCompany.status)}
                       </Badge>
                     </Group>
                     <Text c="dimmed" size="sm">
-                      Billing: {selectedCompany.billingEmail || '-'} •{' '}
+                      Sąskaitų kontaktai: {selectedCompany.billingEmail || '-'} •{' '}
                       {selectedCompany.billingPhone || '-'}
                     </Text>
                     {selectedCompany.notes ? (
@@ -1665,14 +1725,14 @@ export default function CorporateAdminPage() {
                       variant="light"
                       onClick={openEditCompanyModal}
                     >
-                      Redaguoti company
+                      Redaguoti įmonę
                     </Button>
                     <Button
                       leftSection={<IconCash size={16} />}
                       variant="light"
                       onClick={openWalletAdjustmentModal}
                     >
-                      Wallet korekcija
+                      Balanso korekcija
                     </Button>
                     <Button
                       leftSection={<IconUsers size={16} />}
@@ -1685,7 +1745,7 @@ export default function CorporateAdminPage() {
                       leftSection={<IconRepeat size={16} />}
                       onClick={openCorporatePurchaseModal}
                     >
-                      Finansuoti recurring
+                      Finansuoti abonementą
                     </Button>
                   </Group>
                 </Group>
@@ -1693,38 +1753,38 @@ export default function CorporateAdminPage() {
                 <SimpleGrid cols={{ base: 1, md: 4 }}>
                   <Card withBorder radius="md" padding="md">
                     <Text size="xs" c="dimmed">
-                      Available balance
+                      Galimas balansas
                     </Text>
                     <Title order={3}>
                       {formatMoney(selectedCompany.wallet?.availableBalanceEur)}
                     </Title>
                     <Text size="xs" c="dimmed">
-                      Reserved {formatMoney(selectedCompany.wallet?.reservedBalanceEur)}
+                      Rezervuota {formatMoney(selectedCompany.wallet?.reservedBalanceEur)}
                     </Text>
                   </Card>
                   <Card withBorder radius="md" padding="md">
                     <Text size="xs" c="dimmed">
-                      Total balance
+                      Bendras balansas
                     </Text>
                     <Title order={3}>{formatMoney(selectedCompany.wallet?.balanceEur)}</Title>
                     <Text size="xs" c="dimmed">
-                      Wallet status {selectedCompany.wallet?.status || '-'}
+                      Balanso būsena {valueLabel(selectedCompany.wallet?.status)}
                     </Text>
                   </Card>
                   <Card withBorder radius="md" padding="md">
                     <Text size="xs" c="dimmed">
-                      Active admins
+                      Aktyvūs administratoriai
                     </Text>
                     <Title order={3}>{selectedCompany.memberCounts.activeAdmins}</Title>
                     <Text size="xs" c="dimmed">
-                      Total members {selectedCompany.memberCounts.total}
+                      Iš viso narių {selectedCompany.memberCounts.total}
                     </Text>
                   </Card>
                   <Card withBorder radius="md" padding="md">
                     <Text size="xs" c="dimmed">
-                      Policy
+                      Taisyklės
                     </Text>
-                    <Title order={3}>{selectedCompany.policy?.status || '-'}</Title>
+                    <Title order={3}>{valueLabel(selectedCompany.policy?.status)}</Title>
                     <Text size="xs" c="dimmed">
                       {(selectedCompany.policy?.allowedSites || []).map(siteLabel).join(', ') ||
                         '-'}
@@ -1734,7 +1794,7 @@ export default function CorporateAdminPage() {
 
                 <Group gap="xs">
                   <Badge variant="light" color={statusColor(selectedCompany.policy?.status)}>
-                    Policy {selectedCompany.policy?.status || 'draft'}
+                    Taisyklės: {valueLabel(selectedCompany.policy?.status || 'draft')}
                   </Badge>
                   {(selectedCompany.policy?.allowedProductKinds || []).map((kind) => (
                     <Badge key={kind} variant="light" color="blue">
@@ -1749,7 +1809,7 @@ export default function CorporateAdminPage() {
                 </Group>
                 {selectedCompany.policy?.notes ? (
                   <Text size="sm" c="dimmed">
-                    Policy notes: {selectedCompany.policy.notes}
+                    Taisyklių pastabos: {selectedCompany.policy.notes}
                   </Text>
                 ) : null}
               </Stack>
@@ -1759,21 +1819,23 @@ export default function CorporateAdminPage() {
               <Stack gap="md">
                 <Group justify="space-between">
                   <Title order={3} size="h4">
-                    Darbuotojų usage
+                    Darbuotojų panaudojimas
                   </Title>
                   <Badge variant="light">{selectedCompany.memberUsageReports.length}</Badge>
                 </Group>
                 {selectedCompany.memberUsageReports.length === 0 ? (
-                  <Text c="dimmed">Kol kas corporate-funded usage per darbuotoją nėra.</Text>
+                  <Text c="dimmed">
+                    Kol kas nėra įmonės finansuojamų pirkimų pagal darbuotojus.
+                  </Text>
                 ) : (
                   <Table withTableBorder withColumnBorders striped highlightOnHover>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Darbuotojas</Table.Th>
-                        <Table.Th>Spend</Table.Th>
-                        <Table.Th>Purchases</Table.Th>
-                        <Table.Th>Subscriptions</Table.Th>
-                        <Table.Th>Paskutinis usage</Table.Th>
+                        <Table.Th>Išleista</Table.Th>
+                        <Table.Th>Pirkimai</Table.Th>
+                        <Table.Th>Abonementai</Table.Th>
+                        <Table.Th>Paskutinis panaudojimas</Table.Th>
                         <Table.Th />
                       </Table.Tr>
                     </Table.Thead>
@@ -1797,24 +1859,24 @@ export default function CorporateAdminPage() {
                               <Stack gap={2}>
                                 <Text fw={600}>{formatMoney(report.totalCommittedAmountEur)}</Text>
                                 <Text size="xs" c="dimmed">
-                                  Fulfilled {report.fulfilledSponsoredPurchases}
+                                  Įvykdyta {report.fulfilledSponsoredPurchases}
                                 </Text>
                               </Stack>
                             </Table.Td>
                             <Table.Td>
                               <Stack gap={2}>
-                                <Text size="sm">Total {report.totalSponsoredPurchases}</Text>
+                                <Text size="sm">Iš viso {report.totalSponsoredPurchases}</Text>
                                 <Text size="xs" c="dimmed">
-                                  Failed {report.failedSponsoredPurchases} • Rolled back{' '}
+                                  Nepavyko {report.failedSponsoredPurchases} • Atšaukta{' '}
                                   {report.rolledBackSponsoredPurchases}
                                 </Text>
                               </Stack>
                             </Table.Td>
                             <Table.Td>
                               <Stack gap={2}>
-                                <Text size="sm">Active {report.activeSubscriptionCount}</Text>
+                                <Text size="sm">Aktyvūs {report.activeSubscriptionCount}</Text>
                                 <Text size="xs" c="dimmed">
-                                  Inactive {report.inactiveSubscriptionCount}
+                                  Neaktyvūs {report.inactiveSubscriptionCount}
                                 </Text>
                               </Stack>
                             </Table.Td>
@@ -1887,12 +1949,12 @@ export default function CorporateAdminPage() {
                             </Table.Td>
                             <Table.Td>
                               <Badge color={statusColor(member.role)} variant="light">
-                                {member.role}
+                                {valueLabel(member.role)}
                               </Badge>
                             </Table.Td>
                             <Table.Td>
                               <Badge color={statusColor(member.status)} variant="light">
-                                {member.status}
+                                {valueLabel(member.status)}
                               </Badge>
                             </Table.Td>
                             <Table.Td>
@@ -1928,12 +1990,12 @@ export default function CorporateAdminPage() {
                 <Stack gap="md">
                   <Group justify="space-between">
                     <Title order={3} size="h4">
-                      Ledger
+                      Balanso istorija
                     </Title>
                     <Badge variant="light">{selectedCompany.recentLedgerEntries.length}</Badge>
                   </Group>
                   {selectedCompany.recentLedgerEntries.length === 0 ? (
-                    <Text c="dimmed">Kol kas ledger įrašų nėra.</Text>
+                    <Text c="dimmed">Kol kas balanso istorijos įrašų nėra.</Text>
                   ) : (
                     <Table withTableBorder withColumnBorders striped>
                       <Table.Thead>
@@ -1950,7 +2012,7 @@ export default function CorporateAdminPage() {
                             <Table.Td>{formatDateTime(entry.createdAt)}</Table.Td>
                             <Table.Td>
                               <Badge color={statusColor(entry.direction)} variant="light">
-                                {entry.direction}
+                                {valueLabel(entry.direction)}
                               </Badge>
                             </Table.Td>
                             <Table.Td>
@@ -1964,7 +2026,7 @@ export default function CorporateAdminPage() {
                             <Table.Td>
                               <Text size="sm">{entry.notes || '-'}</Text>
                               <Text size="xs" c="dimmed">
-                                {entry.category}
+                                {valueLabel(entry.category)}
                                 {entry.site ? ` • ${siteLabel(entry.site)}` : ''}
                               </Text>
                             </Table.Td>
@@ -1981,22 +2043,22 @@ export default function CorporateAdminPage() {
               <Stack gap="md">
                 <Group justify="space-between">
                   <Title order={3} size="h4">
-                    Sponsored recurring istorija
+                    Įmonės finansuojamų abonementų istorija
                   </Title>
                   <Badge variant="light">{selectedCompany.recentSponsoredPurchases.length}</Badge>
                 </Group>
                 {selectedCompany.recentSponsoredPurchases.length === 0 ? (
-                  <Text c="dimmed">Kol kas corporate-funded recurring įrašų nėra.</Text>
+                  <Text c="dimmed">Kol kas įmonės finansuojamų abonementų įrašų nėra.</Text>
                 ) : (
                   <Table withTableBorder withColumnBorders striped highlightOnHover>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Laikas</Table.Th>
                         <Table.Th>Narys</Table.Th>
-                        <Table.Th>Site</Table.Th>
+                        <Table.Th>Projektas</Table.Th>
                         <Table.Th>Statusas</Table.Th>
                         <Table.Th>Suma</Table.Th>
-                        <Table.Th>Start</Table.Th>
+                        <Table.Th>Pradžia</Table.Th>
                         <Table.Th>Nuorodos</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
@@ -2020,7 +2082,7 @@ export default function CorporateAdminPage() {
                           <Table.Td>
                             <Stack gap={2}>
                               <Badge color={statusColor(purchase.status)} variant="light">
-                                {purchase.status}
+                                {valueLabel(purchase.status)}
                               </Badge>
                               {purchase.failureReason ? (
                                 <Text size="xs" c="red">
@@ -2034,10 +2096,10 @@ export default function CorporateAdminPage() {
                           <Table.Td>
                             <Stack gap={2}>
                               <Text size="xs" c="dimmed">
-                                Purchase {purchase.recurringPurchaseId}
+                                Pirkimas {purchase.recurringPurchaseId}
                               </Text>
                               <Text size="xs" c="dimmed">
-                                Subscription {purchase.subscriptionId || '-'}
+                                Abonementas {purchase.subscriptionId || '-'}
                               </Text>
                             </Stack>
                           </Table.Td>
@@ -2098,7 +2160,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Billing email"
+              label="Sąskaitų el. paštas"
               value={createCompanyForm.billingEmail}
               onChange={(event) =>
                 setCreateCompanyForm((current) => ({
@@ -2108,7 +2170,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Billing phone"
+              label="Sąskaitų telefono nr."
               value={createCompanyForm.billingPhone}
               onChange={(event) =>
                 setCreateCompanyForm((current) => ({
@@ -2120,7 +2182,7 @@ export default function CorporateAdminPage() {
           </SimpleGrid>
 
           <MultiSelect
-            label="Allowed sites"
+            label="Leidžiami projektai"
             data={SITE_OPTIONS}
             value={createCompanyForm.allowedSites}
             onChange={(value) =>
@@ -2140,7 +2202,7 @@ export default function CorporateAdminPage() {
             }
           />
 
-          <Divider label="Primary admin (optional)" />
+          <Divider label="Pagrindinis administratorius (neprivaloma)" />
 
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             <TextInput
@@ -2174,7 +2236,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Employee code"
+              label="Darbuotojo kodas"
               value={createCompanyForm.primaryAdminEmployeeCode}
               onChange={(event) =>
                 setCreateCompanyForm((current) => ({
@@ -2210,19 +2272,19 @@ export default function CorporateAdminPage() {
         }}
         title={
           selectedSubscriptionAction
-            ? `Subscription veiksmai: ${selectedSubscriptionAction.program?.nameLt || selectedSubscriptionAction.subscription.id}`
-            : 'Subscription veiksmai'
+            ? `Abonemento veiksmai: ${selectedSubscriptionAction.program?.nameLt || selectedSubscriptionAction.subscription.id}`
+            : 'Abonemento veiksmai'
         }
         size="lg"
       >
         {!selectedSubscriptionAction ? (
-          <Text c="dimmed">Subscription veiksmo kontekstas nerastas.</Text>
+          <Text c="dimmed">Abonemento veiksmo kontekstas nerastas.</Text>
         ) : (
           <Stack gap="lg">
             <SimpleGrid cols={{ base: 1, md: 2 }}>
               <Card withBorder radius="md" padding="md">
                 <Text size="xs" c="dimmed">
-                  Subscription
+                  Abonementas
                 </Text>
                 <Text fw={600}>{selectedSubscriptionAction.subscription.id}</Text>
                 <Text size="sm" c="dimmed">
@@ -2238,7 +2300,7 @@ export default function CorporateAdminPage() {
                   color={statusColor(selectedSubscriptionAction.subscription.status)}
                   variant="light"
                 >
-                  {selectedSubscriptionAction.subscription.status}
+                  {valueLabel(selectedSubscriptionAction.subscription.status)}
                 </Badge>
                 <Text size="sm" c="dimmed" mt={6}>
                   {selectedSubscriptionAction.subscription.remainingSessions}/
@@ -2251,7 +2313,7 @@ export default function CorporateAdminPage() {
               <Alert
                 color="red"
                 icon={<IconAlertTriangle size={16} />}
-                title="Nepavyko įkelti recurring detail"
+                title="Nepavyko įkelti abonemento informacijos"
               >
                 {subscriptionActionDetailError.message}
               </Alert>
@@ -2266,34 +2328,34 @@ export default function CorporateAdminPage() {
                 <Card withBorder radius="md" padding="md">
                   <Stack gap="xs">
                     <Title order={4} size="h5">
-                      Provisioning / makeup
+                      Tvarkaraštis ir perkelti užsiėmimai
                     </Title>
                     <Text>
-                      <strong>Planned count:</strong>{' '}
+                      <strong>Suplanuotų užsiėmimų:</strong>{' '}
                       {selectedSubscriptionActionDetail.provisioning?.schedule?.plannedCount ?? '-'}
                     </Text>
                     <Text>
-                      <strong>Scheduled through:</strong>{' '}
+                      <strong>Suplanuota iki:</strong>{' '}
                       {selectedSubscriptionActionDetail.provisioning?.schedule?.scheduledThrough ||
                         '-'}
                     </Text>
                     <Text>
-                      <strong>Generation version:</strong>{' '}
+                      <strong>Generavimo versija:</strong>{' '}
                       {selectedSubscriptionActionDetail.provisioning?.schedule?.generationVersion ??
                         '-'}
                     </Text>
                     <Text>
-                      <strong>Makeup balance:</strong>{' '}
+                      <strong>Perkeliamų užsiėmimų likutis:</strong>{' '}
                       {selectedSubscriptionActionDetail.makeup?.remainingCredits ?? '-'}
                     </Text>
                     <Text>
-                      <strong>Releasable future dates:</strong>{' '}
+                      <strong>Galimos atlaisvinti būsimos datos:</strong>{' '}
                       {asTextList(
                         selectedSubscriptionActionDetail.lifecycle?.releasePreview?.releasableDates,
                       )}
                     </Text>
                     <Text>
-                      <strong>Blocked reservations:</strong>{' '}
+                      <strong>Blokuojamos rezervacijos:</strong>{' '}
                       {selectedSubscriptionActionDetail.lifecycle?.releasePreview
                         ?.blockedReservations.length || 0}
                     </Text>
@@ -2303,49 +2365,48 @@ export default function CorporateAdminPage() {
                 <Card withBorder radius="md" padding="md">
                   <Stack gap="xs">
                     <Title order={4} size="h5">
-                      Refund / audit signalai
+                      Pinigų grąžinimo ir istorijos signalai
                     </Title>
                     <Text>
-                      <strong>Purchase id:</strong>{' '}
+                      <strong>Pirkimo ID:</strong>{' '}
                       {selectedSubscriptionActionDetail.subscription.sourcePurchaseId || '-'}
                     </Text>
                     <Text>
-                      <strong>Paskutinis magic link:</strong>{' '}
+                      <strong>Paskutinė prisijungimo nuoroda:</strong>{' '}
                       {formatDateTime(
                         selectedSubscriptionActionDetail.subscription.latestMagicLinkIssuedAt,
                       )}
                     </Text>
                     <Text>
-                      <strong>Payment provider:</strong>{' '}
+                      <strong>Mokėjimo paslaugų teikėjas:</strong>{' '}
                       {selectedSubscriptionActionDetail.refund?.paymentProvider || '-'}
                     </Text>
                     <Text>
-                      <strong>Payment status:</strong>{' '}
+                      <strong>Mokėjimo būsena:</strong>{' '}
                       <Badge
                         color={statusColor(selectedSubscriptionActionDetail.refund?.paymentStatus)}
                         variant="light"
                       >
-                        {selectedSubscriptionActionDetail.refund?.paymentStatus || '-'}
+                        {valueLabel(selectedSubscriptionActionDetail.refund?.paymentStatus)}
                       </Badge>
                     </Text>
                     <Text>
-                      <strong>Refund state:</strong>{' '}
+                      <strong>Pinigų grąžinimo būsena:</strong>{' '}
                       <Badge
                         color={statusColor(
                           selectedSubscriptionActionDetail.refund?.execution?.state,
                         )}
                         variant="light"
                       >
-                        {selectedSubscriptionActionDetail.refund?.execution?.state || '-'}
+                        {valueLabel(selectedSubscriptionActionDetail.refund?.execution?.state)}
                       </Badge>
                     </Text>
                     <Text>
-                      <strong>Refund amount:</strong>{' '}
+                      <strong>Grąžinama suma:</strong>{' '}
                       {formatMoney(selectedSubscriptionActionDetail.refund?.amountEur)}
                     </Text>
                     <Text size="sm" c="dimmed">
-                      {selectedSubscriptionActionDetail.refund?.reason ||
-                        'Refund execution available'}
+                      {selectedSubscriptionActionDetail.refund?.reason || 'Pinigus galima grąžinti'}
                     </Text>
                   </Stack>
                 </Card>
@@ -2353,9 +2414,9 @@ export default function CorporateAdminPage() {
             ) : null}
 
             <Textarea
-              label="Admin notes"
+              label="Administratoriaus pastabos"
               minRows={3}
-              placeholder="Lifecycle arba support pastabos"
+              placeholder="Abonemento būsenos arba pagalbos pastabos"
               value={subscriptionActionNotes}
               onChange={(event) => setSubscriptionActionNotes(event.currentTarget.value)}
             />
@@ -2363,11 +2424,11 @@ export default function CorporateAdminPage() {
             <Card withBorder radius="md" padding="lg">
               <Stack gap="md">
                 <Title order={3} size="h4">
-                  Magic link
+                  Prisijungimo nuoroda
                 </Title>
                 <TextInput
-                  label="Manual reveal reason"
-                  placeholder="Kodėl reikia rankinio reveal"
+                  label="Rankinio parodymo priežastis"
+                  placeholder="Kodėl prisijungimo nuorodą reikia parodyti rankiniu būdu"
                   value={subscriptionManualMagicLinkReason}
                   onChange={(event) =>
                     setSubscriptionManualMagicLinkReason(event.currentTarget.value)
@@ -2387,7 +2448,7 @@ export default function CorporateAdminPage() {
                     loading={actionLoading === 'subscription-magic-link-manual'}
                     onClick={() => void handleCorporateIssueMagicLink('manual')}
                   >
-                    Manual reveal
+                    Parodyti rankiniu būdu
                   </Button>
                 </Group>
 
@@ -2395,7 +2456,7 @@ export default function CorporateAdminPage() {
                   <Card withBorder radius="md" padding="md">
                     <Stack gap="sm">
                       <Group justify="space-between">
-                        <Text fw={600}>Sugeneruotas manual magic link</Text>
+                        <Text fw={600}>Sugeneruota rankinė prisijungimo nuoroda</Text>
                         <Group gap="xs">
                           <ActionIcon
                             variant="light"
@@ -2414,14 +2475,14 @@ export default function CorporateAdminPage() {
                         </Group>
                       </Group>
                       <Text size="sm" c="dimmed">
-                        {generatedMagicLink.customerEmail} • expires{' '}
+                        {generatedMagicLink.customerEmail} • galioja iki{' '}
                         {formatDateTime(generatedMagicLink.expiresAt)}
                       </Text>
                       {isGeneratedMagicLinkVisible ? (
                         <Code block>{generatedMagicLink.consumeUrl}</Code>
                       ) : (
                         <Text size="sm" c="dimmed">
-                          Link paslėptas iki aiškaus reveal.
+                          Nuoroda paslėpta iki sąmoningo parodymo veiksmo.
                         </Text>
                       )}
                     </Stack>
@@ -2433,7 +2494,7 @@ export default function CorporateAdminPage() {
             <Card withBorder radius="md" padding="lg">
               <Stack gap="md">
                 <Title order={3} size="h4">
-                  Lifecycle
+                  Abonemento būsena
                 </Title>
                 <Group>
                   <Button
@@ -2445,7 +2506,7 @@ export default function CorporateAdminPage() {
                     }
                     onClick={() => void handleCorporateSubscriptionLifecycleAction('pause')}
                   >
-                    Pause
+                    Pristabdyti
                   </Button>
                   <Button
                     leftSection={<IconPlayerPlay size={16} />}
@@ -2456,7 +2517,7 @@ export default function CorporateAdminPage() {
                     }
                     onClick={() => void handleCorporateSubscriptionLifecycleAction('resume')}
                   >
-                    Resume
+                    Atnaujinti
                   </Button>
                   <Button
                     leftSection={<IconRefresh size={16} />}
@@ -2464,25 +2525,25 @@ export default function CorporateAdminPage() {
                     loading={actionLoading === 'subscription-regenerate-schedule'}
                     onClick={() => void handleCorporateSubscriptionRegenerateSchedule()}
                   >
-                    Regenerate schedule
+                    Pergeneruoti tvarkaraštį
                   </Button>
                 </Group>
                 <Text size="xs" c="dimmed">
-                  Pause:{' '}
+                  Pristabdymas:{' '}
                   {selectedSubscriptionActionDetail?.lifecycle?.actions?.pause?.reason ||
                     'leidžiama'}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  Resume:{' '}
+                  Atnaujinimas:{' '}
                   {selectedSubscriptionActionDetail?.lifecycle?.actions?.resume?.reason ||
                     'leidžiama'}
                 </Text>
 
-                <Divider label="Cancel su refund apskaita" />
+                <Divider label="Atšaukimas ir pinigų grąžinimo apskaita" />
 
                 <SimpleGrid cols={{ base: 1, md: 3 }}>
                   <Select
-                    label="Refund status"
+                    label="Pinigų grąžinimo būsena"
                     data={REFUND_STATUS_OPTIONS}
                     value={subscriptionCancelRefundStatus}
                     onChange={(value) =>
@@ -2492,14 +2553,14 @@ export default function CorporateAdminPage() {
                     }
                   />
                   <TextInput
-                    label="Refund suma EUR"
+                    label="Grąžinama suma, EUR"
                     value={subscriptionCancelRefundAmount}
                     onChange={(event) =>
                       setSubscriptionCancelRefundAmount(event.currentTarget.value)
                     }
                   />
                   <TextInput
-                    label="Refund reference"
+                    label="Pinigų grąžinimo nuoroda"
                     value={subscriptionCancelRefundReference}
                     onChange={(event) =>
                       setSubscriptionCancelRefundReference(event.currentTarget.value)
@@ -2514,10 +2575,10 @@ export default function CorporateAdminPage() {
                   disabled={!selectedSubscriptionActionDetail?.lifecycle?.actions?.cancel?.eligible}
                   onClick={() => void handleCorporateSubscriptionLifecycleAction('cancel')}
                 >
-                  Cancel subscription
+                  Atšaukti abonementą
                 </Button>
                 <Text size="xs" c="dimmed">
-                  Cancel:{' '}
+                  Atšaukimas:{' '}
                   {selectedSubscriptionActionDetail?.lifecycle?.actions?.cancel?.reason ||
                     'leidžiama'}
                 </Text>
@@ -2527,14 +2588,14 @@ export default function CorporateAdminPage() {
             <Card withBorder radius="md" padding="lg">
               <Stack gap="md">
                 <Title order={3} size="h4">
-                  Plan change
+                  Plano keitimas
                 </Title>
                 <Select
                   label="Kitas planas"
                   data={selectedSubscriptionPlanOptions.map((option) => ({
                     value: option.plan.id,
                     label: `${option.plan.nameLt} · ${formatMoney(option.plan.priceEur)} · ${
-                      option.eligible ? 'eligible' : option.reason || 'blocked'
+                      option.eligible ? 'galima keisti' : option.reason || 'keisti negalima'
                     }`,
                   }))}
                   value={subscriptionChangePlanId}
@@ -2549,10 +2610,10 @@ export default function CorporateAdminPage() {
                     loading={actionLoading === 'subscription-change-plan'}
                     onClick={() => void handleCorporateSubscriptionPlanChange()}
                   >
-                    Change plan
+                    Keisti planą
                   </Button>
                   <Text size="xs" c="dimmed">
-                    {selectedSubscriptionPlanOption?.reason || 'Galima keisti tik į eligible planą'}
+                    {selectedSubscriptionPlanOption?.reason || 'Galima keisti tik į tinkamą planą'}
                   </Text>
                 </Group>
               </Stack>
@@ -2561,48 +2622,50 @@ export default function CorporateAdminPage() {
             <Card withBorder radius="md" padding="lg">
               <Stack gap="md">
                 <Title order={3} size="h4">
-                  Refund execution / exception
+                  Pinigų grąžinimas ir išimtys
                 </Title>
                 <SimpleGrid cols={{ base: 1, md: 2 }}>
                   <Card withBorder radius="md" padding="md">
                     <Stack gap="xs">
                       <Text>
-                        <strong>Provider:</strong>{' '}
-                        {selectedSubscriptionActionDetail?.refund?.paymentProvider || '-'}
+                        <strong>Mokėjimo paslaugų teikėjas:</strong>{' '}
+                        {valueLabel(selectedSubscriptionActionDetail?.refund?.paymentProvider)}
                       </Text>
                       <Text>
-                        <strong>Payment status:</strong>{' '}
+                        <strong>Mokėjimo būsena:</strong>{' '}
                         <Badge
                           color={statusColor(
                             selectedSubscriptionActionDetail?.refund?.paymentStatus,
                           )}
                           variant="light"
                         >
-                          {selectedSubscriptionActionDetail?.refund?.paymentStatus || '-'}
+                          {valueLabel(selectedSubscriptionActionDetail?.refund?.paymentStatus)}
                         </Badge>
                       </Text>
                       <Text>
-                        <strong>Execution state:</strong>{' '}
+                        <strong>Vykdymo būsena:</strong>{' '}
                         <Badge
                           color={statusColor(
                             selectedSubscriptionActionDetail?.refund?.execution?.state,
                           )}
                           variant="light"
                         >
-                          {selectedSubscriptionActionDetail?.refund?.execution?.state || '-'}
+                          {valueLabel(selectedSubscriptionActionDetail?.refund?.execution?.state)}
                         </Badge>
                       </Text>
                       <Text>
-                        <strong>Refund ref:</strong>{' '}
+                        <strong>Grąžinimo nuoroda:</strong>{' '}
                         {selectedSubscriptionActionDetail?.refund?.execution?.refundReference ||
                           '-'}
                       </Text>
                       <Text>
-                        <strong>Provider status:</strong>{' '}
-                        {selectedSubscriptionActionDetail?.refund?.execution?.providerStatus || '-'}
+                        <strong>Teikėjo būsena:</strong>{' '}
+                        {valueLabel(
+                          selectedSubscriptionActionDetail?.refund?.execution?.providerStatus,
+                        )}
                       </Text>
                       <Text>
-                        <strong>Last error:</strong>{' '}
+                        <strong>Paskutinė klaida:</strong>{' '}
                         {selectedSubscriptionActionDetail?.refund?.execution?.lastError || '-'}
                       </Text>
                     </Stack>
@@ -2611,7 +2674,7 @@ export default function CorporateAdminPage() {
                   <Card withBorder radius="md" padding="md">
                     <Stack gap="sm">
                       <Select
-                        label="Stripe refund reason"
+                        label="„Stripe“ grąžinimo priežastis"
                         data={REFUND_REASON_OPTIONS}
                         value={subscriptionRefundReason}
                         onChange={(value) =>
@@ -2627,11 +2690,11 @@ export default function CorporateAdminPage() {
                         loading={actionLoading === 'subscription-refund-execute'}
                         onClick={() => void handleCorporateSubscriptionRefundExecute()}
                       >
-                        Vykdyti Stripe refund
+                        Grąžinti per „Stripe“
                       </Button>
                       <Divider />
                       <Select
-                        label="Exception code"
+                        label="Išimties kodas"
                         data={REFUND_EXCEPTION_OPTIONS}
                         value={subscriptionRefundExceptionCode}
                         onChange={(value) =>
@@ -2640,8 +2703,8 @@ export default function CorporateAdminPage() {
                         allowDeselect={false}
                       />
                       <Textarea
-                        label="Exception message"
-                        placeholder="Kodėl refund negalima įvykdyti automatiškai"
+                        label="Išimties paaiškinimas"
+                        placeholder="Kodėl pinigų negalima grąžinti automatiškai"
                         value={subscriptionRefundExceptionMessage}
                         onChange={(event) =>
                           setSubscriptionRefundExceptionMessage(event.currentTarget.value)
@@ -2653,7 +2716,7 @@ export default function CorporateAdminPage() {
                         loading={actionLoading === 'subscription-refund-exception'}
                         onClick={() => void handleCorporateSubscriptionRefundException()}
                       >
-                        Žymėti refund exception
+                        Užfiksuoti grąžinimo išimtį
                       </Button>
                     </Stack>
                   </Card>
@@ -2664,18 +2727,18 @@ export default function CorporateAdminPage() {
             <Card withBorder radius="md" padding="lg">
               <Stack gap="md">
                 <Title order={3} size="h4">
-                  Reservation / attendance veiksmai
+                  Rezervacijos ir dalyvavimo veiksmai
                 </Title>
                 <Textarea
-                  label="Attendance / cancel notes"
+                  label="Dalyvavimo arba atšaukimo pastabos"
                   minRows={3}
-                  placeholder="Kodėl atliekamas override"
+                  placeholder="Kodėl administratorius keičia būseną"
                   value={reservationActionNotes}
                   onChange={(event) => setReservationActionNotes(event.currentTarget.value)}
                 />
                 <TextInput
-                  label="Cancel reason"
-                  placeholder="Papildoma priežastis cannot-attend veiksmui"
+                  label="Atšaukimo priežastis"
+                  placeholder="Papildoma nedalyvavimo priežastis"
                   value={reservationCancelReason}
                   onChange={(event) => setReservationCancelReason(event.currentTarget.value)}
                 />
@@ -2686,10 +2749,10 @@ export default function CorporateAdminPage() {
               <Stack gap="md">
                 <Group justify="space-between">
                   <Title order={3} size="h4">
-                    Lifecycle audit
+                    Veiksmų istorija
                   </Title>
                   <Badge variant="light">
-                    audit įrašų: {selectedSubscriptionActionDetail?.lifecycleAudit?.length || 0}
+                    istorijos įrašų: {selectedSubscriptionActionDetail?.lifecycleAudit?.length || 0}
                   </Badge>
                 </Group>
                 {selectedSubscriptionActionDetail?.lifecycleAudit?.length ? (
@@ -2698,9 +2761,9 @@ export default function CorporateAdminPage() {
                       <Table.Tr>
                         <Table.Th>Laikas</Table.Th>
                         <Table.Th>Veiksmas</Table.Th>
-                        <Table.Th>Actor</Table.Th>
-                        <Table.Th>Refund</Table.Th>
-                        <Table.Th>Notes / metadata</Table.Th>
+                        <Table.Th>Atliko</Table.Th>
+                        <Table.Th>Pinigų grąžinimas</Table.Th>
+                        <Table.Th>Pastabos ir metaduomenys</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -2709,21 +2772,21 @@ export default function CorporateAdminPage() {
                           <Table.Td>{formatDateTime(entry.createdAt)}</Table.Td>
                           <Table.Td>
                             <Badge color={statusColor(entry.action)} variant="light">
-                              {entry.action}
+                              {valueLabel(entry.action)}
                             </Badge>
                           </Table.Td>
                           <Table.Td>
                             <Stack gap={2}>
                               <Text size="sm">{entry.actorLabel}</Text>
                               <Text size="xs" c="dimmed">
-                                {entry.actorType}
+                                {valueLabel(entry.actorType)}
                               </Text>
                             </Stack>
                           </Table.Td>
                           <Table.Td>
                             <Stack gap={2}>
                               <Badge color={statusColor(entry.refundStatus)} variant="light">
-                                {entry.refundStatus || '-'}
+                                {valueLabel(entry.refundStatus)}
                               </Badge>
                               <Text size="xs">{formatMoney(entry.refundAmountEur)}</Text>
                               <Text size="xs" c="dimmed">
@@ -2746,7 +2809,7 @@ export default function CorporateAdminPage() {
                     </Table.Tbody>
                   </Table>
                 ) : (
-                  <Text c="dimmed">Lifecycle audit įrašų dar nėra.</Text>
+                  <Text c="dimmed">Veiksmų istorijos įrašų dar nėra.</Text>
                 )}
               </Stack>
             </Card>
@@ -2768,13 +2831,13 @@ export default function CorporateAdminPage() {
         size="xl"
       >
         {!selectedMemberDrilldown || !selectedMemberDrilldownId ? (
-          <Text c="dimmed">Nėra drill-down duomenų šiam darbuotojui.</Text>
+          <Text c="dimmed">Nėra išsamių duomenų apie šį darbuotoją.</Text>
         ) : (
           <Stack gap="lg">
             <SimpleGrid cols={{ base: 1, md: 2 }}>
               <Card withBorder radius="md" padding="md">
                 <Text size="xs" c="dimmed">
-                  Reservation summary
+                  Rezervacijų suvestinė
                 </Text>
                 <Text size="sm">
                   {formatSummaryPairs(selectedMemberDrilldown.reservationSummary)}
@@ -2782,7 +2845,7 @@ export default function CorporateAdminPage() {
               </Card>
               <Card withBorder radius="md" padding="md">
                 <Text size="xs" c="dimmed">
-                  Attendance summary
+                  Dalyvavimo suvestinė
                 </Text>
                 <Text size="sm">
                   {formatSummaryPairs(selectedMemberDrilldown.attendanceSummary)}
@@ -2794,14 +2857,14 @@ export default function CorporateAdminPage() {
               <Stack gap="md">
                 <Group justify="space-between">
                   <Title order={3} size="h4">
-                    Corporate-funded subscriptions
+                    Įmonės finansuojami abonementai
                   </Title>
                   <Badge variant="light">
                     {selectedMemberDrilldown.sponsoredSubscriptions.length}
                   </Badge>
                 </Group>
                 {selectedMemberDrilldown.sponsoredSubscriptions.length === 0 ? (
-                  <Text c="dimmed">Šis darbuotojas dar neturi corporate-funded subscription.</Text>
+                  <Text c="dimmed">Šis darbuotojas dar neturi įmonės finansuojamo abonemento.</Text>
                 ) : (
                   <Table withTableBorder withColumnBorders striped>
                     <Table.Thead>
@@ -2809,8 +2872,8 @@ export default function CorporateAdminPage() {
                         <Table.Th>Programa</Table.Th>
                         <Table.Th>Statusas</Table.Th>
                         <Table.Th>Galiojimas</Table.Th>
-                        <Table.Th>Usage</Table.Th>
-                        <Table.Th>Funding</Table.Th>
+                        <Table.Th>Panaudojimas</Table.Th>
+                        <Table.Th>Finansavimas</Table.Th>
                         <Table.Th />
                       </Table.Tr>
                     </Table.Thead>
@@ -2833,7 +2896,7 @@ export default function CorporateAdminPage() {
                           <Table.Td>
                             <Stack gap={2}>
                               <Badge color={statusColor(entry.subscription.status)} variant="light">
-                                {entry.subscription.status}
+                                {valueLabel(entry.subscription.status)}
                               </Badge>
                               <Text size="xs" c="dimmed">
                                 {siteLabel(entry.subscription.site)}
@@ -2856,8 +2919,8 @@ export default function CorporateAdminPage() {
                               </Text>
                               <Text size="xs" c="dimmed">
                                 {entry.subscription.latestLifecycleEvent
-                                  ? `${entry.subscription.latestLifecycleEvent.action} • ${formatDateTime(entry.subscription.latestLifecycleEvent.createdAt)}`
-                                  : 'Be lifecycle įrašų'}
+                                  ? `${valueLabel(entry.subscription.latestLifecycleEvent.action)} • ${formatDateTime(entry.subscription.latestLifecycleEvent.createdAt)}`
+                                  : 'Be veiksmų istorijos įrašų'}
                               </Text>
                             </Stack>
                           </Table.Td>
@@ -2867,7 +2930,7 @@ export default function CorporateAdminPage() {
                                 {formatMoney(entry.sponsoredPurchase.amountEur)}
                               </Text>
                               <Text size="xs" c="dimmed">
-                                {entry.sponsoredPurchase.status} •{' '}
+                                {valueLabel(entry.sponsoredPurchase.status)} •{' '}
                                 {entry.sponsoredPurchase.selectedStartDate}
                               </Text>
                             </Stack>
@@ -2894,14 +2957,14 @@ export default function CorporateAdminPage() {
                 <Stack gap="md">
                   <Group justify="space-between">
                     <Title order={3} size="h4">
-                      Recent reservations
+                      Naujausios rezervacijos
                     </Title>
                     <Badge variant="light">
                       {selectedMemberDrilldown.recentReservations.length}
                     </Badge>
                   </Group>
                   {selectedMemberDrilldown.recentReservations.length === 0 ? (
-                    <Text c="dimmed">Reservation istorijos dar nėra.</Text>
+                    <Text c="dimmed">Rezervacijų istorijos dar nėra.</Text>
                   ) : (
                     <Table withTableBorder withColumnBorders striped>
                       <Table.Thead>
@@ -2930,11 +2993,11 @@ export default function CorporateAdminPage() {
                               </Text>
                             </Table.Td>
                             <Table.Td>
-                              <Text size="sm">{reservation.reservationType}</Text>
+                              <Text size="sm">{valueLabel(reservation.reservationType)}</Text>
                             </Table.Td>
                             <Table.Td>
                               <Badge color={statusColor(reservation.status)} variant="light">
-                                {reservation.status}
+                                {valueLabel(reservation.status)}
                               </Badge>
                             </Table.Td>
                             <Table.Td>
@@ -3024,19 +3087,19 @@ export default function CorporateAdminPage() {
                 <Stack gap="md">
                   <Group justify="space-between">
                     <Title order={3} size="h4">
-                      Recent attendance
+                      Naujausi dalyvavimo įrašai
                     </Title>
                     <Badge variant="light">{selectedMemberDrilldown.recentAttendance.length}</Badge>
                   </Group>
                   {selectedMemberDrilldown.recentAttendance.length === 0 ? (
-                    <Text c="dimmed">Attendance istorijos dar nėra.</Text>
+                    <Text c="dimmed">Dalyvavimo istorijos dar nėra.</Text>
                   ) : (
                     <Table withTableBorder withColumnBorders striped>
                       <Table.Thead>
                         <Table.Tr>
                           <Table.Th>Laikas</Table.Th>
                           <Table.Th>Rezultatas</Table.Th>
-                          <Table.Th>Occurrence</Table.Th>
+                          <Table.Th>Užsiėmimas</Table.Th>
                           <Table.Th>Pastaba</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
@@ -3047,13 +3110,13 @@ export default function CorporateAdminPage() {
                               <Stack gap={2}>
                                 <Text size="sm">{formatDateTime(entry.attendance.recordedAt)}</Text>
                                 <Text size="xs" c="dimmed">
-                                  {entry.attendance.recordedByType}
+                                  {valueLabel(entry.attendance.recordedByType)}
                                 </Text>
                               </Stack>
                             </Table.Td>
                             <Table.Td>
                               <Badge color={statusColor(entry.attendance.result)} variant="light">
-                                {entry.attendance.result}
+                                {valueLabel(entry.attendance.result)}
                               </Badge>
                             </Table.Td>
                             <Table.Td>
@@ -3088,7 +3151,7 @@ export default function CorporateAdminPage() {
       <Modal
         opened={editCompanyOpened}
         onClose={() => setEditCompanyOpened(false)}
-        title="Redaguoti company ir policy"
+        title="Redaguoti įmonę ir jos taisykles"
         size="lg"
       >
         <Stack gap="md">
@@ -3101,7 +3164,7 @@ export default function CorporateAdminPage() {
               }
             />
             <Select
-              label="Company statusas"
+              label="Įmonės būsena"
               data={COMPANY_STATUS_OPTIONS}
               value={editCompanyForm.status}
               onChange={(value) =>
@@ -3112,7 +3175,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Billing email"
+              label="Sąskaitų el. paštas"
               value={editCompanyForm.billingEmail}
               onChange={(event) =>
                 setEditCompanyForm((current) => ({
@@ -3122,7 +3185,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Billing phone"
+              label="Sąskaitų telefono nr."
               value={editCompanyForm.billingPhone}
               onChange={(event) =>
                 setEditCompanyForm((current) => ({
@@ -3134,7 +3197,7 @@ export default function CorporateAdminPage() {
           </SimpleGrid>
 
           <Textarea
-            label="Company pastabos"
+            label="Įmonės pastabos"
             minRows={3}
             value={editCompanyForm.notes}
             onChange={(event) =>
@@ -3142,11 +3205,11 @@ export default function CorporateAdminPage() {
             }
           />
 
-          <Divider label="Corporate usage policy" />
+          <Divider label="Įmonės panaudojimo taisyklės" />
 
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             <Select
-              label="Policy statusas"
+              label="Taisyklių būsena"
               data={POLICY_STATUS_OPTIONS}
               value={editCompanyForm.policyStatus}
               onChange={(value) =>
@@ -3157,7 +3220,7 @@ export default function CorporateAdminPage() {
               }
             />
             <MultiSelect
-              label="Allowed product kinds"
+              label="Leidžiami produktų tipai"
               data={PRODUCT_KIND_OPTIONS}
               value={editCompanyForm.allowedProductKinds}
               onChange={(value) =>
@@ -3170,7 +3233,7 @@ export default function CorporateAdminPage() {
           </SimpleGrid>
 
           <MultiSelect
-            label="Allowed sites"
+            label="Leidžiami projektai"
             data={SITE_OPTIONS}
             value={editCompanyForm.allowedSites}
             onChange={(value) =>
@@ -3182,7 +3245,7 @@ export default function CorporateAdminPage() {
           />
 
           <Textarea
-            label="Policy notes"
+            label="Taisyklių pastabos"
             minRows={3}
             value={editCompanyForm.policyNotes}
             onChange={(event) =>
@@ -3210,7 +3273,7 @@ export default function CorporateAdminPage() {
       <Modal
         opened={walletAdjustmentOpened}
         onClose={() => setWalletAdjustmentOpened(false)}
-        title="Wallet korekcija"
+        title="Balanso korekcija"
       >
         <Stack gap="md">
           <Select
@@ -3258,7 +3321,7 @@ export default function CorporateAdminPage() {
           />
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             <TextInput
-              label="Reference type"
+              label="Nuorodos tipas"
               value={walletAdjustmentForm.referenceType}
               onChange={(event) =>
                 setWalletAdjustmentForm((current) => ({
@@ -3268,7 +3331,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Reference id"
+              label="Nuorodos ID"
               value={walletAdjustmentForm.referenceId}
               onChange={(event) =>
                 setWalletAdjustmentForm((current) => ({
@@ -3324,7 +3387,7 @@ export default function CorporateAdminPage() {
               }
             />
             <TextInput
-              label="Employee code"
+              label="Darbuotojo kodas"
               value={memberForm.employeeCode}
               onChange={(event) =>
                 setMemberForm((current) => ({
@@ -3381,19 +3444,19 @@ export default function CorporateAdminPage() {
       <Modal
         opened={corporatePurchaseOpened}
         onClose={() => setCorporatePurchaseOpened(false)}
-        title="Corporate-funded recurring"
+        title="Įmonės finansuojamas abonementas"
         size="lg"
       >
         <Stack gap="md">
           {selectedCompany ? (
-            <Alert color="blue" icon={<IconCash size={16} />} title="Wallet būsena">
-              Available balance: {formatMoney(selectedCompany.wallet?.availableBalanceEur)}
+            <Alert color="blue" icon={<IconCash size={16} />} title="Balanso būsena">
+              Galimas balansas: {formatMoney(selectedCompany.wallet?.availableBalanceEur)}
             </Alert>
           ) : null}
 
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             <Select
-              label="Site"
+              label="Projektas"
               data={SITE_OPTIONS.filter((option) => allowedSites.includes(option.value))}
               value={corporatePurchaseForm.site}
               onChange={(value) =>
@@ -3407,7 +3470,7 @@ export default function CorporateAdminPage() {
               }
             />
             <Select
-              label="Member"
+              label="Narys"
               data={memberOptions}
               value={corporatePurchaseForm.memberId || null}
               onChange={(value) =>
@@ -3459,7 +3522,7 @@ export default function CorporateAdminPage() {
               searchable
             />
             <TextInput
-              label="Start date"
+              label="Pradžios data"
               type="date"
               value={corporatePurchaseForm.startDate}
               onChange={(event) =>
@@ -3470,7 +3533,7 @@ export default function CorporateAdminPage() {
               }
             />
             <Select
-              label="Locale"
+              label="Kalba"
               data={LOCALE_OPTIONS}
               value={corporatePurchaseForm.locale}
               onChange={(value) =>
@@ -3510,7 +3573,7 @@ export default function CorporateAdminPage() {
               loading={actionLoading === 'create-corporate-purchase'}
               onClick={() => void handleCorporateRecurringPurchase()}
             >
-              Sukurti corporate recurring
+              Sukurti įmonės finansuojamą abonementą
             </Button>
           </Group>
         </Stack>

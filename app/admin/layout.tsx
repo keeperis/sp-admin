@@ -1,6 +1,17 @@
 'use client';
 
-import { AppShell, Avatar, Burger, Center, Group, Loader, MantineProvider, Menu, Stack, Text } from '@mantine/core';
+import {
+  AppShell,
+  Avatar,
+  Burger,
+  Center,
+  Group,
+  Loader,
+  MantineProvider,
+  Menu,
+  Stack,
+  Text,
+} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
 import {
@@ -26,14 +37,14 @@ import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
 
 const navItems = [
-  { href: '/admin', label: 'Dashboard', icon: IconDashboard },
-  { href: '/admin/workshops', label: 'Workshops', icon: IconCalendarEvent },
-  { href: '/admin/bookings', label: 'Bookings', icon: IconTicket },
-  { href: '/admin/recurring', label: 'Recurring', icon: IconRepeat },
-  { href: '/admin/corporate', label: 'Corporate', icon: IconBuildingBank },
+  { href: '/admin', label: 'Apžvalga', icon: IconDashboard },
+  { href: '/admin/workshops', label: 'Užsiėmimai', icon: IconCalendarEvent },
+  { href: '/admin/bookings', label: 'Rezervacijos', icon: IconTicket },
+  { href: '/admin/recurring', label: 'Abonementai', icon: IconRepeat },
+  { href: '/admin/corporate', label: 'Įmonės', icon: IconBuildingBank },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
-  { href: '/admin/content', label: 'Content', icon: IconEdit },
+  { href: '/admin/content', label: 'Turinys', icon: IconEdit },
   { href: '/admin/legal', label: 'Teisinė informacija', icon: IconFileDescription },
   { href: '/admin/meta', label: 'Meta', icon: IconBrandFacebook },
 ];
@@ -115,7 +126,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <Stack align="center" gap="sm">
             <Loader size="md" />
             <Text size="sm" c="dimmed">
-              {gateState === 'redirecting' ? 'Tikrinama prieiga ir nukreipiama…' : 'Tikrinama prieiga…'}
+              {gateState === 'redirecting'
+                ? 'Tikrinama prieiga ir nukreipiama…'
+                : 'Tikrinama prieiga…'}
             </Text>
           </Stack>
         </Center>
@@ -151,19 +164,28 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         }}
       >
         <AppShell.Header>
-          <Group h="100%" px="md" justify="space-between">
-            <Group gap="sm">
+          <Group h="100%" px="md" justify="space-between" wrap="nowrap" gap="xs">
+            <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
               <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-              <Text fw={700} size="lg">
-                SoulPoetry Admin
+              <Text fw={700} size="lg" hiddenFrom="xs" style={{ whiteSpace: 'nowrap' }}>
+                SoulPoetry
+              </Text>
+              <Text fw={700} size="lg" visibleFrom="xs" style={{ whiteSpace: 'nowrap' }}>
+                SoulPoetry administravimas
               </Text>
             </Group>
             {session?.user && (
               <Menu shadow="md" width={200}>
                 <Menu.Target>
-                  <Group gap="xs" style={{ cursor: 'pointer' }}>
-                    <Avatar src={session.user.image} size="sm" />
-                    <Text size="sm">{session.user.name || session.user.email}</Text>
+                  <Group
+                    gap="xs"
+                    wrap="nowrap"
+                    style={{ cursor: 'pointer', minWidth: 0, maxWidth: 'min(15rem, 34vw)' }}
+                  >
+                    <Avatar src={session.user.image} size="sm" style={{ flexShrink: 0 }} />
+                    <Text size="sm" truncate="end" style={{ minWidth: 0 }}>
+                      {session.user.name || session.user.email}
+                    </Text>
                   </Group>
                 </Menu.Target>
                 <Menu.Dropdown>
@@ -171,10 +193,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     leftSection={isDark ? <IconSun size={14} /> : <IconMoon size={14} />}
                     onClick={toggleTheme}
                   >
-                    {isDark ? 'Light' : 'Dark'}
+                    {isDark ? 'Šviesi tema' : 'Tamsi tema'}
                   </Menu.Item>
                   <Menu.Item leftSection={<IconLogout size={14} />} onClick={() => signOut()}>
-                    Sign out
+                    Atsijungti
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>

@@ -55,8 +55,8 @@ interface ReminderListResponse {
 }
 
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
-  { value: 'ceramics', label: 'Ceramics' },
-  { value: 'yoga', label: 'Yoga' },
+  { value: 'ceramics', label: 'Keramika' },
+  { value: 'yoga', label: 'Joga' },
 ];
 
 const fetcher = async (url: string) => {

@@ -38,8 +38,8 @@ type BankTransferSettingsResponse = {
 };
 
 const PROJECT_OPTIONS: Array<{ value: Site; label: string }> = [
-  { value: 'ceramics', label: 'Ceramics' },
-  { value: 'yoga', label: 'Yoga' },
+  { value: 'ceramics', label: 'Keramika' },
+  { value: 'yoga', label: 'Joga' },
 ];
 
 const emptySettings = (): BankTransferSettingsData => ({
@@ -197,7 +197,7 @@ export default function BankTransferSettingsPage() {
                 <Group justify="space-between">
                   <div>
                     <Title order={2} size="h3">
-                      {site === 'ceramics' ? 'Ceramics' : 'Yoga'}
+                      {site === 'ceramics' ? 'Keramika' : 'Joga'}
                     </Title>
                     <Text size="sm" c="dimmed">
                       Versija: {version ?? '-'}

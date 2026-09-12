@@ -370,8 +370,8 @@ export default function LegalSettingsPage() {
           <Select
             label="Projektas"
             data={[
-              { value: 'ceramics', label: 'Ceramics' },
-              { value: 'yoga', label: 'Yoga' },
+              { value: 'ceramics', label: 'Keramika' },
+              { value: 'yoga', label: 'Joga' },
             ]}
             value={site}
             allowDeselect={false}

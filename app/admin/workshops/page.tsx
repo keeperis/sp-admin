@@ -235,8 +235,8 @@ function workshopPriceLabel(workshop: {
 }
 
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
-  { value: 'ceramics', label: 'Ceramics' },
-  { value: 'yoga', label: 'Yoga' },
+  { value: 'ceramics', label: 'Keramika' },
+  { value: 'yoga', label: 'Joga' },
 ];
 
 type BookingStatus = 'draft' | 'pending_payment' | 'confirmed' | 'cancelled' | 'expired';
@@ -703,9 +703,9 @@ export default function WorkshopsPage() {
       <Stack gap="xl">
         <Group justify="space-between" align="end">
           <Stack gap="sm">
-            <Title order={2}>Workshops</Title>
+            <Title order={2}>Užsiėmimai</Title>
             <Select
-              label="Project"
+              label="Projektas"
               data={PROJECT_OPTIONS}
               value={selectedSite}
               onChange={(value) => setSelectedSite(value === 'yoga' ? 'yoga' : 'ceramics')}
@@ -840,7 +840,7 @@ export default function WorkshopsPage() {
                       <Select
                         label="Rūšis"
                         data={[
-                          { value: 'oneTime', label: 'Vienkartiniai dirbtuvės' },
+                          { value: 'oneTime', label: 'Vienkartiniai užsiėmimai' },
                           { value: 'ongoing', label: 'Nuolatiniai užsiėmimai' },
                           { value: 'private', label: 'Privatūs užsiėmimai' },
                         ]}
@@ -908,7 +908,7 @@ export default function WorkshopsPage() {
                         />
                         {form.values.sessionsCount > 1 && (
                           <NumberInput
-                            label="Abonimento kaina (€)"
+                            label="Abonemento kaina (€)"
                             min={0}
                             {...form.getInputProps('subscriptionPriceEur')}
                           />
@@ -942,7 +942,7 @@ export default function WorkshopsPage() {
                             onClick={handleParseCreateDescription}
                             loading={parsingDescription}
                           >
-                            Suskaidyti iš plain teksto
+                            Suskaidyti iš paprastojo teksto
                           </Button>
                         </Group>
                         <Textarea
@@ -970,13 +970,13 @@ export default function WorkshopsPage() {
                           {...form.getInputProps('descriptionStructured.paragraph3')}
                         />
                         <TextInput
-                          label="Listo antraštė"
+                          label="Sąrašo antraštė"
                           {...form.getInputProps('descriptionStructured.listTitle')}
                         />
                         <Stack gap="xs">
                           <Group justify="space-between">
                             <Text size="sm" fw={500}>
-                              Listo elementai
+                              Sąrašo elementai
                             </Text>
                             <Button
                               size="xs"
@@ -1188,10 +1188,10 @@ export default function WorkshopsPage() {
                           </Group>
                           <Group gap={6}>
                             <Badge variant="light" color="orange">
-                              pending dal. {stats.pendingParticipants}
+                              laukia dalyvių {stats.pendingParticipants}
                             </Badge>
                             <Badge variant="light" color="green">
-                              confirmed dal. {stats.confirmedParticipants}
+                              patvirtintų dalyvių {stats.confirmedParticipants}
                             </Badge>
                           </Group>
                           <Group gap={6}>
@@ -1201,7 +1201,7 @@ export default function WorkshopsPage() {
                             <Badge variant="light" color={spotsMismatch ? 'red' : 'teal'}>
                               {spotsMismatch
                                 ? `tikėtina ${expectedSpotsLeft}, dabar ${w.spotsLeft}`
-                                : 'sutampa su booking'}
+                                : 'sutampa su rezervacijomis'}
                             </Badge>
                           </Group>
                         </Stack>
@@ -1227,7 +1227,7 @@ export default function WorkshopsPage() {
                             <Group gap={6}>
                               {stats.draft > 0 ? (
                                 <Badge variant="light" color="gray">
-                                  draft {stats.draft}
+                                  juodraščiai {stats.draft}
                                 </Badge>
                               ) : null}
                               {stats.cancelled > 0 ? (
@@ -1237,7 +1237,7 @@ export default function WorkshopsPage() {
                               ) : null}
                               {stats.expired > 0 ? (
                                 <Badge variant="light" color="dark">
-                                  expired {stats.expired}
+                                  pasibaigę {stats.expired}
                                 </Badge>
                               ) : null}
                             </Group>
@@ -1294,11 +1294,7 @@ export default function WorkshopsPage() {
                               </ActionIcon>
                               <Badge
                                 color={
-                                  w.spotsLeft === 0
-                                    ? 'red'
-                                    : w.spotsLeft <= 2
-                                      ? 'orange'
-                                      : 'green'
+                                  w.spotsLeft === 0 ? 'red' : w.spotsLeft <= 2 ? 'orange' : 'green'
                                 }
                                 variant="light"
                               >
@@ -1316,10 +1312,10 @@ export default function WorkshopsPage() {
                             </Group>
                             <Group gap={6}>
                               <Badge variant="light" color="orange">
-                                pending dal. {stats.pendingParticipants}
+                                laukia dalyvių {stats.pendingParticipants}
                               </Badge>
                               <Badge variant="light" color="green">
-                                confirmed dal. {stats.confirmedParticipants}
+                                patvirtintų dalyvių {stats.confirmedParticipants}
                               </Badge>
                             </Group>
                             <Group gap={6}>
@@ -1329,7 +1325,7 @@ export default function WorkshopsPage() {
                               <Badge variant="light" color={spotsMismatch ? 'red' : 'teal'}>
                                 {spotsMismatch
                                   ? `tikėtina ${expectedSpotsLeft}, dabar ${w.spotsLeft}`
-                                  : 'sutampa su booking'}
+                                  : 'sutampa su rezervacijomis'}
                               </Badge>
                             </Group>
                           </Stack>
@@ -1356,7 +1352,7 @@ export default function WorkshopsPage() {
                               <Group gap={6}>
                                 {stats.draft > 0 ? (
                                   <Badge variant="light" color="gray">
-                                    draft {stats.draft}
+                                    juodraščiai {stats.draft}
                                   </Badge>
                                 ) : null}
                                 {stats.cancelled > 0 ? (
@@ -1366,7 +1362,7 @@ export default function WorkshopsPage() {
                                 ) : null}
                                 {stats.expired > 0 ? (
                                   <Badge variant="light" color="dark">
-                                    expired {stats.expired}
+                                    pasibaigę {stats.expired}
                                   </Badge>
                                 ) : null}
                               </Group>
@@ -1449,7 +1445,7 @@ export default function WorkshopsPage() {
               <Select
                 label="Rūšis"
                 data={[
-                  { value: 'oneTime', label: 'Vienkartiniai dirbtuvės' },
+                  { value: 'oneTime', label: 'Vienkartiniai užsiėmimai' },
                   { value: 'ongoing', label: 'Nuolatiniai užsiėmimai' },
                   { value: 'private', label: 'Privatūs užsiėmimai' },
                 ]}
@@ -1469,7 +1465,7 @@ export default function WorkshopsPage() {
                 />
                 {editForm.values.sessionsCount > 1 && (
                   <NumberInput
-                    label="Abonimento kaina (€)"
+                    label="Abonemento kaina (€)"
                     min={0}
                     {...editForm.getInputProps('subscriptionPriceEur')}
                   />
@@ -1530,13 +1526,13 @@ export default function WorkshopsPage() {
                   {...editForm.getInputProps('descriptionStructured.paragraph3')}
                 />
                 <TextInput
-                  label="Listo antraštė"
+                  label="Sąrašo antraštė"
                   {...editForm.getInputProps('descriptionStructured.listTitle')}
                 />
                 <Stack gap="xs">
                   <Group justify="space-between">
                     <Text size="sm" fw={500}>
-                      Listo elementai
+                      Sąrašo elementai
                     </Text>
                     <Button
                       size="xs"

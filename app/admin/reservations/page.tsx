@@ -45,13 +45,13 @@ import { buildApiUrl } from '@/lib/api';
 import type { SiteKey } from '@/lib/site';
 
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
-  { value: 'ceramics', label: 'Ceramics' },
-  { value: 'yoga', label: 'Yoga' },
+  { value: 'ceramics', label: 'Keramika' },
+  { value: 'yoga', label: 'Joga' },
 ];
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Visi statusai' },
-  { value: 'draft', label: 'Draft' },
+  { value: 'draft', label: 'Juodraštis' },
   { value: 'pending_payment', label: 'Laukia mokėjimo' },
   { value: 'confirmed', label: 'Patvirtinta' },
   { value: 'cancelled', label: 'Atšaukta' },
@@ -108,6 +108,23 @@ const statusColor = (status: string) => {
   if (status === 'cancelled') return 'red';
   if (status === 'expired') return 'gray';
   return 'blue';
+};
+
+const statusLabel = (status: string | null | undefined) => {
+  const labels: Record<string, string> = {
+    cancelled: 'Atšaukta',
+    confirmed: 'Patvirtinta',
+    draft: 'Juodraštis',
+    expired: 'Pasibaigė',
+    failed: 'Nepavyko',
+    paid: 'Apmokėta',
+    pending: 'Laukiama',
+    pending_payment: 'Laukia mokėjimo',
+    refunded: 'Pinigai grąžinti',
+    sent: 'Išsiųsta',
+    valid: 'Galioja',
+  };
+  return status ? labels[status] || status : 'Nėra';
 };
 
 const deletedWorkshopLabel = 'Ištrintas užsiėmimas';
@@ -536,7 +553,7 @@ function ReservationsPageContent() {
           <Stack gap="md">
             <Group align="flex-end">
               <Select
-                label="Project"
+                label="Projektas"
                 data={PROJECT_OPTIONS}
                 value={site}
                 onChange={(value) => {
@@ -573,7 +590,7 @@ function ReservationsPageContent() {
                 allowDeselect={false}
                 style={{ flex: 1, minWidth: 260 }}
               />
-              <TextInput label="Workshop ID" value={workshopId} readOnly w={260} />
+              <TextInput label="Užsiėmimo ID" value={workshopId} readOnly w={260} />
             </Group>
           </Stack>
         </Card>
@@ -659,7 +676,7 @@ function ReservationsPageContent() {
                     </Table.Td>
                     <Table.Td>
                       <Badge color={statusColor(booking.status)} variant="light">
-                        {booking.status}
+                        {statusLabel(booking.status)}
                       </Badge>
                     </Table.Td>
                     <Table.Td>{formatDateTime(booking.createdAt)}</Table.Td>
@@ -700,7 +717,7 @@ function ReservationsPageContent() {
                   <Text size="sm">{selectedBooking.customerPhone}</Text>
                 </div>
                 <Badge color={statusColor(selectedBooking.status)} variant="light">
-                  {selectedBooking.status}
+                  {statusLabel(selectedBooking.status)}
                 </Badge>
               </Group>
 
@@ -738,7 +755,7 @@ function ReservationsPageContent() {
                   <Text size="xs" c="dimmed">
                     Mokėjimas
                   </Text>
-                  <Text fw={600}>{selectedBooking.payment?.status || 'Nėra'}</Text>
+                  <Text fw={600}>{statusLabel(selectedBooking.payment?.status)}</Text>
                   {selectedBooking.payment ? (
                     <Text size="xs" c="dimmed">
                       {selectedBooking.payment.provider} · {selectedBooking.payment.amount}{' '}
@@ -750,7 +767,7 @@ function ReservationsPageContent() {
                   <Text size="xs" c="dimmed">
                     Bilietas
                   </Text>
-                  <Text fw={600}>{selectedBooking.ticket?.status || 'Nėra'}</Text>
+                  <Text fw={600}>{statusLabel(selectedBooking.ticket?.status)}</Text>
                   {selectedBooking.ticket?.code ? (
                     <Text size="xs" c="dimmed">
                       {selectedBooking.ticket.code}
@@ -761,7 +778,7 @@ function ReservationsPageContent() {
                   <Text size="xs" c="dimmed">
                     Laiškas
                   </Text>
-                  <Text fw={600}>{selectedBooking.confirmationEmail?.status || 'Nėra'}</Text>
+                  <Text fw={600}>{statusLabel(selectedBooking.confirmationEmail?.status)}</Text>
                   {selectedBooking.confirmationEmail?.attempts != null ? (
                     <Text size="xs" c="dimmed">
                       Bandymai: {selectedBooking.confirmationEmail.attempts}
@@ -1041,7 +1058,7 @@ function ReservationsPageContent() {
               <Stack gap="md">
                 <Alert color="blue">
                   Šablonas taikomas pasirinktame projekte. Kliento vardą kreipiniui sistema, esant
-                  veikiančiam AI servisui, suderina automatiškai.
+                  veikiančiai DI paslaugai, suderina automatiškai.
                 </Alert>
                 <Textarea
                   label="Pranešimo tekstas"
