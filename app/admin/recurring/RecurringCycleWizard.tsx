@@ -18,7 +18,6 @@ import {
   Stepper,
   Switch,
   Text,
-  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -28,11 +27,19 @@ import {
   IconBrandFacebook,
   IconCalendarEvent,
   IconCheck,
+  IconLanguage,
   IconPlus,
   IconRefresh,
+  IconSparkles,
   IconTrash,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  emptyStructuredDescription,
+  type StructuredDescription,
+  StructuredDescriptionEditor,
+  structuredDescriptionToText,
+} from './StructuredDescriptionEditor';
 
 type RecurringSite = 'ceramics' | 'yoga';
 type NumberValue = number | '';
@@ -242,12 +249,18 @@ export function RecurringCycleWizard({
   const [nameEn, setNameEn] = useState('');
   const [slug, setSlug] = useState('');
   const [slugWasEdited, setSlugWasEdited] = useState(false);
-  const [descriptionLt, setDescriptionLt] = useState('');
-  const [descriptionEn, setDescriptionEn] = useState('');
+  const [descriptionLt, setDescriptionLt] = useState<StructuredDescription>(
+    emptyStructuredDescription,
+  );
+  const [descriptionEn, setDescriptionEn] = useState<StructuredDescription>(
+    emptyStructuredDescription,
+  );
   const [effectiveFrom, setEffectiveFrom] = useState(dateOnlyToday());
   const [effectiveUntil, setEffectiveUntil] = useState(addDays(dateOnlyToday(), 84));
   const [groups, setGroups] = useState<GroupDraft[]>([newGroup()]);
   const [plans, setPlans] = useState<PlanDraft[]>([newPlan()]);
+  const [isParsingDescription, setIsParsingDescription] = useState(false);
+  const [isTranslatingDescription, setIsTranslatingDescription] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const reset = useCallback(() => {
@@ -261,12 +274,14 @@ export function RecurringCycleWizard({
     setNameEn('');
     setSlug('');
     setSlugWasEdited(false);
-    setDescriptionLt('');
-    setDescriptionEn('');
+    setDescriptionLt(emptyStructuredDescription());
+    setDescriptionEn(emptyStructuredDescription());
     setEffectiveFrom(dateOnlyToday());
     setEffectiveUntil(addDays(dateOnlyToday(), 84));
     setGroups([newGroup()]);
     setPlans([newPlan()]);
+    setIsParsingDescription(false);
+    setIsTranslatingDescription(false);
     setIsSaving(false);
   }, []);
 
@@ -367,8 +382,8 @@ export function RecurringCycleWizard({
     setNameEn(series.name);
     setSlug(generatedSlug);
     setSlugWasEdited(false);
-    setDescriptionLt(series.description);
-    setDescriptionEn(series.description);
+    setDescriptionLt({ ...emptyStructuredDescription(), intro: series.description });
+    setDescriptionEn(emptyStructuredDescription());
     setEffectiveFrom(firstDate);
     setEffectiveUntil(lastDate);
     setGroups([...scheduleBySlot.values()]);
@@ -383,6 +398,107 @@ export function RecurringCycleWizard({
       }),
     ]);
     notifications.show({ message: 'Ciklo duomenys užpildyti iš Facebook', color: 'green' });
+  };
+
+  const parseDescription = async () => {
+    const rawText = structuredDescriptionToText(descriptionLt);
+    if (!rawText) {
+      notifications.show({ message: 'Nėra lietuviško teksto skaidymui', color: 'yellow' });
+      return;
+    }
+
+    setIsParsingDescription(true);
+    try {
+      const response = await fetch('/api/admin/workshops/parse-description', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ rawText }),
+      });
+      const result = (await response.json()) as {
+        descriptionStructured?: StructuredDescription;
+        error?: string;
+      };
+      if (!response.ok || !result.descriptionStructured) {
+        throw new Error(result.error || 'Nepavyko suskaidyti aprašymo');
+      }
+
+      setDescriptionLt(result.descriptionStructured);
+      notifications.show({ message: 'Lietuviškas aprašymas suskaidytas su DI', color: 'green' });
+    } catch (error) {
+      notifications.show({
+        message: error instanceof Error ? error.message : 'Nepavyko suskaidyti aprašymo',
+        color: 'red',
+      });
+    } finally {
+      setIsParsingDescription(false);
+    }
+  };
+
+  const translateToEnglish = async () => {
+    const sourceValues = [
+      nameLt,
+      descriptionLt.intro,
+      descriptionLt.paragraph1,
+      descriptionLt.paragraph2,
+      descriptionLt.paragraph3,
+      descriptionLt.listTitle,
+      ...descriptionLt.listItems,
+      descriptionLt.closing1,
+      descriptionLt.closing2,
+      descriptionLt.closing3,
+    ];
+    const texts = sourceValues.map((value) => value.trim()).filter(Boolean);
+    if (texts.length === 0) {
+      notifications.show({ message: 'Nėra lietuviško teksto vertimui', color: 'yellow' });
+      return;
+    }
+
+    setIsTranslatingDescription(true);
+    try {
+      const response = await fetch('/api/admin/content/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ texts }),
+      });
+      const result = (await response.json()) as { translations?: string[]; error?: string };
+      if (!response.ok || !Array.isArray(result.translations)) {
+        throw new Error(result.error || 'Nepavyko išversti aprašymo');
+      }
+
+      let translationIndex = 0;
+      const translated = (sourceValue: string) =>
+        sourceValue.trim() ? result.translations?.[translationIndex++] || '' : '';
+
+      setNameEn(translated(nameLt));
+      setDescriptionEn({
+        intro: translated(descriptionLt.intro),
+        paragraph1: translated(descriptionLt.paragraph1),
+        paragraph2: translated(descriptionLt.paragraph2),
+        paragraph3: translated(descriptionLt.paragraph3),
+        listTitle: translated(descriptionLt.listTitle),
+        listItems: descriptionLt.listItems.map(translated),
+        closing1: translated(descriptionLt.closing1),
+        closing2: translated(descriptionLt.closing2),
+        closing3: translated(descriptionLt.closing3),
+      });
+      notifications.show({
+        message: 'Pavadinimas ir aprašymas išversti į anglų kalbą',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        message: error instanceof Error ? error.message : 'Nepavyko išversti aprašymo',
+        color: 'red',
+      });
+    } finally {
+      setIsTranslatingDescription(false);
+    }
   };
 
   const validateStep = (step: number) => {
@@ -471,8 +587,10 @@ export function RecurringCycleWizard({
           slug,
           nameLt: nameLt.trim(),
           nameEn: nameEn.trim(),
-          descriptionLt: descriptionLt.trim() || undefined,
-          descriptionEn: descriptionEn.trim() || undefined,
+          descriptionLt: descriptionLt.intro.trim() || undefined,
+          descriptionEn: descriptionEn.intro.trim() || undefined,
+          descriptionStructuredLt: descriptionLt,
+          descriptionStructuredEn: descriptionEn,
           effectiveFrom,
           effectiveUntil,
           publish: true,
@@ -648,20 +766,52 @@ export function RecurringCycleWizard({
                   onChange={(event) => setEffectiveUntil(event.currentTarget.value)}
                 />
               </SimpleGrid>
-              <SimpleGrid cols={{ base: 1, md: 2 }}>
-                <Textarea
-                  label="Aprašymas lietuviškai"
-                  minRows={3}
-                  value={descriptionLt}
-                  onChange={(event) => setDescriptionLt(event.currentTarget.value)}
-                />
-                <Textarea
-                  label="Aprašymas angliškai"
-                  minRows={3}
-                  value={descriptionEn}
-                  onChange={(event) => setDescriptionEn(event.currentTarget.value)}
-                />
-              </SimpleGrid>
+              <Card withBorder padding="md">
+                <Stack gap="md">
+                  <Group justify="space-between" align="flex-start">
+                    <div>
+                      <Title order={5}>Aprašymas lietuviškai</Title>
+                      <Text size="sm" c="dimmed">
+                        Įklijuokite pradinį tekstą ir DI išskaidys jį į svetainės turinio laukus.
+                      </Text>
+                    </div>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconSparkles size={15} />}
+                      loading={isParsingDescription}
+                      onClick={() => void parseDescription()}
+                    >
+                      Suskaidyti su DI
+                    </Button>
+                  </Group>
+                  <StructuredDescriptionEditor value={descriptionLt} onChange={setDescriptionLt} />
+                </Stack>
+              </Card>
+              <Card withBorder padding="md">
+                <Stack gap="md">
+                  <Group justify="space-between" align="flex-start">
+                    <div>
+                      <Title order={5}>Aprašymas angliškai</Title>
+                      <Text size="sm" c="dimmed">
+                        Vertimo mygtukas užpildo anglišką pavadinimą ir visus aprašymo laukus.
+                      </Text>
+                    </div>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconLanguage size={15} />}
+                      loading={isTranslatingDescription}
+                      onClick={() => void translateToEnglish()}
+                    >
+                      Išversti į anglų kalbą
+                    </Button>
+                  </Group>
+                  <StructuredDescriptionEditor value={descriptionEn} onChange={setDescriptionEn} />
+                </Stack>
+              </Card>
               <Alert color="green" icon={<IconCheck size={18} />}>
                 Sukurtas ciklas bus iš karto paskelbtas ir matomas klientams.
               </Alert>
