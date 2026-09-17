@@ -32,6 +32,7 @@ import {
   IconEye,
   IconLink,
   IconMail,
+  IconPencil,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
@@ -66,6 +67,17 @@ type ClassGroupDto = {
 type GroupSingleVisitDraft = {
   singleVisitEnabled: boolean;
   singleVisitPriceEur: number | '';
+};
+
+type RecurringProgramDto = {
+  id: string;
+  site: SiteKey;
+  slug: string;
+  nameLt: string;
+  nameEn: string;
+  status: string;
+  visibility: string;
+  updatedAt: string;
 };
 
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
@@ -105,6 +117,7 @@ const REFUND_EXCEPTION_OPTIONS = [
 const ADMIN_VALUE_LABELS: Record<string, string> = {
   active: 'Aktyvus',
   admin: 'Administratorius',
+  archived: 'Archyvuotas',
   attended: 'Dalyvavo',
   cancel: 'Atšaukimas',
   cancelled: 'Atšauktas',
@@ -121,6 +134,7 @@ const ADMIN_VALUE_LABELS: Record<string, string> = {
   failed: 'Nepavyko',
   fulfilled: 'Įvykdytas',
   issue_magic_link: 'Prisijungimo nuorodos išdavimas',
+  draft: 'Juodraštis',
   late_cancel: 'Atšauktas per vėlai',
   makeup: 'Perkeltas užsiėmimas',
   manual_reveal: 'Parodyta rankiniu būdu',
@@ -206,6 +220,7 @@ function statusColor(status: string | null | undefined) {
   if (status === 'pending_payment') return 'orange';
   if (status === 'cancelled' || status === 'declined') return 'red';
   if (status === 'expired') return 'gray';
+  if (status === 'draft' || status === 'archived') return 'gray';
   if (status === 'succeeded' || status === 'completed') return 'green';
   return 'blue';
 }
@@ -243,6 +258,7 @@ async function copyToClipboard(value: string) {
 export default function RecurringAdminPage() {
   const [site, setSite] = useState<SiteKey>('ceramics');
   const [cycleWizardOpened, setCycleWizardOpened] = useState(false);
+  const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
@@ -288,6 +304,10 @@ export default function RecurringAdminPage() {
     const params = new URLSearchParams({ site });
     return `/api/admin/recurring/groups?${params.toString()}`;
   }, [site]);
+  const programsApiUrl = useMemo(() => {
+    const params = new URLSearchParams({ site });
+    return `/api/admin/recurring/programs?${params.toString()}`;
+  }, [site]);
 
   const { data, error, isLoading, mutate } = useSWR(subscriptionsApiUrl, fetcher);
   const {
@@ -302,8 +322,18 @@ export default function RecurringAdminPage() {
     isLoading: isLoadingGroupsConfig,
     mutate: mutateGroupsConfig,
   } = useSWR<{ groups: ClassGroupDto[] }>(groupsConfigApiUrl, fetcher);
+  const {
+    data: programsData,
+    error: programsError,
+    isLoading: isLoadingPrograms,
+    mutate: mutatePrograms,
+  } = useSWR<{ programs: RecurringProgramDto[] }>(programsApiUrl, fetcher);
   const subscriptions = data?.subscriptions || [];
-  const recurringGroups = useMemo(() => groupsConfigData?.groups || [], [groupsConfigData]);
+  const recurringGroups = useMemo(
+    () => (groupsConfigData?.groups || []).filter((group) => group.status !== 'archived'),
+    [groupsConfigData],
+  );
+  const recurringPrograms = useMemo(() => programsData?.programs || [], [programsData]);
   const observabilitySummary = observabilityData?.summary || null;
   const observabilityQueues = observabilityData?.queues || {};
   const selectedSubscriptionId = selectedSubscription?.subscription?.id || null;
@@ -781,7 +811,13 @@ export default function RecurringAdminPage() {
             </Text>
           </div>
           <Group>
-            <Button leftSection={<IconPlus size={17} />} onClick={() => setCycleWizardOpened(true)}>
+            <Button
+              leftSection={<IconPlus size={17} />}
+              onClick={() => {
+                setEditingCycleId(null);
+                setCycleWizardOpened(true);
+              }}
+            >
               Naujas užsiėmimų ciklas
             </Button>
             <Button variant="light" onClick={clearFilters}>
@@ -793,9 +829,13 @@ export default function RecurringAdminPage() {
         <RecurringCycleWizard
           opened={cycleWizardOpened}
           initialSite={site === 'yoga' ? 'yoga' : 'ceramics'}
-          onClose={() => setCycleWizardOpened(false)}
-          onCreated={async () => {
-            await Promise.all([mutateGroupsConfig(), mutateObservability()]);
+          cycleId={editingCycleId}
+          onClose={() => {
+            setCycleWizardOpened(false);
+            setEditingCycleId(null);
+          }}
+          onSaved={async () => {
+            await Promise.all([mutatePrograms(), mutateGroupsConfig(), mutateObservability()]);
           }}
         />
 
@@ -825,6 +865,88 @@ export default function RecurringAdminPage() {
               style={{ flex: 1, minWidth: 280 }}
             />
           </Group>
+        </Card>
+
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <div>
+                <Title order={4}>Esami užsiėmimų ciklai</Title>
+                <Text size="sm" c="dimmed">
+                  Redaguokite ciklo aprašymą, laikotarpį, savaitines grupes ir abonemento planus.
+                </Text>
+              </div>
+              <Button
+                variant="light"
+                leftSection={<IconRefresh size={16} />}
+                onClick={() => void Promise.all([mutatePrograms(), mutateGroupsConfig()])}
+              >
+                Atnaujinti
+              </Button>
+            </Group>
+
+            {programsError ? (
+              <Alert color="red" title="Ciklų sąrašo klaida">
+                {programsError.message}
+              </Alert>
+            ) : isLoadingPrograms ? (
+              <Group justify="center" py="md">
+                <Loader size="sm" />
+              </Group>
+            ) : recurringPrograms.length === 0 ? (
+              <Text c="dimmed">Šiame projekte užsiėmimų ciklų nėra.</Text>
+            ) : (
+              <SimpleGrid cols={{ base: 1, md: 2 }}>
+                {recurringPrograms.map((program) => {
+                  const programGroups = recurringGroups.filter(
+                    (group) => group.programId === program.id && group.status !== 'archived',
+                  );
+                  const starts = programGroups
+                    .map((group) => group.effectiveFrom)
+                    .filter(Boolean)
+                    .sort();
+                  const ends = programGroups
+                    .map((group) => group.effectiveUntil)
+                    .filter((value): value is string => Boolean(value))
+                    .sort();
+                  return (
+                    <Card key={program.id} withBorder padding="md">
+                      <Stack gap="sm">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap">
+                          <div style={{ minWidth: 0 }}>
+                            <Text fw={700}>{program.nameLt}</Text>
+                            <Text size="xs" c="dimmed">
+                              /{program.slug}
+                            </Text>
+                          </div>
+                          <Badge color={statusColor(program.status)} variant="light">
+                            {adminValueLabel(program.status)}
+                          </Badge>
+                        </Group>
+                        <Text size="sm" c="dimmed">
+                          {starts[0] && ends.at(-1)
+                            ? `${starts[0]} – ${ends.at(-1)}`
+                            : 'Laikotarpis nenurodytas'}{' '}
+                          · {programGroups.length} grupė(-ės) ·{' '}
+                          {program.visibility === 'public' ? 'Rodomas klientams' : 'Paslėptas'}
+                        </Text>
+                        <Button
+                          variant="light"
+                          leftSection={<IconPencil size={16} />}
+                          onClick={() => {
+                            setEditingCycleId(program.id);
+                            setCycleWizardOpened(true);
+                          }}
+                        >
+                          Redaguoti
+                        </Button>
+                      </Stack>
+                    </Card>
+                  );
+                })}
+              </SimpleGrid>
+            )}
+          </Stack>
         </Card>
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>

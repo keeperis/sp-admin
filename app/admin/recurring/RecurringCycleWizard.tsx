@@ -45,6 +45,7 @@ type RecurringSite = 'ceramics' | 'yoga';
 type NumberValue = number | '';
 
 type GroupDraft = {
+  id?: string;
   key: number;
   name: string;
   weekday: number;
@@ -58,6 +59,7 @@ type GroupDraft = {
 };
 
 type PlanDraft = {
+  id?: string;
   key: number;
   code: string;
   nameLt: string;
@@ -96,8 +98,49 @@ type FacebookSeriesResponse = {
 type RecurringCycleWizardProps = {
   opened: boolean;
   initialSite: RecurringSite;
+  cycleId?: string | null;
   onClose: () => void;
-  onCreated: () => void | Promise<void>;
+  onSaved: () => void | Promise<void>;
+};
+
+type RecurringCycleDetail = {
+  program: {
+    id: string;
+    slug: string;
+    nameLt: string;
+    nameEn: string;
+    visibility: string;
+    descriptionLt: string | null;
+    descriptionEn: string | null;
+    descriptionStructuredLt: StructuredDescription | null;
+    descriptionStructuredEn: StructuredDescription | null;
+  };
+  effectiveFrom: string;
+  effectiveUntil: string;
+  groups: Array<{
+    id: string;
+    name: string;
+    weekday: number;
+    startTime: string;
+    durationMin: number;
+    capacity: number;
+    locationName: string;
+    teacherName: string | null;
+    singleVisitEnabled: boolean;
+    singleVisitPriceEur: number | null;
+  }>;
+  plans: Array<{
+    id: string;
+    code: string;
+    nameLt: string;
+    nameEn: string;
+    priceEur: number;
+    sessionCount: number;
+    validityDays: number;
+    makeupLimit: number | null;
+    lateCancelCountsAsUsed: boolean;
+    noShowCountsAsUsed: boolean;
+  }>;
 };
 
 const WEEKDAYS = [
@@ -235,8 +278,9 @@ function numeric(value: string | number) {
 export function RecurringCycleWizard({
   opened,
   initialSite,
+  cycleId,
   onClose,
-  onCreated,
+  onSaved,
 }: RecurringCycleWizardProps) {
   const isMobile = useMediaQuery('(max-width: 48em)');
   const [activeStep, setActiveStep] = useState(0);
@@ -257,11 +301,14 @@ export function RecurringCycleWizard({
   );
   const [effectiveFrom, setEffectiveFrom] = useState(dateOnlyToday());
   const [effectiveUntil, setEffectiveUntil] = useState(addDays(dateOnlyToday(), 84));
+  const [publish, setPublish] = useState(true);
   const [groups, setGroups] = useState<GroupDraft[]>([newGroup()]);
   const [plans, setPlans] = useState<PlanDraft[]>([newPlan()]);
   const [isParsingDescription, setIsParsingDescription] = useState(false);
   const [isTranslatingDescription, setIsTranslatingDescription] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingCycle, setIsLoadingCycle] = useState(false);
+  const [cycleLoadError, setCycleLoadError] = useState('');
 
   const reset = useCallback(() => {
     setActiveStep(0);
@@ -278,16 +325,96 @@ export function RecurringCycleWizard({
     setDescriptionEn(emptyStructuredDescription());
     setEffectiveFrom(dateOnlyToday());
     setEffectiveUntil(addDays(dateOnlyToday(), 84));
+    setPublish(true);
     setGroups([newGroup()]);
     setPlans([newPlan()]);
     setIsParsingDescription(false);
     setIsTranslatingDescription(false);
     setIsSaving(false);
+    setIsLoadingCycle(false);
+    setCycleLoadError('');
+  }, []);
+
+  const loadCycle = useCallback(async (id: string, signal?: AbortSignal) => {
+    setIsLoadingCycle(true);
+    setCycleLoadError('');
+    try {
+      const response = await fetch(`/api/admin/recurring/cycles/${id}`, {
+        cache: 'no-store',
+        signal,
+      });
+      const result = (await response.json()) as { cycle?: RecurringCycleDetail; error?: string };
+      if (!response.ok || !result.cycle) {
+        throw new Error(result.error || 'Nepavyko gauti užsiėmimų ciklo');
+      }
+
+      const cycle = result.cycle;
+      setNameLt(cycle.program.nameLt);
+      setNameEn(cycle.program.nameEn);
+      setSlug(cycle.program.slug);
+      setSlugWasEdited(true);
+      setDescriptionLt({
+        ...emptyStructuredDescription(),
+        ...(cycle.program.descriptionStructuredLt || {}),
+        intro: cycle.program.descriptionStructuredLt?.intro || cycle.program.descriptionLt || '',
+        listItems: cycle.program.descriptionStructuredLt?.listItems || [],
+      });
+      setDescriptionEn({
+        ...emptyStructuredDescription(),
+        ...(cycle.program.descriptionStructuredEn || {}),
+        intro: cycle.program.descriptionStructuredEn?.intro || cycle.program.descriptionEn || '',
+        listItems: cycle.program.descriptionStructuredEn?.listItems || [],
+      });
+      setEffectiveFrom(cycle.effectiveFrom);
+      setEffectiveUntil(cycle.effectiveUntil);
+      setPublish(cycle.program.visibility === 'public');
+      setGroups(
+        cycle.groups.map((group) =>
+          newGroup({
+            id: group.id,
+            name: group.name,
+            weekday: group.weekday,
+            startTime: group.startTime,
+            durationMin: group.durationMin,
+            capacity: group.capacity,
+            locationName: group.locationName,
+            teacherName: group.teacherName || '',
+            singleVisitEnabled: group.singleVisitEnabled,
+            singleVisitPriceEur: group.singleVisitPriceEur ?? '',
+          }),
+        ),
+      );
+      setPlans(
+        cycle.plans.map((plan) =>
+          newPlan({
+            id: plan.id,
+            code: plan.code,
+            nameLt: plan.nameLt,
+            nameEn: plan.nameEn,
+            priceEur: plan.priceEur,
+            sessionCount: plan.sessionCount,
+            validityDays: plan.validityDays,
+            makeupLimit: plan.makeupLimit ?? 0,
+            lateCancelCountsAsUsed: plan.lateCancelCountsAsUsed,
+            noShowCountsAsUsed: plan.noShowCountsAsUsed,
+          }),
+        ),
+      );
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      setCycleLoadError(error instanceof Error ? error.message : 'Nepavyko gauti užsiėmimų ciklo');
+    } finally {
+      if (!signal?.aborted) setIsLoadingCycle(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (opened) reset();
-  }, [opened, reset]);
+    if (!opened) return;
+    reset();
+    const controller = new AbortController();
+    if (cycleId) void loadCycle(cycleId, controller.signal);
+    return () => controller.abort();
+  }, [cycleId, loadCycle, opened, reset]);
 
   const occurrenceEstimate = useMemo(() => {
     const days = cycleDayCount(effectiveFrom, effectiveUntil);
@@ -312,6 +439,26 @@ export function RecurringCycleWizard({
 
   const updatePlan = (key: number, patch: Partial<PlanDraft>) => {
     setPlans((current) => current.map((plan) => (plan.key === key ? { ...plan, ...patch } : plan)));
+  };
+
+  const removeGroup = (group: GroupDraft) => {
+    if (
+      group.id &&
+      !window.confirm(`Pašalinti grupę „${group.name}“ iš ciklo? Išsaugojus ji bus archyvuota.`)
+    ) {
+      return;
+    }
+    setGroups((current) => current.filter((item) => item.key !== group.key));
+  };
+
+  const removePlan = (plan: PlanDraft) => {
+    if (
+      plan.id &&
+      !window.confirm(`Pašalinti planą „${plan.nameLt}“ iš ciklo? Išsaugojus jis bus archyvuotas.`)
+    ) {
+      return;
+    }
+    setPlans((current) => current.filter((item) => item.key !== plan.key));
   };
 
   const loadFacebookSeries = async () => {
@@ -564,7 +711,7 @@ export function RecurringCycleWizard({
     setActiveStep((current) => Math.min(current + 1, 3));
   };
 
-  const createCycle = async () => {
+  const saveCycle = async () => {
     for (let step = 0; step <= 2; step += 1) {
       const error = validateStep(step);
       if (error) {
@@ -576,55 +723,70 @@ export function RecurringCycleWizard({
 
     setIsSaving(true);
     try {
-      const response = await fetch('/api/admin/recurring/cycles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
+      const response = await fetch(
+        cycleId ? `/api/admin/recurring/cycles/${cycleId}` : '/api/admin/recurring/cycles',
+        {
+          method: cycleId ? 'PATCH' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({
+            ...(cycleId ? {} : { site: initialSite }),
+            slug,
+            nameLt: nameLt.trim(),
+            nameEn: nameEn.trim(),
+            descriptionLt: descriptionLt.intro.trim() || undefined,
+            descriptionEn: descriptionEn.intro.trim() || undefined,
+            descriptionStructuredLt: descriptionLt,
+            descriptionStructuredEn: descriptionEn,
+            effectiveFrom,
+            effectiveUntil,
+            publish,
+            groups: groups.map(({ key: _key, ...group }) => ({
+              ...group,
+              teacherName: group.teacherName.trim() || undefined,
+              singleVisitPriceEur: group.singleVisitEnabled
+                ? Number(group.singleVisitPriceEur)
+                : undefined,
+              durationMin: Number(group.durationMin),
+              capacity: Number(group.capacity),
+            })),
+            plans: plans.map(({ key: _key, ...plan }) => ({
+              ...plan,
+              code: plan.code.trim().toUpperCase(),
+              priceEur: Number(plan.priceEur),
+              sessionCount: Number(plan.sessionCount),
+              validityDays: Number(plan.validityDays),
+              makeupLimit: Number(plan.makeupLimit),
+            })),
+          }),
         },
-        body: JSON.stringify({
-          site: initialSite,
-          slug,
-          nameLt: nameLt.trim(),
-          nameEn: nameEn.trim(),
-          descriptionLt: descriptionLt.intro.trim() || undefined,
-          descriptionEn: descriptionEn.intro.trim() || undefined,
-          descriptionStructuredLt: descriptionLt,
-          descriptionStructuredEn: descriptionEn,
-          effectiveFrom,
-          effectiveUntil,
-          publish: true,
-          groups: groups.map(({ key: _key, ...group }) => ({
-            ...group,
-            teacherName: group.teacherName.trim() || undefined,
-            singleVisitPriceEur: group.singleVisitEnabled
-              ? Number(group.singleVisitPriceEur)
-              : undefined,
-            durationMin: Number(group.durationMin),
-            capacity: Number(group.capacity),
-          })),
-          plans: plans.map(({ key: _key, ...plan }) => ({
-            ...plan,
-            code: plan.code.trim().toUpperCase(),
-            priceEur: Number(plan.priceEur),
-            sessionCount: Number(plan.sessionCount),
-            validityDays: Number(plan.validityDays),
-            makeupLimit: Number(plan.makeupLimit),
-          })),
-        }),
-      });
+      );
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Nepavyko sukurti užsiėmimų ciklo');
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            (cycleId ? 'Nepavyko atnaujinti užsiėmimų ciklo' : 'Nepavyko sukurti užsiėmimų ciklo'),
+        );
+      }
 
       notifications.show({
-        message: `Ciklas sukurtas. Sugeneruota ${result.occurrencesCreated} užsiėmimų.`,
+        message: cycleId
+          ? `Ciklas atnaujintas. Sukurta ${result.occurrencesCreated || 0}, atnaujinta ${result.occurrencesUpdated || 0} būsimų užsiėmimų.`
+          : `Ciklas sukurtas. Sugeneruota ${result.occurrencesCreated} užsiėmimų.`,
         color: 'green',
       });
-      await onCreated();
+      await onSaved();
       onClose();
     } catch (error) {
       notifications.show({
-        message: error instanceof Error ? error.message : 'Nepavyko sukurti užsiėmimų ciklo',
+        message:
+          error instanceof Error
+            ? error.message
+            : cycleId
+              ? 'Nepavyko atnaujinti užsiėmimų ciklo'
+              : 'Nepavyko sukurti užsiėmimų ciklo',
         color: 'red',
       });
     } finally {
@@ -636,7 +798,7 @@ export function RecurringCycleWizard({
     <Modal
       opened={opened}
       onClose={close}
-      title="Naujas užsiėmimų ciklas"
+      title={cycleId ? 'Redaguoti užsiėmimų ciklą' : 'Naujas užsiėmimų ciklas'}
       size="xl"
       fullScreen={Boolean(isMobile)}
       closeOnClickOutside={!isSaving}
@@ -644,22 +806,37 @@ export function RecurringCycleWizard({
     >
       <Stack gap="lg">
         <Alert color="blue" icon={<IconCalendarEvent size={18} />}>
-          Kuriama tikroji abonementų programa, jos savaitinės grupės, planai ir visi pasirinkto
-          laikotarpio užsiėmimai.
+          {cycleId
+            ? 'Galite pakeisti ciklo turinį, grupes, planus ir būsimų užsiėmimų laikotarpį. Laiko pakeitimai su esamomis rezervacijomis bus saugiai sustabdyti.'
+            : 'Kuriama tikroji abonementų programa, jos savaitinės grupės, planai ir visi pasirinkto laikotarpio užsiėmimai.'}
         </Alert>
 
-        <Stepper active={activeStep} allowNextStepsSelect={false} size="sm">
+        {isLoadingCycle ? (
+          <Group justify="center" py="xl">
+            <Loader />
+          </Group>
+        ) : null}
+        {cycleLoadError ? <Alert color="red">{cycleLoadError}</Alert> : null}
+
+        <Stepper
+          active={activeStep}
+          allowNextStepsSelect={false}
+          size="sm"
+          style={{ display: isLoadingCycle || cycleLoadError ? 'none' : undefined }}
+        >
           <Stepper.Step label="Ciklas">
             <Stack gap="md" mt="lg">
-              <SegmentedControl
-                fullWidth
-                value={source}
-                onChange={changeSource}
-                data={[
-                  { value: 'manual', label: 'Pildyti rankiniu būdu' },
-                  { value: 'facebook', label: 'Užpildyti iš Facebook' },
-                ]}
-              />
+              {!cycleId ? (
+                <SegmentedControl
+                  fullWidth
+                  value={source}
+                  onChange={changeSource}
+                  data={[
+                    { value: 'manual', label: 'Pildyti rankiniu būdu' },
+                    { value: 'facebook', label: 'Užpildyti iš Facebook' },
+                  ]}
+                />
+              ) : null}
 
               {source === 'facebook' ? (
                 <Card withBorder padding="md">
@@ -739,6 +916,12 @@ export function RecurringCycleWizard({
                   onChange={(event) => setNameEn(event.currentTarget.value)}
                 />
               </SimpleGrid>
+              <Switch
+                checked={publish}
+                onChange={(event) => setPublish(event.currentTarget.checked)}
+                label="Ciklas matomas klientams"
+                description="Išjungus ciklas bus paslėptas nuo naujų pirkėjų."
+              />
               <TextInput
                 label="URL identifikatorius"
                 description="Mažosios raidės, skaičiai ir brūkšneliai"
@@ -812,8 +995,10 @@ export function RecurringCycleWizard({
                   <StructuredDescriptionEditor value={descriptionEn} onChange={setDescriptionEn} />
                 </Stack>
               </Card>
-              <Alert color="green" icon={<IconCheck size={18} />}>
-                Sukurtas ciklas bus iš karto paskelbtas ir matomas klientams.
+              <Alert color={publish ? 'green' : 'yellow'} icon={<IconCheck size={18} />}>
+                {publish
+                  ? 'Ciklas bus paskelbtas ir matomas klientams.'
+                  : 'Ciklas bus išsaugotas, tačiau klientams nebus rodomas.'}
               </Alert>
             </Stack>
           </Stepper.Step>
@@ -846,9 +1031,7 @@ export function RecurringCycleWizard({
                         variant="subtle"
                         aria-label={`Pašalinti ${index + 1} grupę`}
                         disabled={groups.length === 1}
-                        onClick={() =>
-                          setGroups((current) => current.filter((item) => item.key !== group.key))
-                        }
+                        onClick={() => removeGroup(group)}
                       >
                         <IconTrash size={17} />
                       </ActionIcon>
@@ -976,9 +1159,7 @@ export function RecurringCycleWizard({
                         variant="subtle"
                         aria-label={`Pašalinti ${index + 1} planą`}
                         disabled={plans.length === 1}
-                        onClick={() =>
-                          setPlans((current) => current.filter((item) => item.key !== plan.key))
-                        }
+                        onClick={() => removePlan(plan)}
                       >
                         <IconTrash size={17} />
                       </ActionIcon>
@@ -1088,8 +1269,8 @@ export function RecurringCycleWizard({
                         {effectiveUntil}
                       </Text>
                     </div>
-                    <Badge color="green" variant="light">
-                      Bus paskelbtas
+                    <Badge color={publish ? 'green' : 'yellow'} variant="light">
+                      {publish ? 'Bus paskelbtas' : 'Bus paslėptas'}
                     </Badge>
                   </Group>
                   <Divider />
@@ -1135,8 +1316,10 @@ export function RecurringCycleWizard({
                 </Card>
               </SimpleGrid>
 
-              <Alert color="green" icon={<IconCheck size={18} />}>
-                Patvirtinus ciklas ir jo laikai iš karto taps matomi klientų svetainėje.
+              <Alert color={publish ? 'green' : 'yellow'} icon={<IconCheck size={18} />}>
+                {publish
+                  ? 'Patvirtinus ciklas ir jo laikai taps matomi klientų svetainėje.'
+                  : 'Patvirtinus pakeitimai bus išsaugoti, bet ciklas klientams liks paslėptas.'}
               </Alert>
             </Stack>
           </Stepper.Step>
@@ -1150,13 +1333,13 @@ export function RecurringCycleWizard({
           >
             {activeStep === 0 ? 'Uždaryti' : 'Atgal'}
           </Button>
-          {activeStep < 3 ? (
+          {!isLoadingCycle && !cycleLoadError && activeStep < 3 ? (
             <Button onClick={next}>Toliau</Button>
-          ) : (
-            <Button loading={isSaving} leftSection={<IconCheck size={17} />} onClick={createCycle}>
-              Sukurti ciklą
+          ) : !isLoadingCycle && !cycleLoadError ? (
+            <Button loading={isSaving} leftSection={<IconCheck size={17} />} onClick={saveCycle}>
+              {cycleId ? 'Išsaugoti pakeitimus' : 'Sukurti ciklą'}
             </Button>
-          )}
+          ) : null}
         </Group>
       </Stack>
     </Modal>
