@@ -1,0 +1,234 @@
+.group {
+  min-width: 0;
+}
+
+.scroller {
+  --register-surface: var(--mantine-color-body);
+  --register-header: var(--mantine-color-default);
+  overflow: auto;
+  max-height: 520px;
+  max-width: 100%;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 6px;
+  position: relative;
+  isolation: isolate;
+}
+
+.table {
+  border-spacing: 0;
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  font-size: var(--mantine-font-size-sm);
+}
+
+.table th,
+.table td {
+  border-right: 1px solid var(--mantine-color-default-border);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  padding: 0;
+  min-width: 56px;
+  width: 56px;
+  text-align: center;
+  background: var(--register-surface);
+}
+
+.table thead th {
+  position: sticky;
+  z-index: 2;
+  background: var(--register-header);
+}
+
+.monthRow th {
+  top: 0;
+  height: 34px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  border-right-width: 2px;
+}
+
+.dateRow th {
+  top: 34px;
+  height: 44px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dateRow small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--mantine-color-dimmed);
+}
+
+.dateRow [data-cancelled="true"] {
+  text-decoration: line-through;
+  color: var(--mantine-color-dimmed);
+}
+
+.table .participant {
+  width: 230px;
+  min-width: 230px;
+  max-width: 230px;
+  padding: 10px 12px;
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  font-weight: 400;
+  border-right-width: 2px;
+  overflow-wrap: anywhere;
+}
+
+.table thead .participant {
+  z-index: 3;
+  font-weight: 600;
+}
+
+.table [data-month-start="true"] {
+  border-left: 1px solid var(--mantine-color-dimmed);
+}
+
+.table [data-today="true"] {
+  box-shadow: inset 0 0 0 1px var(--mantine-primary-color-filled);
+}
+
+.name {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}
+
+.mark,
+.key {
+  color: var(--mark-color);
+  background: var(--mark-bg);
+  font-weight: 700;
+}
+
+.mark {
+  border: 0;
+  border-radius: 0;
+  width: 100%;
+  min-height: 54px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.mark small {
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.mark:hover {
+  filter: brightness(0.93);
+}
+
+.mark:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: -2px;
+}
+
+.mark:disabled {
+  cursor: default;
+}
+
+.mark[data-tone="empty"] {
+  --mark-bg: transparent;
+  --mark-color: var(--mantine-color-dimmed);
+}
+
+.emptyHint {
+  opacity: 0;
+}
+
+.mark:hover .emptyHint,
+.mark:focus-visible .emptyHint {
+  opacity: 1;
+}
+
+.mark[data-uncovered="true"] {
+  box-shadow: inset 0 -3px var(--mantine-color-orange-6);
+}
+
+.mark[data-tone="planned"],
+.key[data-tone="planned"] {
+  --mark-bg: var(--mantine-color-blue-1);
+  --mark-color: var(--mantine-color-blue-9);
+}
+
+.mark[data-tone="attended"],
+.key[data-tone="attended"] {
+  --mark-bg: var(--mantine-color-green-1);
+  --mark-color: var(--mantine-color-green-9);
+}
+
+.mark[data-tone="cancelled"],
+.key[data-tone="cancelled"] {
+  --mark-bg: var(--mantine-color-gray-1);
+  --mark-color: var(--mantine-color-gray-7);
+}
+
+.mark[data-tone="missed"],
+.key[data-tone="missed"] {
+  --mark-bg: var(--mantine-color-red-1);
+  --mark-color: var(--mantine-color-red-9);
+}
+
+:global([data-mantine-color-scheme="dark"]) .mark[data-tone="planned"],
+:global([data-mantine-color-scheme="dark"]) .key[data-tone="planned"] {
+  --mark-bg: #1d3b52;
+  --mark-color: #a5d8ff;
+}
+
+:global([data-mantine-color-scheme="dark"]) .mark[data-tone="attended"],
+:global([data-mantine-color-scheme="dark"]) .key[data-tone="attended"] {
+  --mark-bg: #23402c;
+  --mark-color: #b2f2bb;
+}
+
+:global([data-mantine-color-scheme="dark"]) .mark[data-tone="cancelled"],
+:global([data-mantine-color-scheme="dark"]) .key[data-tone="cancelled"] {
+  --mark-bg: #35383c;
+  --mark-color: #ced4da;
+}
+
+:global([data-mantine-color-scheme="dark"]) .mark[data-tone="missed"],
+:global([data-mantine-color-scheme="dark"]) .key[data-tone="missed"] {
+  --mark-bg: #532b2d;
+  --mark-color: #ffc9c9;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 11px;
+  color: var(--mantine-color-dimmed);
+}
+
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.key {
+  border-radius: 3px;
+  min-width: 20px;
+  text-align: center;
+  padding: 2px 4px;
+}
+
+.table .empty {
+  text-align: left;
+  padding: 18px 12px;
+  color: var(--mantine-color-dimmed);
+}
+
+@media (max-width: 36em) {
+  .table .participant {
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+    padding: 8px;
+  }
+}
