@@ -1,8 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
+import { localDevelopmentAccess } from '@/lib/auth/local-development';
 
 export default auth((request: NextRequest & { auth?: unknown }) => {
+  if (localDevelopmentAccess(request)) return NextResponse.next();
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith('/api/admin/workshops')) {

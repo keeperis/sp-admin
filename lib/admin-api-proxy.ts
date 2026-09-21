@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
+import { localDevelopmentAccess } from '@/lib/auth/local-development';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4100';
 
@@ -78,7 +79,9 @@ export async function proxyAdminApiRequest(
     requestedWith: request.headers.get('x-requested-with') || '',
   });
 
-  const session = await auth();
+  const session = localDevelopmentAccess(request)
+    ? { user: { email: 'local-development@localhost' } }
+    : await auth();
   if (!session?.user?.email) {
     console.warn('[sp-admin:admin-api-proxy] unauthorized request', {
       method: request.method,

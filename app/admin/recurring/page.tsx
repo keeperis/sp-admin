@@ -13,6 +13,7 @@ import {
   Loader,
   Modal,
   NumberInput,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -40,8 +41,9 @@ import {
   IconRefresh,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import type { SiteKey } from '@/lib/site';
+import { GroupParticipants } from './GroupParticipants';
 import { RecurringCycleWizard } from './RecurringCycleWizard';
 
 type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent';
@@ -137,6 +139,7 @@ const ADMIN_VALUE_LABELS: Record<string, string> = {
   draft: 'Juodraštis',
   late_cancel: 'Atšauktas per vėlai',
   makeup: 'Perkeltas užsiėmimas',
+  manual: 'Pridėta rankiniu būdu',
   manual_reveal: 'Parodyta rankiniu būdu',
   no_show: 'Neatvyko',
   not_applicable: 'Netaikoma',
@@ -150,6 +153,7 @@ const ADMIN_VALUE_LABELS: Record<string, string> = {
   refund: 'Pinigų grąžinimas',
   refund_exception: 'Pinigų grąžinimo išimtis',
   refunded: 'Pinigai grąžinti',
+  released: 'Vieta atlaisvinta',
   resume: 'Atnaujinimas',
   scheduled: 'Suplanuota',
   self_service: 'Savitarna',
@@ -256,6 +260,7 @@ async function copyToClipboard(value: string) {
 }
 
 export default function RecurringAdminPage() {
+  const { mutate: refreshRecurringCache } = useSWRConfig();
   const [site, setSite] = useState<SiteKey>('ceramics');
   const [cycleWizardOpened, setCycleWizardOpened] = useState(false);
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
@@ -344,7 +349,6 @@ export default function RecurringAdminPage() {
     const params = new URLSearchParams({
       site: selectedSubscriptionSite,
       subscriptionId: selectedSubscriptionId,
-      dateFrom: todayDateOnly(),
     });
     return `/api/admin/recurring/reservations?${params.toString()}`;
   }, [selectedSubscriptionId, selectedSubscriptionSite]);
@@ -810,20 +814,24 @@ export default function RecurringAdminPage() {
               Abonementų, jų būsenų, pinigų grąžinimų ir veiksmų istorijos valdymas
             </Text>
           </div>
-          <Group>
-            <Button
-              leftSection={<IconPlus size={17} />}
-              onClick={() => {
-                setEditingCycleId(null);
-                setCycleWizardOpened(true);
-              }}
-            >
-              Naujas užsiėmimų ciklas
-            </Button>
-            <Button variant="light" onClick={clearFilters}>
-              Išvalyti filtrus
-            </Button>
-          </Group>
+          <Button
+            leftSection={<IconPlus size={17} />}
+            onClick={() => {
+              setEditingCycleId(null);
+              setCycleWizardOpened(true);
+            }}
+          >
+            Naujas užsiėmimų ciklas
+          </Button>
+        </Group>
+
+        <Group>
+          <SegmentedControl
+            aria-label="Projektas"
+            data={PROJECT_OPTIONS}
+            value={site}
+            onChange={(value) => setSite(value === 'yoga' ? 'yoga' : 'ceramics')}
+          />
         </Group>
 
         <RecurringCycleWizard
@@ -835,37 +843,29 @@ export default function RecurringAdminPage() {
             setEditingCycleId(null);
           }}
           onSaved={async () => {
-            await Promise.all([mutatePrograms(), mutateGroupsConfig(), mutateObservability()]);
+            await Promise.all([
+              mutatePrograms(),
+              mutateGroupsConfig(),
+              mutateObservability(),
+              refreshRecurringCache(
+                (key) =>
+                  typeof key === 'string' &&
+                  key.startsWith('/api/admin/recurring/groups/') &&
+                  key.includes('/attendance?'),
+              ),
+            ]);
           }}
         />
 
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Group align="flex-end" wrap="wrap">
-            <Select
-              label="Projektas"
-              data={PROJECT_OPTIONS}
-              value={site}
-              onChange={(value) => setSite(value === 'yoga' ? 'yoga' : 'ceramics')}
-              allowDeselect={false}
-              w={170}
-            />
-            <Select
-              label="Statusas"
-              data={STATUS_OPTIONS}
-              value={status}
-              onChange={(value) => setStatus(value || '')}
-              allowDeselect={false}
-              w={220}
-            />
-            <TextInput
-              label="Kliento el. paštas"
-              placeholder="vardas@example.com"
-              value={customerEmail}
-              onChange={(event) => setCustomerEmail(event.currentTarget.value)}
-              style={{ flex: 1, minWidth: 280 }}
-            />
-          </Group>
-        </Card>
+        <GroupParticipants
+          key={site}
+          site={site}
+          programs={recurringPrograms}
+          groups={recurringGroups}
+          loading={isLoadingPrograms || isLoadingGroupsConfig}
+          loadError={programsError?.message || groupsConfigError?.message}
+          onViewParticipant={openSubscriptionDetails}
+        />
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Stack gap="md">
@@ -1646,6 +1646,27 @@ export default function RecurringAdminPage() {
             </Text>
           </Group>
 
+          <Group align="flex-end" wrap="wrap" mb="md">
+            <Select
+              label="Abonemento būsena"
+              data={STATUS_OPTIONS}
+              value={status}
+              onChange={(value) => setStatus(value || '')}
+              allowDeselect={false}
+              style={{ flex: '1 1 180px', minWidth: 0 }}
+            />
+            <TextInput
+              label="Kliento el. paštas"
+              placeholder="vardas@example.com"
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.currentTarget.value)}
+              style={{ flex: '2 1 240px', minWidth: 0 }}
+            />
+            <Button variant="light" onClick={clearFilters}>
+              Išvalyti filtrus
+            </Button>
+          </Group>
+
           {error ? (
             <Alert color="red" title="Klaida">
               {error.message}
@@ -1725,6 +1746,10 @@ export default function RecurringAdminPage() {
                         variant="subtle"
                         color="teal"
                         aria-label="Siųsti prisijungimo nuorodą el. paštu"
+                        disabled={!subscription.customerEmail}
+                        title={
+                          !subscription.customerEmail ? 'Nenurodytas dalyvio el. paštas' : undefined
+                        }
                         loading={actionLoading === `issue-magic-link-email-${subscription.id}`}
                         onClick={() =>
                           void issueAdminMagicLink({
@@ -1739,6 +1764,10 @@ export default function RecurringAdminPage() {
                         variant="subtle"
                         color="grape"
                         aria-label="Išduoti prisijungimo nuorodą"
+                        disabled={!subscription.customerEmail}
+                        title={
+                          !subscription.customerEmail ? 'Nenurodytas dalyvio el. paštas' : undefined
+                        }
                         loading={actionLoading === `issue-magic-link-manual-${subscription.id}`}
                         onClick={() => requestManualMagicLinkReveal(subscription.id)}
                       >
@@ -1760,7 +1789,12 @@ export default function RecurringAdminPage() {
 
         <Modal
           opened={Boolean(selectedSubscription)}
-          onClose={() => setSelectedSubscription(null)}
+          onClose={() => {
+            setSelectedSubscription(null);
+            void refreshRecurringCache(
+              (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
+            );
+          }}
           title="Abonemento informacija"
           size="90%"
         >
@@ -1778,13 +1812,28 @@ export default function RecurringAdminPage() {
                       <strong>Klientas:</strong> {selectedSubscription.subscription.customerName}
                     </Text>
                     <Text>
-                      <strong>El. paštas:</strong> {selectedSubscription.subscription.customerEmail}
+                      <strong>El. paštas:</strong>{' '}
+                      {selectedSubscription.subscription.customerEmail || 'Nenurodytas'}
                     </Text>
                     <Text>
                       <strong>Telefonas:</strong>{' '}
                       {selectedSubscription.subscription.customerPhone || '-'}
                     </Text>
                     <Text>
+                      <strong>Registracija:</strong>{' '}
+                      {selectedSubscription.subscription.purchaseChannel === 'admin'
+                        ? 'Pridėta administratoriaus'
+                        : selectedSubscription.subscription.purchaseChannel === 'corporate_wallet'
+                          ? 'Įmonės abonementas'
+                          : 'Per svetainę'}
+                    </Text>
+                    <Text>
+                      <strong>Grupė:</strong>{' '}
+                      {recurringGroups.find(
+                        (group) => group.id === selectedSubscription.subscription.defaultGroupId,
+                      )?.name || '-'}
+                    </Text>
+                    <Text component="div">
                       <strong>Statusas:</strong>{' '}
                       <Badge
                         color={statusColor(selectedSubscription.subscription.status)}
@@ -1853,6 +1902,7 @@ export default function RecurringAdminPage() {
                         size="xs"
                         variant="light"
                         leftSection={<IconMail size={14} />}
+                        disabled={!selectedSubscription.subscription.customerEmail}
                         loading={
                           actionLoading ===
                           `issue-magic-link-email-${selectedSubscription.subscription.id}`
@@ -1869,6 +1919,7 @@ export default function RecurringAdminPage() {
                       <Button
                         size="xs"
                         leftSection={<IconLink size={14} />}
+                        disabled={!selectedSubscription.subscription.customerEmail}
                         loading={
                           actionLoading ===
                           `issue-magic-link-manual-${selectedSubscription.subscription.id}`
@@ -1880,6 +1931,12 @@ export default function RecurringAdminPage() {
                         Išduoti prisijungimo nuorodą
                       </Button>
                     </Group>
+                    {!selectedSubscription.subscription.customerEmail && (
+                      <Text size="sm" c="dimmed">
+                        El. paštas nenurodytas — prisijungimo prie savitarnos nuorodos išduoti
+                        negalima.
+                      </Text>
+                    )}
                   </Stack>
                 </Card>
               </SimpleGrid>
@@ -2026,7 +2083,7 @@ export default function RecurringAdminPage() {
                           <strong>Mokėjimo paslaugų teikėjas:</strong>{' '}
                           {adminValueLabel(selectedSubscription.refund?.paymentProvider)}
                         </Text>
-                        <Text>
+                        <Text component="div">
                           <strong>Mokėjimo būsena:</strong>{' '}
                           <Badge
                             color={statusColor(selectedSubscription.refund?.paymentStatus)}
@@ -2035,7 +2092,7 @@ export default function RecurringAdminPage() {
                             {adminValueLabel(selectedSubscription.refund?.paymentStatus)}
                           </Badge>
                         </Text>
-                        <Text>
+                        <Text component="div">
                           <strong>Vykdymo būsena:</strong>{' '}
                           <Badge
                             color={statusColor(selectedSubscription.refund?.execution?.state)}
@@ -2183,7 +2240,7 @@ export default function RecurringAdminPage() {
                     <div>
                       <Title order={5}>Operacinės rezervacijos</Title>
                       <Text size="sm" c="dimmed">
-                        Būsimos šio abonemento rezervacijos ir jų valdymas
+                        Šio abonemento rezervacijų istorija ir jų valdymas
                       </Text>
                     </div>
                     <Button
@@ -2252,6 +2309,11 @@ export default function RecurringAdminPage() {
                                 <Badge variant="light">
                                   {adminValueLabel(reservation.reservationType)}
                                 </Badge>
+                                {reservation.coverage === 'uncovered' && (
+                                  <Text size="xs" c="orange">
+                                    Be abonemento · apmokėjimas nesuregistruotas
+                                  </Text>
+                                )}
                               </Table.Td>
                               <Table.Td>
                                 <Badge color={statusColor(reservation.status)} variant="light">

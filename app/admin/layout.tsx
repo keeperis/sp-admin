@@ -26,6 +26,7 @@ import {
   IconMoon,
   IconQrcode,
   IconRepeat,
+  IconShoppingBag,
   IconSun,
   IconTicket,
 } from '@tabler/icons-react';
@@ -45,6 +46,7 @@ const navItems = [
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
   { href: '/admin/content', label: 'Turinys', icon: IconEdit },
+  { href: '/admin/shop', label: 'Parduotuvė', icon: IconShoppingBag },
   { href: '/admin/legal', label: 'Teisinė informacija', icon: IconFileDescription },
   { href: '/admin/meta', label: 'Meta', icon: IconBrandFacebook },
 ];
@@ -61,6 +63,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const [opened, { toggle, close }] = useDisclosure(false);
   const [gateState, setGateState] = useState<AdminGateState>('checking');
+  const [localMode, setLocalMode] = useState(false);
   const isDark = theme === 'dark';
   const bg = isDark ? adminDarkBg : adminLightBg;
 
@@ -69,6 +72,22 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
     async function guardAdminAccess() {
       const callbackUrl = pathname || '/admin';
+
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const response = await fetch('/api/admin/dev-access', { cache: 'no-store' });
+          if (response.ok && (await response.json()).enabled) {
+            if (!cancelled) {
+              setLocalMode(true);
+              setGateState('granted');
+            }
+            return;
+          }
+        } catch {
+          /* Normal authentication remains required. */
+        }
+      }
+      if (cancelled) return;
 
       if (status === 'loading') {
         setGateState('checking');
@@ -174,6 +193,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 SoulPoetry administravimas
               </Text>
             </Group>
+            {localMode && (
+              <Text size="xs" c="orange">
+                LOCAL · prisijungimas išjungtas
+              </Text>
+            )}
             {session?.user && (
               <Menu shadow="md" width={200}>
                 <Menu.Target>
