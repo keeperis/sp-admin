@@ -47,6 +47,28 @@ export type GroupMembership = {
   startsOn: string;
   endsOn: string | null;
 };
+
+// The group badge describes seats already promised, including members whose
+// first pass starts later. A departing member and their replacement share a
+// seat when their membership windows do not overlap.
+export function reservedMembershipCount(
+  memberships: GroupMembership[],
+  today: string,
+  effectiveUntil?: string | null,
+) {
+  const dates = new Set([today, ...memberships.map((member) => member.startsOn)]);
+  return Math.max(
+    0,
+    ...[...dates]
+      .filter((date) => date >= today && (!effectiveUntil || date <= effectiveUntil))
+      .map(
+        (date) =>
+          memberships.filter(
+            (member) => member.startsOn <= date && (!member.endsOn || date < member.endsOn),
+          ).length,
+      ),
+  );
+}
 export type RegisterColumn = { date: string; time: string; occurrence?: RegisterOccurrence };
 export type RegisterRow = {
   key: string;

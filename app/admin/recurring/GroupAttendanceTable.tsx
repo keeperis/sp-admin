@@ -27,6 +27,7 @@ import {
   registerColumns,
   registerMonths,
   registerRows,
+  reservedMembershipCount,
 } from '@/lib/recurring/attendance-register';
 import { participantStatusLabels, vilniusDate } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
@@ -107,10 +108,15 @@ export function GroupAttendanceTable({
   const months = registerMonths(columns);
   const rows = data ? registerRows(data) : [];
   const today = vilniusDate();
+  const reservedSeats = Math.max(
+    data?.seats?.reservedCount || 0,
+    reservedMembershipCount(data?.memberships || [], today, group.effectiveUntil),
+  );
+  const fullyAllocated = Boolean(
+    data?.seats && (data.seats.availableCount === 0 || reservedSeats >= data.seats.capacity),
+  );
   const onlyRenewals = Boolean(
-    data?.seats &&
-      data.seats.availableCount === 0 &&
-      !data.memberships?.some((member) => member.endsOn && member.endsOn > today),
+    fullyAllocated && !data?.memberships?.some((member) => member.endsOn && member.endsOn > today),
   );
   const endMinutes =
     Number(group.startTime.slice(0, 2)) * 60 + Number(group.startTime.slice(3)) + group.durationMin;
@@ -135,8 +141,8 @@ export function GroupAttendanceTable({
           </div>
           <Group gap="xs">
             {data?.seats && (
-              <Badge variant="light" color={data.seats.availableCount === 0 ? 'orange' : 'green'}>
-                Rezervuota: {data.seats.reservedCount}/{data.seats.capacity}
+              <Badge variant="light" color={fullyAllocated ? 'orange' : 'green'}>
+                Rezervuota: {reservedSeats}/{data.seats.capacity}
               </Badge>
             )}
             {data && (
@@ -156,7 +162,7 @@ export function GroupAttendanceTable({
             </Button>
           </Group>
         </Group>
-        {data?.seats?.availableCount === 0 && (
+        {fullyAllocated && (
           <Text size="sm" c="dimmed">
             Grupė pilna. Vieta saugoma iki nurodytos lankymo pabaigos. Esamo dalyvio abonemento
             pratęsimas tuo pačiu vardu ir el. paštu antros vietos neužima.

@@ -12,8 +12,29 @@ import {
   registerMonths,
   registerRows,
   reservationMark,
+  reservedMembershipCount,
 } from './attendance-register';
 import type { ParticipantSubscription } from './participants';
+
+test('group badge includes future accepted members, not just currently paid visits', () => {
+  const memberships = Array.from({ length: 8 }, (_, index) => ({
+    key: String(index),
+    subscriptionIds: [String(index)],
+    startsOn: index < 5 ? '2026-09-01' : '2026-10-07',
+    endsOn: null,
+  }));
+  assert.equal(reservedMembershipCount(memberships, '2026-09-23'), 8);
+});
+
+test('departing members and future replacements do not double-count a promised seat', () => {
+  const memberships = [
+    { key: 'old', subscriptionIds: ['old'], startsOn: '2026-09-01', endsOn: '2026-10-01' },
+    { key: 'new', subscriptionIds: ['new'], startsOn: '2026-10-01', endsOn: null },
+  ];
+  assert.equal(reservedMembershipCount(memberships, '2026-09-23'), 1);
+  assert.equal(reservedMembershipCount(memberships, '2026-10-01'), 1);
+  assert.equal(reservedMembershipCount(memberships, '2026-10-01', '2026-09-30'), 0);
+});
 
 const group = {
   id: 'group',
