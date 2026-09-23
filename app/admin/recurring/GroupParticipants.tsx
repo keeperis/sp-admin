@@ -100,7 +100,7 @@ export function GroupParticipants({
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder style={{ minWidth: 0 }}>
+    <Card shadow="sm" p={{ base: 6, sm: 'lg' }} radius="md" withBorder style={{ minWidth: 0 }}>
       <Stack gap="lg" style={{ minWidth: 0 }}>
         <Stack gap="xs">
           <Group justify="space-between" align="flex-start" wrap="nowrap">

@@ -38,6 +38,14 @@ export type AttendanceRegister = {
   subscriptions: ParticipantSubscription[];
   reservations: RegisterReservation[];
   homeGroups?: Pick<RegisterGroup, 'id' | 'weekday' | 'startTime'>[];
+  memberships?: GroupMembership[];
+  seats?: { capacity: number; reservedCount: number; availableCount: number };
+};
+export type GroupMembership = {
+  key: string;
+  subscriptionIds: string[];
+  startsOn: string;
+  endsOn: string | null;
 };
 export type RegisterColumn = { date: string; time: string; occurrence?: RegisterOccurrence };
 export type RegisterRow = {

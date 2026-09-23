@@ -224,11 +224,82 @@
   color: var(--mantine-color-dimmed);
 }
 
-@media (max-width: 36em) {
+.membershipCompact {
+  display: none;
+}
+
+@media (max-width: 48em) {
+  .table {
+    font-size: 11px;
+  }
+
+  .table th,
+  .table td {
+    width: 28px;
+    min-width: 28px;
+  }
+
   .table .participant {
-    width: 160px;
-    min-width: 160px;
-    max-width: 160px;
-    padding: 8px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    padding: 3px 4px;
+  }
+
+  .name {
+    display: block;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .monthRow th {
+    height: 26px;
+    padding: 2px 3px;
+    font-size: 10px;
+  }
+
+  .dateRow th {
+    top: 26px;
+    height: 34px;
+  }
+
+  .dateRow small {
+    font-size: 8px;
+  }
+
+  .mark {
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .mark small {
+    font-size: 8px;
+    margin-left: 0;
+  }
+
+  .membership {
+    --membership-control-height: 24px;
+    display: flex;
+    padding-inline: 0;
+    font-size: 9px;
+    line-height: 1.1;
+  }
+
+  .membership :global(.mantine-Button-section) {
+    margin-inline-end: 3px;
+  }
+
+  .membershipLabel {
+    display: none;
+  }
+
+  .membershipCompact {
+    display: inline;
+    white-space: nowrap;
+  }
+
+  .legend {
+    font-size: 10px;
+    gap: 5px 8px;
   }
 }

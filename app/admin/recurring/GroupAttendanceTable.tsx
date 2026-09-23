@@ -31,6 +31,7 @@ import {
 import { participantStatusLabels, vilniusDate } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
 import { AttendanceCell, type AttendanceChange } from './AttendanceCell';
+import { GroupMembershipEditor } from './GroupMembershipEditor';
 import styles from './GroupAttendanceTable.module.css';
 
 const fetcher = async (url: string): Promise<AttendanceRegister> => {
@@ -106,6 +107,11 @@ export function GroupAttendanceTable({
   const months = registerMonths(columns);
   const rows = data ? registerRows(data) : [];
   const today = vilniusDate();
+  const onlyRenewals = Boolean(
+    data?.seats &&
+      data.seats.availableCount === 0 &&
+      !data.memberships?.some((member) => member.endsOn && member.endsOn > today),
+  );
   const endMinutes =
     Number(group.startTime.slice(0, 2)) * 60 + Number(group.startTime.slice(3)) + group.durationMin;
   const endTime = `${String(Math.floor(endMinutes / 60) % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
@@ -115,7 +121,7 @@ export function GroupAttendanceTable({
   };
 
   return (
-    <Paper withBorder radius="md" p="md" className={styles.group}>
+    <Paper withBorder radius="md" p={{ base: 8, sm: 'md' }} className={styles.group}>
       <Stack gap="sm">
         <Group justify="space-between" align="flex-start">
           <div>
@@ -128,6 +134,11 @@ export function GroupAttendanceTable({
             </Text>
           </div>
           <Group gap="xs">
+            {data?.seats && (
+              <Badge variant="light" color={data.seats.availableCount === 0 ? 'orange' : 'green'}>
+                Rezervuota: {data.seats.reservedCount}/{data.seats.capacity}
+              </Badge>
+            )}
             {data && (
               <Badge variant="light" color="gray">
                 Dalyvių: {rows.length}
@@ -139,12 +150,18 @@ export function GroupAttendanceTable({
               leftSection={<IconPlus size={14} />}
               disabled={!canAdd}
               onClick={onAddParticipant}
-              aria-label={`Pridėti dalyvį: ${group.name}`}
+              aria-label={`${onlyRenewals ? 'Pratęsti abonementą' : 'Pridėti dalyvį'}: ${group.name}`}
             >
-              Pridėti dalyvį
+              {onlyRenewals ? 'Pratęsti abonementą' : 'Pridėti dalyvį'}
             </Button>
           </Group>
         </Group>
+        {data?.seats?.availableCount === 0 && (
+          <Text size="sm" c="dimmed">
+            Grupė pilna. Vieta saugoma iki nurodytos lankymo pabaigos. Esamo dalyvio abonemento
+            pratęsimas tuo pačiu vardu ir el. paštu antros vietos neužima.
+          </Text>
+        )}
         {saveError && (
           <Alert
             color="red"
@@ -235,6 +252,21 @@ export function GroupAttendanceTable({
                             Abonementų: {row.subscriptions.length}
                           </Text>
                         )}
+                        {data.memberships
+                          ?.filter((member) =>
+                            member.subscriptionIds.some((id) =>
+                              row.subscriptions.some((item) => item.id === id),
+                            ),
+                          )
+                          .map((membership) => (
+                            <GroupMembershipEditor
+                              key={membership.key}
+                              membership={membership}
+                              name={row.name}
+                              groupId={group.id}
+                              site={site}
+                            />
+                          ))}
                       </th>
                       {columns.map((column, columnIndex) => {
                         const reservations = row.cells.get(column.date) || [];
