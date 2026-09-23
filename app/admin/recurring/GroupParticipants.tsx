@@ -374,7 +374,6 @@ function ManualParticipantForm({
             label="Lankymo pradžia"
             required
             disabled={saving}
-            min={group?.effectiveFrom}
             max={group?.effectiveUntil || undefined}
             description={
               group ? `Užsiėmimai ${WEEKDAYS[group.weekday - 1]}, ${group.startTime}.` : undefined
