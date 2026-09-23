@@ -20,7 +20,7 @@ import { notifications } from '@mantine/notifications';
 import { IconRefresh } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { nextGroupDate, vilniusDate } from '@/lib/recurring/participants';
+import { nextGroupDate } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
 import { GroupAttendanceTable } from './GroupAttendanceTable';
 
@@ -374,7 +374,7 @@ function ManualParticipantForm({
             label="Lankymo pradžia"
             required
             disabled={saving}
-            min={group && group.effectiveFrom > vilniusDate() ? group.effectiveFrom : vilniusDate()}
+            min={group?.effectiveFrom}
             max={group?.effectiveUntil || undefined}
             description={
               group ? `Užsiėmimai ${WEEKDAYS[group.weekday - 1]}, ${group.startTime}.` : undefined
