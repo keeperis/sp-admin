@@ -243,7 +243,7 @@ export function registerRows(data: AttendanceRegister) {
           normalize(subscription.customerEmail),
           normalize(subscription.customerName),
         ])
-      : subscription.id;
+      : subscription.participantId || subscription.id;
     let row = rows.get(key);
     if (!row) {
       row = {

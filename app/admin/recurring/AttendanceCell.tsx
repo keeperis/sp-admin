@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu } from '@mantine/core';
-import { IconCheck, IconUser, IconX } from '@tabler/icons-react';
+import { IconCalendarPlus, IconCheck, IconTicket, IconUser, IconX } from '@tabler/icons-react';
 import {
   makeupProgressLabel,
   makeupSourceLabel,
@@ -11,6 +11,7 @@ import {
   type RegisterRow,
   reservationMark,
 } from '@/lib/recurring/attendance-register';
+import type { ParticipantEnrollment } from '@/lib/recurring/participants';
 import styles from './GroupAttendanceTable.module.css';
 
 export type AttendanceChange = {
@@ -27,6 +28,8 @@ export function AttendanceCell({
   busy,
   onRecord,
   onViewParticipant,
+  onEnroll,
+  singleVisitEnabled = false,
 }: {
   row: RegisterRow;
   column: RegisterColumn;
@@ -34,6 +37,8 @@ export function AttendanceCell({
   busy: boolean;
   onRecord: (change: AttendanceChange) => Promise<void>;
   onViewParticipant: (id: string) => Promise<void>;
+  onEnroll?: (enrollment: ParticipantEnrollment) => void;
+  singleVisitEnabled?: boolean;
 }) {
   const subscription = reservation
     ? row.subscriptions.find((item) => item.id === reservation.subscriptionId)
@@ -84,12 +89,26 @@ export function AttendanceCell({
           <br />
           {column.date} · {column.time}
         </Menu.Label>
-        {!reservation && (
-          <Menu.Label>
-            Be abonemento. Likutis nesumažės,
-            <br />
-            apmokėjimas nebus registruojamas.
-          </Menu.Label>
+        {!reservation && canRecord && onEnroll && subscription && (
+          <>
+            <Menu.Item
+              leftSection={<IconCalendarPlus size={16} />}
+              onClick={() => onEnroll({ subscription, date: column.date, kind: 'pass' })}
+            >
+              Naujas abonemento periodas
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<IconTicket size={16} />}
+              disabled={!singleVisitEnabled}
+              onClick={() => onEnroll({ subscription, date: column.date, kind: 'single_visit' })}
+            >
+              Vienas apsilankymas
+            </Menu.Item>
+            {!singleVisitEnabled && (
+              <Menu.Label>Grupėje vienkartiniai apsilankymai neleidžiami.</Menu.Label>
+            )}
+            <Menu.Divider />
+          </>
         )}
         {uncovered && <Menu.Label>Be abonemento · apmokėjimas nesuregistruotas</Menu.Label>}
         {replacement && (
@@ -104,6 +123,7 @@ export function AttendanceCell({
         )}
         {canRecord && (
           <>
+            {!reservation && <Menu.Label>Tik lankymas (be abonemento ir apmokėjimo)</Menu.Label>}
             <Menu.Item
               color="green"
               leftSection={<IconCheck size={16} />}

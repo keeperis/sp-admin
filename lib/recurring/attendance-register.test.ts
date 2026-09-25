@@ -83,6 +83,22 @@ const data = (extra: Partial<AttendanceRegister> = {}): AttendanceRegister => ({
   ...extra,
 });
 
+test('explicit renewals and single visits stay in one row without merging unrelated namesakes', () => {
+  const rows = registerRows(
+    data({
+      subscriptions: [
+        member('original', { customerEmail: '', status: 'expired' }),
+        member('renewal', { customerEmail: '', participantId: 'original' }),
+        member('single', { customerEmail: '', participantId: 'original', totalSessions: 1 }),
+        member('different-person', { customerEmail: '' }),
+      ],
+      reservations: [],
+    }),
+  );
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((row) => row.key === 'original')?.subscriptions.length, 3);
+});
+
 test('date columns cover finite cycle and use Vilnius time for persisted exceptions', () => {
   const columns = registerColumns(group, [occurrence]);
   assert.deepEqual(

@@ -18,9 +18,15 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconRefresh } from '@tabler/icons-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { nextGroupDate } from '@/lib/recurring/participants';
+import {
+  type EnrollmentPlan,
+  enrollmentPlans,
+  enrollmentPrice,
+  preferredEnrollmentPlan,
+} from '@/lib/recurring/enrollment-plans';
+import { nextGroupDate, type ParticipantEnrollment } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
 import { GroupAttendanceTable } from './GroupAttendanceTable';
 
@@ -37,13 +43,6 @@ type ClassGroup = {
   effectiveUntil: string | null;
   singleVisitEnabled: boolean;
   singleVisitPriceEur: number | null;
-};
-type Plan = {
-  id: string;
-  nameLt: string;
-  sessionCount: number;
-  validityDays: number;
-  priceEur: number;
 };
 
 const WEEKDAYS = [
@@ -83,6 +82,7 @@ export function GroupParticipants({
   const [manualOpened, setManualOpened] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
   const [manualGroupId, setManualGroupId] = useState<string>();
+  const [enrollment, setEnrollment] = useState<ParticipantEnrollment>();
   const programById = new Map(programs.map((program) => [program.id, program]));
   const sortedGroups = [...groups].sort(
     (a, b) =>
@@ -94,8 +94,9 @@ export function GroupParticipants({
       a.startTime.localeCompare(b.startTime) ||
       a.name.localeCompare(b.name, 'lt'),
   );
-  const openManual = (groupId?: string) => {
+  const openManual = (groupId?: string, selectedEnrollment?: ParticipantEnrollment) => {
     setManualGroupId(groupId);
+    setEnrollment(selectedEnrollment);
     setManualOpened(true);
   };
 
@@ -142,6 +143,7 @@ export function GroupParticipants({
                 group.status === 'active' && programById.get(group.programId)?.status === 'active'
               }
               onAddParticipant={() => openManual(group.id)}
+              onEnroll={(selected) => openManual(group.id, selected)}
               onViewParticipant={onViewParticipant}
             />
           ))
@@ -155,7 +157,13 @@ export function GroupParticipants({
         closeOnClickOutside={!manualSaving}
         closeOnEscape={!manualSaving}
         withCloseButton={!manualSaving}
-        title="Pridėti dalyvį rankiniu būdu"
+        title={
+          enrollment
+            ? enrollment.kind === 'pass'
+              ? 'Naujas abonemento periodas'
+              : 'Vienas apsilankymas'
+            : 'Pridėti dalyvį rankiniu būdu'
+        }
         size="lg"
       >
         {manualOpened && (
@@ -164,10 +172,12 @@ export function GroupParticipants({
             programs={programs}
             groups={groups}
             initialGroupId={manualGroupId}
+            initialDate={enrollment?.date}
+            enrollment={enrollment}
             onSavingChange={setManualSaving}
             onSaved={(id) => {
               setManualOpened(false);
-              void onViewParticipant(id);
+              if (!enrollment) void onViewParticipant(id);
             }}
           />
         )}
@@ -183,6 +193,7 @@ function ManualParticipantForm({
   initialGroupId,
   initialProgramId,
   initialDate,
+  enrollment,
   onSavingChange,
   onSaved,
 }: {
@@ -192,6 +203,7 @@ function ManualParticipantForm({
   initialGroupId?: string;
   initialProgramId?: string;
   initialDate?: string;
+  enrollment?: ParticipantEnrollment;
   onSavingChange: (saving: boolean) => void;
   onSaved: (id: string, groupId: string) => void;
 }) {
@@ -217,9 +229,9 @@ function ManualParticipantForm({
               firstGroup.startTime,
             )
           : ''),
-      customerName: '',
-      customerEmail: '',
-      customerPhone: '',
+      customerName: enrollment?.subscription.customerName || '',
+      customerEmail: enrollment?.subscription.customerEmail || '',
+      customerPhone: enrollment?.subscription.customerPhone || '',
       priceEur: '' as number | '',
     },
     validate: {
@@ -237,16 +249,31 @@ function ManualParticipantForm({
     },
   });
   const group = groups.find((item) => item.id === form.values.defaultGroupId);
-  const plans = useSWR<{ plans: Plan[] }>(
+  const plans = useSWR<{ plans: EnrollmentPlan[] }>(
     form.values.programId
       ? apiUrl('plans', { site, programId: form.values.programId, status: 'active' })
       : null,
     fetcher,
   );
-  const availablePlans = (plans.data?.plans || []).filter(
-    (plan) => plan.sessionCount !== 1 || group?.singleVisitEnabled,
+  const availablePlans = enrollmentPlans(
+    plans.data?.plans || [],
+    Boolean(group?.singleVisitEnabled),
+    enrollment?.kind,
   );
   const plan = availablePlans.find((item) => item.id === form.values.planId);
+  const setValues = form.setValues;
+  useEffect(() => {
+    if (!enrollment || !group || form.values.planId) return;
+    const selected = preferredEnrollmentPlan(
+      enrollmentPlans(plans.data?.plans || [], group.singleVisitEnabled, enrollment.kind),
+      enrollment.subscription.planId,
+    );
+    if (selected)
+      setValues({
+        planId: selected.id,
+        priceEur: enrollmentPrice(selected, group.singleVisitPriceEur),
+      });
+  }, [enrollment, group, plans.data, form.values.planId, setValues]);
 
   const submit = form.onSubmit(async (values) => {
     if (submitting.current || !plan || !group) return;
@@ -266,12 +293,17 @@ function ManualParticipantForm({
           site,
           status: 'active',
           purchaseChannel: 'admin',
+          ...(enrollment ? { renewFromSubscriptionId: enrollment.subscription.id } : {}),
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Nepavyko pridėti dalyvio.');
       notifications.show({
-        message: 'Dalyvis pridėtas. Abonementas ir užsiėmimų rezervacijos sukurtos.',
+        message: enrollment
+          ? enrollment.kind === 'single_visit'
+            ? 'Vienas apsilankymas užregistruotas.'
+            : 'Naujas abonemento periodas ir rezervacijos sukurti.'
+          : 'Dalyvis pridėtas. Abonementas ir užsiėmimų rezervacijos sukurtos.',
         color: 'green',
       });
       // Refresh every visible recurring view, including the parent summary and roster.
@@ -290,9 +322,19 @@ function ManualParticipantForm({
     <form onSubmit={submit}>
       <Stack gap="md">
         <Alert color="blue">
-          Bus sukurtas aktyvus abonementas ir rezervuotos vietos pagal planą. Mokėjimas nebus
-          vykdomas, el. laiškas automatiškai nesiunčiamas. El. paštas neprivalomas; jį nurodžius,
-          prisijungimo nuorodą galėsite išsiųsti iš dalyvio kortelės.
+          {enrollment && (
+            <>
+              Registruojamas esamas dalyvis: {enrollment.subscription.customerName}. Ankstesnio
+              abonemento istorija ir likutis nebus keičiami.{' '}
+            </>
+          )}
+          {enrollment?.kind === 'single_visit'
+            ? 'Bus užregistruotas vienas apsilankymas pasirinktoje datoje.'
+            : 'Bus sukurtas aktyvus abonementas ir rezervuotos vietos pagal planą.'}{' '}
+          Mokėjimas nebus vykdomas, el. laiškas automatiškai nesiunčiamas.{' '}
+          {enrollment
+            ? 'Kontaktiniai duomenys perimami iš esamo abonemento.'
+            : 'El. paštas neprivalomas; jį nurodžius, prisijungimo nuorodą galėsite išsiųsti iš dalyvio kortelės.'}
         </Alert>
         {error && (
           <Alert color="red" title="Dalyvis nepridėtas">
@@ -302,7 +344,7 @@ function ManualParticipantForm({
         <Select
           label="Dalyvio užsiėmimų ciklas"
           required
-          disabled={saving}
+          disabled={saving || Boolean(enrollment)}
           data={programs
             .filter((item) => item.status === 'active')
             .map((item) => ({ value: item.id, label: item.nameLt }))}
@@ -320,7 +362,7 @@ function ManualParticipantForm({
         <Select
           label="Dalyvio grupė"
           required
-          disabled={saving || !form.values.programId}
+          disabled={saving || Boolean(enrollment) || !form.values.programId}
           data={groups
             .filter((item) => item.programId === form.values.programId && item.status === 'active')
             .map((item) => ({ value: item.id, label: `${item.name} · ${item.startTime}` }))}
@@ -344,7 +386,7 @@ function ManualParticipantForm({
         />
         {plans.error && <Alert color="red">Nepavyko įkelti planų. Pabandykite dar kartą.</Alert>}
         <Select
-          label="Abonemento planas"
+          label={enrollment?.kind === 'single_visit' ? 'Apsilankymo planas' : 'Abonemento planas'}
           required
           disabled={saving || !group || plans.isLoading}
           placeholder={plans.isLoading ? 'Kraunama…' : 'Pasirinkite planą'}
@@ -357,11 +399,7 @@ function ManualParticipantForm({
             const selected = availablePlans.find((item) => item.id === value);
             form.setValues({
               planId: value || '',
-              priceEur: selected
-                ? selected.sessionCount === 1
-                  ? (group?.singleVisitPriceEur ?? selected.priceEur)
-                  : selected.priceEur
-                : '',
+              priceEur: selected ? enrollmentPrice(selected, group?.singleVisitPriceEur) : '',
             });
           }}
         />
@@ -371,7 +409,7 @@ function ManualParticipantForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <TextInput
             type="date"
-            label="Lankymo pradžia"
+            label={enrollment?.kind === 'single_visit' ? 'Apsilankymo data' : 'Lankymo pradžia'}
             required
             disabled={saving}
             max={group?.effectiveUntil || undefined}
@@ -392,6 +430,7 @@ function ManualParticipantForm({
         </SimpleGrid>
         <TextInput
           label="Vardas ir pavardė"
+          readOnly={Boolean(enrollment)}
           required
           maxLength={200}
           disabled={saving}
@@ -400,6 +439,7 @@ function ManualParticipantForm({
         />
         <TextInput
           label="El. paštas"
+          readOnly={Boolean(enrollment)}
           type="email"
           description="Neprivalomas. Reikalingas prisijungimui prie savitarnos."
           disabled={saving}
@@ -408,13 +448,18 @@ function ManualParticipantForm({
         />
         <TextInput
           label="Telefonas"
+          readOnly={Boolean(enrollment)}
           maxLength={50}
           disabled={saving}
           autoComplete="tel"
           {...form.getInputProps('customerPhone')}
         />
         <Button type="submit" loading={saving} disabled={!plan || !group || Boolean(plans.error)}>
-          Pridėti dalyvį ir rezervuoti vietas
+          {enrollment
+            ? enrollment.kind === 'single_visit'
+              ? 'Užregistruoti vieną apsilankymą'
+              : 'Sukurti naują abonemento periodą'
+            : 'Pridėti dalyvį ir rezervuoti vietas'}
         </Button>
       </Stack>
     </form>

@@ -29,11 +29,15 @@ import {
   registerRows,
   reservedMembershipCount,
 } from '@/lib/recurring/attendance-register';
-import { participantStatusLabels, vilniusDate } from '@/lib/recurring/participants';
+import {
+  type ParticipantEnrollment,
+  participantStatusLabels,
+  vilniusDate,
+} from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
 import { AttendanceCell, type AttendanceChange } from './AttendanceCell';
-import { GroupMembershipEditor } from './GroupMembershipEditor';
 import styles from './GroupAttendanceTable.module.css';
+import { GroupMembershipEditor } from './GroupMembershipEditor';
 
 const fetcher = async (url: string): Promise<AttendanceRegister> => {
   const response = await fetch(url, { cache: 'no-store' });
@@ -49,13 +53,15 @@ export function GroupAttendanceTable({
   canAdd,
   onAddParticipant,
   onViewParticipant,
+  onEnroll,
 }: {
   site: SiteKey;
-  group: RegisterGroup & { name: string; durationMin: number };
+  group: RegisterGroup & { name: string; durationMin: number; singleVisitEnabled: boolean };
   programName: string;
   canAdd: boolean;
   onAddParticipant: () => void;
   onViewParticipant: (id: string) => Promise<void>;
+  onEnroll: (enrollment: ParticipantEnrollment) => void;
 }) {
   const { data, error, isLoading, mutate } = useSWR<AttendanceRegister>(
     `/api/admin/recurring/groups/${group.id}/attendance?${new URLSearchParams({ site })}`,
@@ -165,7 +171,7 @@ export function GroupAttendanceTable({
         {fullyAllocated && (
           <Text size="sm" c="dimmed">
             Grupė pilna. Vieta saugoma iki nurodytos lankymo pabaigos. Esamo dalyvio abonemento
-            pratęsimas tuo pačiu vardu ir el. paštu antros vietos neužima.
+            pratęsimas iš jo tuščio langelio antros vietos neužima, net jei el. paštas nenurodytas.
           </Text>
         )}
         {saveError && (
@@ -309,6 +315,8 @@ export function GroupAttendanceTable({
                                 busy={saving}
                                 onRecord={recordAttendance}
                                 onViewParticipant={onViewParticipant}
+                                onEnroll={canAdd ? onEnroll : undefined}
+                                singleVisitEnabled={group.singleVisitEnabled}
                               />
                             )}
                           </td>
@@ -344,7 +352,9 @@ export function GroupAttendanceTable({
                 Atšauktas užsiėmimas atlankytas
               </span>
               <span>€ Be abonemento · apmokėjimas nesuregistruotas</span>
-              <span>Tuščia — paspauskite lankymui pažymėti be abonemento</span>
+              <span>
+                Tuščia — naujas abonemento periodas, vienas apsilankymas arba lankymo žyma
+              </span>
             </div>
           </>
         )}

@@ -1,5 +1,7 @@
 export type ParticipantSubscription = {
   id: string;
+  participantId?: string;
+  planId?: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
@@ -10,6 +12,12 @@ export type ParticipantSubscription = {
   remainingSessions: number;
   totalSessions: number;
   purchaseChannel?: string;
+};
+
+export type ParticipantEnrollment = {
+  subscription: ParticipantSubscription;
+  date: string;
+  kind: 'pass' | 'single_visit';
 };
 
 export type ParticipantReservation = {
