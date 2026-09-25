@@ -29,7 +29,6 @@ export function AttendanceCell({
   onRecord,
   onViewParticipant,
   onEnroll,
-  singleVisitEnabled = false,
 }: {
   row: RegisterRow;
   column: RegisterColumn;
@@ -38,7 +37,6 @@ export function AttendanceCell({
   onRecord: (change: AttendanceChange) => Promise<void>;
   onViewParticipant: (id: string) => Promise<void>;
   onEnroll?: (enrollment: ParticipantEnrollment) => void;
-  singleVisitEnabled?: boolean;
 }) {
   const subscription = reservation
     ? row.subscriptions.find((item) => item.id === reservation.subscriptionId)
@@ -99,14 +97,10 @@ export function AttendanceCell({
             </Menu.Item>
             <Menu.Item
               leftSection={<IconTicket size={16} />}
-              disabled={!singleVisitEnabled}
               onClick={() => onEnroll({ subscription, date: column.date, kind: 'single_visit' })}
             >
               Vienas apsilankymas
             </Menu.Item>
-            {!singleVisitEnabled && (
-              <Menu.Label>Grupėje vienkartiniai apsilankymai neleidžiami.</Menu.Label>
-            )}
             <Menu.Divider />
           </>
         )}

@@ -56,7 +56,7 @@ export function GroupAttendanceTable({
   onEnroll,
 }: {
   site: SiteKey;
-  group: RegisterGroup & { name: string; durationMin: number; singleVisitEnabled: boolean };
+  group: RegisterGroup & { name: string; durationMin: number };
   programName: string;
   canAdd: boolean;
   onAddParticipant: () => void;
@@ -316,7 +316,6 @@ export function GroupAttendanceTable({
                                 onRecord={recordAttendance}
                                 onViewParticipant={onViewParticipant}
                                 onEnroll={canAdd ? onEnroll : undefined}
-                                singleVisitEnabled={group.singleVisitEnabled}
                               />
                             )}
                           </td>

@@ -8,13 +8,10 @@ export type EnrollmentPlan = {
   priceEur: number;
 };
 
-export function enrollmentPlans(
-  plans: EnrollmentPlan[],
-  singleVisitEnabled: boolean,
-  kind?: ParticipantEnrollment['kind'],
-) {
+export function enrollmentPlans(plans: EnrollmentPlan[], kind?: ParticipantEnrollment['kind']) {
+  // The group's single-visit setting restricts public checkout, not manual admin enrollment.
   return plans.filter((plan) => {
-    if (plan.sessionCount === 1) return singleVisitEnabled && kind !== 'pass';
+    if (plan.sessionCount === 1) return kind !== 'pass';
     return kind !== 'single_visit';
   });
 }

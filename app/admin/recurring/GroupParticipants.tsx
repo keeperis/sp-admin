@@ -255,17 +255,13 @@ function ManualParticipantForm({
       : null,
     fetcher,
   );
-  const availablePlans = enrollmentPlans(
-    plans.data?.plans || [],
-    Boolean(group?.singleVisitEnabled),
-    enrollment?.kind,
-  );
+  const availablePlans = enrollmentPlans(plans.data?.plans || [], enrollment?.kind);
   const plan = availablePlans.find((item) => item.id === form.values.planId);
   const setValues = form.setValues;
   useEffect(() => {
     if (!enrollment || !group || form.values.planId) return;
     const selected = preferredEnrollmentPlan(
-      enrollmentPlans(plans.data?.plans || [], group.singleVisitEnabled, enrollment.kind),
+      enrollmentPlans(plans.data?.plans || [], enrollment.kind),
       enrollment.subscription.planId,
     );
     if (selected)
@@ -336,6 +332,12 @@ function ManualParticipantForm({
             ? 'Kontaktiniai duomenys perimami iš esamo abonemento.'
             : 'El. paštas neprivalomas; jį nurodžius, prisijungimo nuorodą galėsite išsiųsti iš dalyvio kortelės.'}
         </Alert>
+        {plan?.sessionCount === 1 && group && !group.singleVisitEnabled && (
+          <Text size="sm" c="dimmed">
+            Šioje grupėje vieno apsilankymo pirkimas svetainėje išjungtas. Administratorius gali
+            užregistruoti apsilankymą rankiniu būdu; klientams nustatymas nepasikeis.
+          </Text>
+        )}
         {error && (
           <Alert color="red" title="Dalyvis nepridėtas">
             {error}

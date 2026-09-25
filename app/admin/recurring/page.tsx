@@ -45,6 +45,10 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { SiteKey } from '@/lib/site';
 import { GroupParticipants } from './GroupParticipants';
 import { RecurringCycleWizard } from './RecurringCycleWizard';
+import {
+  SubscriptionDetailSection,
+  SubscriptionDetailSections,
+} from './SubscriptionDetailSections';
 
 type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent';
 
@@ -267,6 +271,7 @@ export default function RecurringAdminPage() {
   const [status, setStatus] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
+  const [expandedDetailSections, setExpandedDetailSections] = useState<string[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionNotes, setActionNotes] = useState('');
@@ -426,6 +431,9 @@ export default function RecurringAdminPage() {
   };
 
   const openSubscriptionDetails = async (subscriptionId: string) => {
+    if (selectedSubscription?.subscription?.id !== subscriptionId) {
+      setExpandedDetailSections([]);
+    }
     setIsLoadingDetails(true);
     setSelectedSubscription({ subscription: { id: subscriptionId } });
     try {
@@ -1791,6 +1799,7 @@ export default function RecurringAdminPage() {
           opened={Boolean(selectedSubscription)}
           onClose={() => {
             setSelectedSubscription(null);
+            setExpandedDetailSections([]);
             void refreshRecurringCache(
               (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
             );
@@ -1803,148 +1812,148 @@ export default function RecurringAdminPage() {
               <Loader />
             </Group>
           ) : selectedSubscription?.subscription ? (
-            <Stack gap="lg">
-              <SimpleGrid cols={{ base: 1, md: 2 }}>
-                <Card withBorder>
-                  <Stack gap="xs">
-                    <Title order={5}>Santrauka</Title>
-                    <Text>
-                      <strong>Klientas:</strong> {selectedSubscription.subscription.customerName}
-                    </Text>
-                    <Text>
-                      <strong>El. paštas:</strong>{' '}
-                      {selectedSubscription.subscription.customerEmail || 'Nenurodytas'}
-                    </Text>
-                    <Text>
-                      <strong>Telefonas:</strong>{' '}
-                      {selectedSubscription.subscription.customerPhone || '-'}
-                    </Text>
-                    <Text>
-                      <strong>Registracija:</strong>{' '}
-                      {selectedSubscription.subscription.purchaseChannel === 'admin'
-                        ? 'Pridėta administratoriaus'
-                        : selectedSubscription.subscription.purchaseChannel === 'corporate_wallet'
-                          ? 'Įmonės abonementas'
-                          : 'Per svetainę'}
-                    </Text>
-                    <Text>
-                      <strong>Grupė:</strong>{' '}
-                      {recurringGroups.find(
-                        (group) => group.id === selectedSubscription.subscription.defaultGroupId,
-                      )?.name || '-'}
-                    </Text>
-                    <Text component="div">
-                      <strong>Statusas:</strong>{' '}
-                      <Badge
-                        color={statusColor(selectedSubscription.subscription.status)}
-                        variant="light"
-                      >
-                        {adminValueLabel(selectedSubscription.subscription.status)}
-                      </Badge>
-                    </Text>
-                    <Text>
-                      <strong>Pradžia:</strong> {selectedSubscription.subscription.startDate}
-                    </Text>
-                    <Text>
-                      <strong>Galiojimas:</strong> {selectedSubscription.subscription.validFrom} →{' '}
-                      {selectedSubscription.subscription.validUntil}
-                    </Text>
-                    <Text>
-                      <strong>Kaina:</strong>{' '}
-                      {formatMoney(selectedSubscription.subscription.priceEur)}
-                    </Text>
-                    <Text>
-                      <strong>Likutis:</strong>{' '}
-                      {selectedSubscription.subscription.remainingSessions} /{' '}
-                      {selectedSubscription.subscription.totalSessions}
-                    </Text>
-                    <Text>
-                      <strong>Susietas pirkimas:</strong>{' '}
-                      {selectedSubscription.subscription.sourcePurchaseId || '-'}
-                    </Text>
-                    <Text>
-                      <strong>Paskutinė prisijungimo nuoroda:</strong>{' '}
-                      {formatDateTime(selectedSubscription.subscription.latestMagicLinkIssuedAt)}
-                    </Text>
-                  </Stack>
-                </Card>
+            <SubscriptionDetailSections
+              value={expandedDetailSections}
+              onChange={setExpandedDetailSections}
+            >
+              <SubscriptionDetailSection value="summary" title="Santrauka">
+                <Stack gap="xs">
+                  <Text>
+                    <strong>Klientas:</strong> {selectedSubscription.subscription.customerName}
+                  </Text>
+                  <Text>
+                    <strong>El. paštas:</strong>{' '}
+                    {selectedSubscription.subscription.customerEmail || 'Nenurodytas'}
+                  </Text>
+                  <Text>
+                    <strong>Telefonas:</strong>{' '}
+                    {selectedSubscription.subscription.customerPhone || '-'}
+                  </Text>
+                  <Text>
+                    <strong>Registracija:</strong>{' '}
+                    {selectedSubscription.subscription.purchaseChannel === 'admin'
+                      ? 'Pridėta administratoriaus'
+                      : selectedSubscription.subscription.purchaseChannel === 'corporate_wallet'
+                        ? 'Įmonės abonementas'
+                        : 'Per svetainę'}
+                  </Text>
+                  <Text>
+                    <strong>Grupė:</strong>{' '}
+                    {recurringGroups.find(
+                      (group) => group.id === selectedSubscription.subscription.defaultGroupId,
+                    )?.name || '-'}
+                  </Text>
+                  <Text component="div">
+                    <strong>Statusas:</strong>{' '}
+                    <Badge
+                      color={statusColor(selectedSubscription.subscription.status)}
+                      variant="light"
+                    >
+                      {adminValueLabel(selectedSubscription.subscription.status)}
+                    </Badge>
+                  </Text>
+                  <Text>
+                    <strong>Pradžia:</strong> {selectedSubscription.subscription.startDate}
+                  </Text>
+                  <Text>
+                    <strong>Galiojimas:</strong> {selectedSubscription.subscription.validFrom} →{' '}
+                    {selectedSubscription.subscription.validUntil}
+                  </Text>
+                  <Text>
+                    <strong>Kaina:</strong>{' '}
+                    {formatMoney(selectedSubscription.subscription.priceEur)}
+                  </Text>
+                  <Text>
+                    <strong>Likutis:</strong> {selectedSubscription.subscription.remainingSessions}{' '}
+                    / {selectedSubscription.subscription.totalSessions}
+                  </Text>
+                  <Text>
+                    <strong>Susietas pirkimas:</strong>{' '}
+                    {selectedSubscription.subscription.sourcePurchaseId || '-'}
+                  </Text>
+                  <Text>
+                    <strong>Paskutinė prisijungimo nuoroda:</strong>{' '}
+                    {formatDateTime(selectedSubscription.subscription.latestMagicLinkIssuedAt)}
+                  </Text>
+                </Stack>
+              </SubscriptionDetailSection>
 
-                <Card withBorder>
-                  <Stack gap="xs">
-                    <Title order={5}>Tvarkaraštis ir perkelti užsiėmimai</Title>
-                    <Text>
-                      <strong>Suplanuotų užsiėmimų:</strong>{' '}
-                      {selectedSubscription.provisioning?.schedule?.plannedCount ?? '-'}
+              <SubscriptionDetailSection
+                value="schedule"
+                title="Tvarkaraštis ir perkelti užsiėmimai"
+              >
+                <Stack gap="xs">
+                  <Text>
+                    <strong>Suplanuotų užsiėmimų:</strong>{' '}
+                    {selectedSubscription.provisioning?.schedule?.plannedCount ?? '-'}
+                  </Text>
+                  <Text>
+                    <strong>Suplanuota iki:</strong>{' '}
+                    {selectedSubscription.provisioning?.schedule?.scheduledThrough || '-'}
+                  </Text>
+                  <Text>
+                    <strong>Generavimo versija:</strong>{' '}
+                    {selectedSubscription.provisioning?.schedule?.generationVersion ?? '-'}
+                  </Text>
+                  <Text>
+                    <strong>Perkeliamų užsiėmimų likutis:</strong>{' '}
+                    {selectedSubscription.makeup?.remainingCredits ?? '-'}
+                  </Text>
+                  <Text>
+                    <strong>Galimos atlaisvinti būsimos datos:</strong>{' '}
+                    {asTextList(selectedSubscription.lifecycle?.releasePreview?.releasableDates)}
+                  </Text>
+                  <Text>
+                    <strong>Blokuojamos rezervacijos:</strong>{' '}
+                    {selectedSubscription.lifecycle?.releasePreview?.blockedReservations?.length ||
+                      0}
+                  </Text>
+                  <Group pt="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconMail size={14} />}
+                      disabled={!selectedSubscription.subscription.customerEmail}
+                      loading={
+                        actionLoading ===
+                        `issue-magic-link-email-${selectedSubscription.subscription.id}`
+                      }
+                      onClick={() =>
+                        void issueAdminMagicLink({
+                          subscriptionId: selectedSubscription.subscription.id,
+                          deliveryMode: 'email',
+                        })
+                      }
+                    >
+                      Siųsti prisijungimo nuorodą el. paštu
+                    </Button>
+                    <Button
+                      size="xs"
+                      leftSection={<IconLink size={14} />}
+                      disabled={!selectedSubscription.subscription.customerEmail}
+                      loading={
+                        actionLoading ===
+                        `issue-magic-link-manual-${selectedSubscription.subscription.id}`
+                      }
+                      onClick={() =>
+                        requestManualMagicLinkReveal(selectedSubscription.subscription.id)
+                      }
+                    >
+                      Išduoti prisijungimo nuorodą
+                    </Button>
+                  </Group>
+                  {!selectedSubscription.subscription.customerEmail && (
+                    <Text size="sm" c="dimmed">
+                      El. paštas nenurodytas — prisijungimo prie savitarnos nuorodos išduoti
+                      negalima.
                     </Text>
-                    <Text>
-                      <strong>Suplanuota iki:</strong>{' '}
-                      {selectedSubscription.provisioning?.schedule?.scheduledThrough || '-'}
-                    </Text>
-                    <Text>
-                      <strong>Generavimo versija:</strong>{' '}
-                      {selectedSubscription.provisioning?.schedule?.generationVersion ?? '-'}
-                    </Text>
-                    <Text>
-                      <strong>Perkeliamų užsiėmimų likutis:</strong>{' '}
-                      {selectedSubscription.makeup?.remainingCredits ?? '-'}
-                    </Text>
-                    <Text>
-                      <strong>Galimos atlaisvinti būsimos datos:</strong>{' '}
-                      {asTextList(selectedSubscription.lifecycle?.releasePreview?.releasableDates)}
-                    </Text>
-                    <Text>
-                      <strong>Blokuojamos rezervacijos:</strong>{' '}
-                      {selectedSubscription.lifecycle?.releasePreview?.blockedReservations
-                        ?.length || 0}
-                    </Text>
-                    <Group pt="xs">
-                      <Button
-                        size="xs"
-                        variant="light"
-                        leftSection={<IconMail size={14} />}
-                        disabled={!selectedSubscription.subscription.customerEmail}
-                        loading={
-                          actionLoading ===
-                          `issue-magic-link-email-${selectedSubscription.subscription.id}`
-                        }
-                        onClick={() =>
-                          void issueAdminMagicLink({
-                            subscriptionId: selectedSubscription.subscription.id,
-                            deliveryMode: 'email',
-                          })
-                        }
-                      >
-                        Siųsti prisijungimo nuorodą el. paštu
-                      </Button>
-                      <Button
-                        size="xs"
-                        leftSection={<IconLink size={14} />}
-                        disabled={!selectedSubscription.subscription.customerEmail}
-                        loading={
-                          actionLoading ===
-                          `issue-magic-link-manual-${selectedSubscription.subscription.id}`
-                        }
-                        onClick={() =>
-                          requestManualMagicLinkReveal(selectedSubscription.subscription.id)
-                        }
-                      >
-                        Išduoti prisijungimo nuorodą
-                      </Button>
-                    </Group>
-                    {!selectedSubscription.subscription.customerEmail && (
-                      <Text size="sm" c="dimmed">
-                        El. paštas nenurodytas — prisijungimo prie savitarnos nuorodos išduoti
-                        negalima.
-                      </Text>
-                    )}
-                  </Stack>
-                </Card>
-              </SimpleGrid>
+                  )}
+                </Stack>
+              </SubscriptionDetailSection>
 
-              <Card withBorder>
+              <SubscriptionDetailSection value="actions" title="Abonemento būsenos veiksmai">
                 <Stack gap="md">
                   <Group justify="space-between">
-                    <Title order={5}>Abonemento būsenos veiksmai</Title>
                     <Badge variant="light">
                       istorijos įrašų: {selectedSubscription.lifecycleAudit?.length || 0}
                     </Badge>
@@ -2071,11 +2080,10 @@ export default function RecurringAdminPage() {
                     </Stack>
                   </Card>
                 </Stack>
-              </Card>
+              </SubscriptionDetailSection>
 
-              <Card withBorder>
+              <SubscriptionDetailSection value="refunds" title="Pinigų grąžinimas ir išimtys">
                 <Stack gap="md">
-                  <Title order={5}>Pinigų grąžinimas ir išimtys</Title>
                   <SimpleGrid cols={{ base: 1, md: 2 }}>
                     <Card withBorder>
                       <Stack gap="xs">
@@ -2170,11 +2178,10 @@ export default function RecurringAdminPage() {
                     </Card>
                   </SimpleGrid>
                 </Stack>
-              </Card>
+              </SubscriptionDetailSection>
 
-              <Card withBorder>
+              <SubscriptionDetailSection value="history" title="Veiksmų istorija">
                 <Stack gap="md">
-                  <Title order={5}>Veiksmų istorija</Title>
                   {selectedSubscription.lifecycleAudit?.length ? (
                     <Table striped highlightOnHover>
                       <Table.Thead>
@@ -2232,13 +2239,12 @@ export default function RecurringAdminPage() {
                     <Text c="dimmed">Veiksmų istorijos įrašų dar nėra.</Text>
                   )}
                 </Stack>
-              </Card>
+              </SubscriptionDetailSection>
 
-              <Card withBorder>
+              <SubscriptionDetailSection value="reservations" title="Operacinės rezervacijos">
                 <Stack gap="md">
                   <Group justify="space-between" align="center">
                     <div>
-                      <Title order={5}>Operacinės rezervacijos</Title>
                       <Text size="sm" c="dimmed">
                         Šio abonemento rezervacijų istorija ir jų valdymas
                       </Text>
@@ -2401,13 +2407,12 @@ export default function RecurringAdminPage() {
                     <Text c="dimmed">Būsimų rezervacijų šiam abonementui kol kas nėra.</Text>
                   )}
                 </Stack>
-              </Card>
+              </SubscriptionDetailSection>
 
-              <Card withBorder>
+              <SubscriptionDetailSection value="occurrences" title="Artimiausi grupės užsiėmimai">
                 <Stack gap="md">
                   <Group justify="space-between" align="center">
                     <div>
-                      <Title order={5}>Artimiausi grupės užsiėmimai</Title>
                       <Text size="sm" c="dimmed">
                         Naujausias pasirinktos grupės tvarkaraštis ir rezervacijų suvestinė
                       </Text>
@@ -2474,8 +2479,8 @@ export default function RecurringAdminPage() {
                     <Text c="dimmed">Artimiausių užsiėmimų šiai grupei dar nėra.</Text>
                   )}
                 </Stack>
-              </Card>
-            </Stack>
+              </SubscriptionDetailSection>
+            </SubscriptionDetailSections>
           ) : null}
         </Modal>
 

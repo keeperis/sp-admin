@@ -9,18 +9,22 @@ const plans = [
 ];
 test('cell action offers only plans of the selected enrollment kind', () => {
   assert.deepEqual(
-    enrollmentPlans(plans, true, 'pass').map((plan) => plan.id),
+    enrollmentPlans(plans, 'pass').map((plan) => plan.id),
     ['four', 'eight'],
   );
   assert.deepEqual(
-    enrollmentPlans(plans, true, 'single_visit').map((plan) => plan.id),
+    enrollmentPlans(plans, 'single_visit').map((plan) => plan.id),
     ['one'],
   );
-  assert.deepEqual(enrollmentPlans(plans, false, 'single_visit'), []);
-  assert.equal(enrollmentPlans(plans, true).length, 3);
+  assert.equal(enrollmentPlans(plans).length, 3);
+});
+test('manual admin enrollment offers single visits without requiring public group permission', () => {
+  assert.deepEqual(enrollmentPlans([plans[2]], 'single_visit'), [plans[2]]);
+  assert.deepEqual(enrollmentPlans([plans[2]]), [plans[2]]);
+  assert.deepEqual(enrollmentPlans([plans[2]], 'pass'), []);
 });
 test('renewals default to previous active plan, or the first available plan', () => {
-  const passes = enrollmentPlans(plans, true, 'pass');
+  const passes = enrollmentPlans(plans, 'pass');
   assert.equal(preferredEnrollmentPlan(passes, 'eight')?.id, 'eight');
   assert.equal(preferredEnrollmentPlan(passes, 'archived')?.id, 'four');
   assert.equal(preferredEnrollmentPlan([], 'four'), undefined);
