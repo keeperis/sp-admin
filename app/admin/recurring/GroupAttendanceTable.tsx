@@ -35,6 +35,7 @@ import {
   vilniusDate,
 } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
+import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
 import { AttendanceCell, type AttendanceChange } from './AttendanceCell';
 import styles from './GroupAttendanceTable.module.css';
 import { GroupMembershipEditor } from './GroupMembershipEditor';
@@ -72,11 +73,13 @@ export function GroupAttendanceTable({
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [makeupWarning, setMakeupWarning] = useState<string | null>(null);
   const recordAttendance = async (change: AttendanceChange) => {
     if (saveLock.current) return;
     saveLock.current = true;
     setSaving(true);
     setSaveError(null);
+    setMakeupWarning(null);
     try {
       const response = await fetch(
         `/api/admin/recurring/groups/${group.id}/attendance?${new URLSearchParams({ site })}`,
@@ -98,6 +101,11 @@ export function GroupAttendanceTable({
               ? 'Dalyvis atvyko.'
               : 'Dalyvis neatvyko.',
       });
+      const makeupNotice = automaticMakeupNotification(result.automaticMakeup);
+      if (makeupNotice) {
+        notifications.show(makeupNotice);
+        if (makeupNotice.color === 'yellow') setMakeupWarning(makeupNotice.message);
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Nepavyko išsaugoti lankymo.');
     } finally {
@@ -182,6 +190,11 @@ export function GroupAttendanceTable({
             onClose={() => setSaveError(null)}
           >
             {saveError}
+          </Alert>
+        )}
+        {makeupWarning && (
+          <Alert color="yellow" title="Lankymas išsaugotas – pakaitinis vizitas">
+            {makeupWarning}
           </Alert>
         )}
         {error ? (

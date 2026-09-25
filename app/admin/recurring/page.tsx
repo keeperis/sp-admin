@@ -44,6 +44,7 @@ import { useEffect, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import type { SiteKey } from '@/lib/site';
 import type { ContactDetails } from '@/lib/recurring/contact-details';
+import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
 import { GroupParticipants } from './GroupParticipants';
 import { RecurringCycleWizard } from './RecurringCycleWizard';
 import {
@@ -174,6 +175,8 @@ const ADMIN_VALUE_LABELS: Record<string, string> = {
   unavailable: 'Nepasiekiama',
   unpaid: 'Neapmokėtas',
   update_contact: 'Kontaktų atnaujinimas',
+  automatic_makeup: 'Automatiškai suplanuotas pakaitinis vizitas',
+  adjust_usage: 'Užsiėmimų likučio korekcija',
 };
 
 const WEEKDAY_LABELS = [
@@ -720,11 +723,7 @@ export default function RecurringAdminPage() {
 
   const refreshSelectedOperationalContext = async () => {
     if (!selectedSubscriptionId) return;
-    await Promise.all([
-      mutate(),
-      mutateObservability(),
-      mutateSelectedReservations(),
-    ]);
+    await Promise.all([mutate(), mutateObservability(), mutateSelectedReservations()]);
     await openSubscriptionDetails(selectedSubscriptionId);
   };
 
@@ -754,6 +753,8 @@ export default function RecurringAdminPage() {
         throw new Error(result.error || 'Veiksmas nepavyko');
       }
       notifications.show({ message: successMessage, color: 'green' });
+      const makeupNotice = automaticMakeupNotification(result.automaticMakeup);
+      if (makeupNotice) notifications.show(makeupNotice);
       setReservationActionNotes('');
       setReservationCancelReason('');
       await refreshSelectedOperationalContext();
@@ -2398,7 +2399,11 @@ export default function RecurringAdminPage() {
                               {formatDateTime(entry.createdAt)}
                             </Table.Td>
                             <Table.Td>
-                              <Badge color={statusColor(entry.action)} variant="light" w="max-content">
+                              <Badge
+                                color={statusColor(entry.action)}
+                                variant="light"
+                                w="max-content"
+                              >
                                 {adminValueLabel(entry.action)}
                               </Badge>
                             </Table.Td>

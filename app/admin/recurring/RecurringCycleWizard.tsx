@@ -70,6 +70,7 @@ type PlanDraft = {
   makeupLimit: NumberValue;
   lateCancelCountsAsUsed: boolean;
   noShowCountsAsUsed: boolean;
+  autoScheduleMakeup: boolean;
 };
 
 type FacebookSeries = {
@@ -140,6 +141,7 @@ type RecurringCycleDetail = {
     makeupLimit: number | null;
     lateCancelCountsAsUsed: boolean;
     noShowCountsAsUsed: boolean;
+    autoScheduleMakeup?: boolean;
   }>;
 };
 
@@ -260,6 +262,7 @@ function newPlan(patch: Partial<PlanDraft> = {}): PlanDraft {
     makeupLimit: 4,
     lateCancelCountsAsUsed: true,
     noShowCountsAsUsed: true,
+    autoScheduleMakeup: false,
     ...patch,
   };
 }
@@ -397,6 +400,7 @@ export function RecurringCycleWizard({
             makeupLimit: plan.makeupLimit ?? 0,
             lateCancelCountsAsUsed: plan.lateCancelCountsAsUsed,
             noShowCountsAsUsed: plan.noShowCountsAsUsed,
+            autoScheduleMakeup: Boolean(plan.autoScheduleMakeup),
           }),
         ),
       );
@@ -1248,6 +1252,16 @@ export function RecurringCycleWizard({
                         label="Neatvykimą skaičiuoti kaip panaudotą"
                       />
                     </SimpleGrid>
+                    <Switch
+                      checked={plan.autoScheduleMakeup}
+                      onChange={(event) =>
+                        updatePlan(plan.key, {
+                          autoScheduleMakeup: event.currentTarget.checked,
+                        })
+                      }
+                      label="Automatiškai suplanuoti pakaitinį vizitą"
+                      description="Kai neatvykimas arba atšaukimas neskaičiuojamas kaip panaudotas, rezervuojamas kitas laisvas įprastos grupės laikas. Abonemento galiojimas nepratęsiamas."
+                    />
                   </Stack>
                 </Card>
               ))}
