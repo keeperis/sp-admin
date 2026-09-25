@@ -43,12 +43,15 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import type { SiteKey } from '@/lib/site';
+import type { ContactDetails } from '@/lib/recurring/contact-details';
 import { GroupParticipants } from './GroupParticipants';
 import { RecurringCycleWizard } from './RecurringCycleWizard';
 import {
   SubscriptionDetailSection,
   SubscriptionDetailSections,
 } from './SubscriptionDetailSections';
+import { SubscriptionDetailTable } from './SubscriptionDetailTable';
+import { SubscriptionContactDetails } from './SubscriptionContactDetails';
 
 type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent';
 
@@ -238,10 +241,6 @@ function asTextList(value: unknown) {
   return value.join(', ');
 }
 
-function todayDateOnly() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function formatAgeMinutes(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
   if (value < 60) return `${value} min`;
@@ -348,7 +347,6 @@ export default function RecurringAdminPage() {
   const observabilityQueues = observabilityData?.queues || {};
   const selectedSubscriptionId = selectedSubscription?.subscription?.id || null;
   const selectedSubscriptionSite = selectedSubscription?.subscription?.site || site;
-  const selectedGroupId = selectedSubscription?.subscription?.defaultGroupId || null;
   const selectedReservationsApiUrl = useMemo(() => {
     if (!selectedSubscriptionId) return null;
     const params = new URLSearchParams({
@@ -357,33 +355,17 @@ export default function RecurringAdminPage() {
     });
     return `/api/admin/recurring/reservations?${params.toString()}`;
   }, [selectedSubscriptionId, selectedSubscriptionSite]);
-  const selectedOccurrencesApiUrl = useMemo(() => {
-    if (!selectedGroupId) return null;
-    const params = new URLSearchParams({
-      site: selectedSubscriptionSite,
-      groupId: selectedGroupId,
-      dateFrom: todayDateOnly(),
-    });
-    return `/api/admin/recurring/occurrences?${params.toString()}`;
-  }, [selectedGroupId, selectedSubscriptionSite]);
   const {
     data: selectedReservationsData,
     error: selectedReservationsError,
     isLoading: isLoadingSelectedReservations,
     mutate: mutateSelectedReservations,
   } = useSWR(selectedReservationsApiUrl, fetcher);
-  const {
-    data: selectedOccurrencesData,
-    error: selectedOccurrencesError,
-    isLoading: isLoadingSelectedOccurrences,
-    mutate: mutateSelectedOccurrences,
-  } = useSWR(selectedOccurrencesApiUrl, fetcher);
 
   const selectedPlanOptions = selectedSubscription?.lifecycle?.planOptions || [];
   const selectedPlanOption =
     selectedPlanOptions.find((option: any) => option.plan.id === changePlanId) || null;
   const selectedReservations = selectedReservationsData?.reservations || [];
-  const selectedOccurrences = selectedOccurrencesData?.occurrences || [];
   const reservationActionNotesTrimmed = reservationActionNotes.trim();
   const reservationCancelReasonTrimmed = reservationCancelReason.trim();
   const hasReservationActionNotes = reservationActionNotesTrimmed.length > 0;
@@ -451,6 +433,45 @@ export default function RecurringAdminPage() {
       notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
     } finally {
       setIsLoadingDetails(false);
+    }
+  };
+
+  const saveContactDetails = async (values: ContactDetails) => {
+    const subscriptionId = selectedSubscription?.subscription?.id;
+    if (!subscriptionId) throw new Error('Abonementas nepasirinktas.');
+    const path = `/api/admin/recurring/subscriptions/${subscriptionId}`;
+    const response = await fetch(path, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify(values),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.subscription) {
+      throw new Error(result.error || 'Nepavyko išsaugoti asmens informacijos.');
+    }
+    setSelectedSubscription((current: any) =>
+      current?.subscription?.id === subscriptionId
+        ? { ...current, subscription: result.subscription }
+        : current,
+    );
+    notifications.show({ message: 'Asmens informacija atnaujinta', color: 'green' });
+    try {
+      const [detailResponse] = await Promise.all([
+        fetch(path, { cache: 'no-store' }),
+        refreshRecurringCache(
+          (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
+        ),
+      ]);
+      if (!detailResponse.ok) throw new Error('Detail refresh failed');
+      const details = await detailResponse.json();
+      setSelectedSubscription((current: any) =>
+        current?.subscription?.id === subscriptionId ? details : current,
+      );
+    } catch {
+      notifications.show({
+        message: 'Duomenys išsaugoti, bet sąrašo nepavyko atnaujinti. Atnaujinkite puslapį.',
+        color: 'yellow',
+      });
     }
   };
 
@@ -703,7 +724,6 @@ export default function RecurringAdminPage() {
       mutate(),
       mutateObservability(),
       mutateSelectedReservations(),
-      mutateSelectedOccurrences(),
     ]);
     await openSubscriptionDetails(selectedSubscriptionId);
   };
@@ -1818,17 +1838,16 @@ export default function RecurringAdminPage() {
             >
               <SubscriptionDetailSection value="summary" title="Santrauka">
                 <Stack gap="xs">
-                  <Text>
-                    <strong>Klientas:</strong> {selectedSubscription.subscription.customerName}
-                  </Text>
-                  <Text>
-                    <strong>El. paštas:</strong>{' '}
-                    {selectedSubscription.subscription.customerEmail || 'Nenurodytas'}
-                  </Text>
-                  <Text>
-                    <strong>Telefonas:</strong>{' '}
-                    {selectedSubscription.subscription.customerPhone || '-'}
-                  </Text>
+                  <SubscriptionContactDetails
+                    key={selectedSubscription.subscription.id}
+                    contact={{
+                      customerName: selectedSubscription.subscription.customerName || '',
+                      customerEmail: selectedSubscription.subscription.customerEmail || '',
+                      customerPhone: selectedSubscription.subscription.customerPhone || '',
+                    }}
+                    emailRequired={selectedSubscription.subscription.purchaseChannel !== 'admin'}
+                    onSave={saveContactDetails}
+                  />
                   <Text>
                     <strong>Registracija:</strong>{' '}
                     {selectedSubscription.subscription.purchaseChannel === 'admin'
@@ -1991,11 +2010,18 @@ export default function RecurringAdminPage() {
                           <Button
                             leftSection={<IconRefresh size={16} />}
                             loading={actionLoading === 'regenerate-schedule'}
+                            disabled={selectedSubscription.subscription.status !== 'active'}
                             onClick={() => runLifecycleAction('regenerate-schedule')}
                           >
                             Pergeneruoti tvarkaraštį
                           </Button>
                         </Group>
+                        <Text size="sm" c="dimmed">
+                          Pergeneravimas perskaičiuoja būsimus įprastos grupės vizitus pagal
+                          abonemento likutį, galiojimą ir grupės tvarkaraštį. Jau pažymėtas
+                          lankymas, atšaukimai ir rankiniu būdu perkelti vizitai nekeičiami.
+                          Abonementas nepratęsiamas.
+                        </Text>
                         <Text size="xs" c="dimmed">
                           Pristabdymas:{' '}
                           {selectedSubscription.lifecycle?.actions?.pause?.reason || 'leidžiama'}
@@ -2180,67 +2206,6 @@ export default function RecurringAdminPage() {
                 </Stack>
               </SubscriptionDetailSection>
 
-              <SubscriptionDetailSection value="history" title="Veiksmų istorija">
-                <Stack gap="md">
-                  {selectedSubscription.lifecycleAudit?.length ? (
-                    <Table striped highlightOnHover>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Laikas</Table.Th>
-                          <Table.Th>Veiksmas</Table.Th>
-                          <Table.Th>Atliko</Table.Th>
-                          <Table.Th>Pinigų grąžinimas</Table.Th>
-                          <Table.Th>Pastabos ir metaduomenys</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {selectedSubscription.lifecycleAudit.map((entry: any, index: number) => (
-                          <Table.Tr key={`${entry.createdAt}-${entry.action}-${index}`}>
-                            <Table.Td>{formatDateTime(entry.createdAt)}</Table.Td>
-                            <Table.Td>
-                              <Badge color={statusColor(entry.action)} variant="light">
-                                {adminValueLabel(entry.action)}
-                              </Badge>
-                            </Table.Td>
-                            <Table.Td>
-                              <Stack gap={2}>
-                                <Text size="sm">{entry.actorLabel}</Text>
-                                <Text size="xs" c="dimmed">
-                                  {adminValueLabel(entry.actorType)}
-                                </Text>
-                              </Stack>
-                            </Table.Td>
-                            <Table.Td>
-                              <Stack gap={2}>
-                                <Badge color={statusColor(entry.refundStatus)} variant="light">
-                                  {adminValueLabel(entry.refundStatus)}
-                                </Badge>
-                                <Text size="xs">{formatMoney(entry.refundAmountEur)}</Text>
-                                <Text size="xs" c="dimmed">
-                                  {entry.refundReference || '-'}
-                                </Text>
-                              </Stack>
-                            </Table.Td>
-                            <Table.Td>
-                              <Stack gap={6}>
-                                <Text size="sm">{entry.notes || '-'}</Text>
-                                {entry.metadata ? (
-                                  <Code block style={{ whiteSpace: 'pre-wrap' }}>
-                                    {JSON.stringify(entry.metadata, null, 2)}
-                                  </Code>
-                                ) : null}
-                              </Stack>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  ) : (
-                    <Text c="dimmed">Veiksmų istorijos įrašų dar nėra.</Text>
-                  )}
-                </Stack>
-              </SubscriptionDetailSection>
-
               <SubscriptionDetailSection value="reservations" title="Operacinės rezervacijos">
                 <Stack gap="md">
                   <Group justify="space-between" align="center">
@@ -2285,7 +2250,7 @@ export default function RecurringAdminPage() {
                       <Loader size="sm" />
                     </Group>
                   ) : selectedReservations.length ? (
-                    <Table striped highlightOnHover>
+                    <SubscriptionDetailTable label="Operacinės rezervacijos" minWidth={1100}>
                       <Table.Thead>
                         <Table.Tr>
                           <Table.Th>Data</Table.Th>
@@ -2303,7 +2268,7 @@ export default function RecurringAdminPage() {
                             <Table.Tr key={reservation.id}>
                               <Table.Td>
                                 <Stack gap={2}>
-                                  <Text size="sm">
+                                  <Text size="sm" style={{ whiteSpace: 'nowrap' }}>
                                     {formatDateTime(reservation.occurrence?.startISO)}
                                   </Text>
                                   <Text size="xs" c="dimmed">
@@ -2312,7 +2277,7 @@ export default function RecurringAdminPage() {
                                 </Stack>
                               </Table.Td>
                               <Table.Td>
-                                <Badge variant="light">
+                                <Badge variant="light" w="max-content">
                                   {adminValueLabel(reservation.reservationType)}
                                 </Badge>
                                 {reservation.coverage === 'uncovered' && (
@@ -2322,7 +2287,11 @@ export default function RecurringAdminPage() {
                                 )}
                               </Table.Td>
                               <Table.Td>
-                                <Badge color={statusColor(reservation.status)} variant="light">
+                                <Badge
+                                  color={statusColor(reservation.status)}
+                                  variant="light"
+                                  w="max-content"
+                                >
                                   {adminValueLabel(reservation.status)}
                                 </Badge>
                               </Table.Td>
@@ -2336,7 +2305,7 @@ export default function RecurringAdminPage() {
                               </Table.Td>
                               <Table.Td>
                                 {isScheduled && reservation.occurrenceId ? (
-                                  <Group gap="xs" wrap="wrap">
+                                  <Group gap="xs" wrap="wrap" miw={240}>
                                     <Button
                                       size="xs"
                                       variant="light"
@@ -2402,81 +2371,76 @@ export default function RecurringAdminPage() {
                           );
                         })}
                       </Table.Tbody>
-                    </Table>
+                    </SubscriptionDetailTable>
                   ) : (
                     <Text c="dimmed">Būsimų rezervacijų šiam abonementui kol kas nėra.</Text>
                   )}
                 </Stack>
               </SubscriptionDetailSection>
 
-              <SubscriptionDetailSection value="occurrences" title="Artimiausi grupės užsiėmimai">
+              <SubscriptionDetailSection value="history" title="Veiksmų istorija">
                 <Stack gap="md">
-                  <Group justify="space-between" align="center">
-                    <div>
-                      <Text size="sm" c="dimmed">
-                        Naujausias pasirinktos grupės tvarkaraštis ir rezervacijų suvestinė
-                      </Text>
-                    </div>
-                    <Badge variant="light">{selectedOccurrences.length} įrašai</Badge>
-                  </Group>
-
-                  {selectedOccurrencesError ? (
-                    <Alert color="red" title="Klaida">
-                      {selectedOccurrencesError.message}
-                    </Alert>
-                  ) : isLoadingSelectedOccurrences ? (
-                    <Group justify="center" py="md">
-                      <Loader size="sm" />
-                    </Group>
-                  ) : selectedOccurrences.length ? (
-                    <Table striped highlightOnHover>
+                  {selectedSubscription.lifecycleAudit?.length ? (
+                    <SubscriptionDetailTable label="Veiksmų istorija">
                       <Table.Thead>
                         <Table.Tr>
-                          <Table.Th>Data</Table.Th>
-                          <Table.Th>Statusas</Table.Th>
-                          <Table.Th>Užimtumas</Table.Th>
-                          <Table.Th>Rezervacijų suvestinė</Table.Th>
+                          <Table.Th>Laikas</Table.Th>
+                          <Table.Th>Veiksmas</Table.Th>
+                          <Table.Th>Atliko</Table.Th>
+                          <Table.Th>Pinigų grąžinimas</Table.Th>
+                          <Table.Th>Pastabos ir metaduomenys</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
-                        {selectedOccurrences.map((occurrence: any) => (
-                          <Table.Tr key={occurrence.id}>
+                        {selectedSubscription.lifecycleAudit.map((entry: any, index: number) => (
+                          <Table.Tr key={`${entry.createdAt}-${entry.action}-${index}`}>
+                            <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                              {formatDateTime(entry.createdAt)}
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge color={statusColor(entry.action)} variant="light" w="max-content">
+                                {adminValueLabel(entry.action)}
+                              </Badge>
+                            </Table.Td>
                             <Table.Td>
                               <Stack gap={2}>
-                                <Text size="sm">{formatDateTime(occurrence.startISO)}</Text>
+                                <Text size="sm">{entry.actorLabel}</Text>
                                 <Text size="xs" c="dimmed">
-                                  {occurrence.group?.locationName || '-'}
+                                  {adminValueLabel(entry.actorType)}
                                 </Text>
                               </Stack>
                             </Table.Td>
                             <Table.Td>
-                              <Badge color={statusColor(occurrence.status)} variant="light">
-                                {adminValueLabel(occurrence.status)}
-                              </Badge>
+                              <Stack gap={2}>
+                                <Badge
+                                  color={statusColor(entry.refundStatus)}
+                                  variant="light"
+                                  w="max-content"
+                                >
+                                  {adminValueLabel(entry.refundStatus)}
+                                </Badge>
+                                <Text size="xs">{formatMoney(entry.refundAmountEur)}</Text>
+                                <Text size="xs" c="dimmed">
+                                  {entry.refundReference || '-'}
+                                </Text>
+                              </Stack>
                             </Table.Td>
                             <Table.Td>
-                              <Text size="sm">
-                                {occurrence.reservedCount}/{occurrence.capacity} · laisvų{' '}
-                                {occurrence.availableCount}
-                              </Text>
-                            </Table.Td>
-                            <Table.Td>
-                              <Group gap="xs" wrap="wrap">
-                                {Object.entries(occurrence.reservationSummary || {}).map(
-                                  ([summaryStatus, count]) => (
-                                    <Badge key={summaryStatus} variant="outline">
-                                      {adminValueLabel(summaryStatus)}: {String(count)}
-                                    </Badge>
-                                  ),
-                                )}
-                              </Group>
+                              <Stack gap={6}>
+                                <Text size="sm">{entry.notes || '-'}</Text>
+                                {entry.metadata ? (
+                                  <Code block style={{ whiteSpace: 'pre-wrap' }}>
+                                    {JSON.stringify(entry.metadata, null, 2)}
+                                  </Code>
+                                ) : null}
+                              </Stack>
                             </Table.Td>
                           </Table.Tr>
                         ))}
                       </Table.Tbody>
-                    </Table>
+                    </SubscriptionDetailTable>
                   ) : (
-                    <Text c="dimmed">Artimiausių užsiėmimų šiai grupei dar nėra.</Text>
+                    <Text c="dimmed">Veiksmų istorijos įrašų dar nėra.</Text>
                   )}
                 </Stack>
               </SubscriptionDetailSection>
