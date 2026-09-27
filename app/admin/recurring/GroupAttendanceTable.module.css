@@ -224,10 +224,6 @@
   color: var(--mantine-color-dimmed);
 }
 
-.membershipCompact {
-  display: none;
-}
-
 @media (max-width: 48em) {
   .table {
     font-size: 11px;
@@ -275,27 +271,6 @@
   .mark small {
     font-size: 8px;
     margin-left: 0;
-  }
-
-  .membership {
-    --membership-control-height: 24px;
-    display: flex;
-    padding-inline: 0;
-    font-size: 9px;
-    line-height: 1.1;
-  }
-
-  .membership :global(.mantine-Button-section) {
-    margin-inline-end: 3px;
-  }
-
-  .membershipLabel {
-    display: none;
-  }
-
-  .membershipCompact {
-    display: inline;
-    white-space: nowrap;
   }
 
   .legend {

@@ -29,6 +29,7 @@ export type RegisterReservation = {
   status: string;
   reservationType: string;
   coverage?: 'subscription' | 'uncovered';
+  updatedAt?: string;
   makeup?: (MakeupSession & { status: string }) | null;
   makeupFor?: MakeupSession | null;
 };

@@ -37,7 +37,6 @@ import {
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
-  IconReceiptRefund,
   IconRefresh,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -53,8 +52,6 @@ import {
 } from './SubscriptionDetailSections';
 import { SubscriptionDetailTable } from './SubscriptionDetailTable';
 import { SubscriptionContactDetails } from './SubscriptionContactDetails';
-
-type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent';
 
 type ClassGroupDto = {
   id: string;
@@ -112,18 +109,6 @@ const REFUND_STATUS_OPTIONS = [
   { value: 'declined', label: 'Atmesta' },
 ];
 
-const REFUND_REASON_OPTIONS: Array<{ value: RefundReason; label: string }> = [
-  { value: 'requested_by_customer', label: 'Kliento prašymu' },
-  { value: 'duplicate', label: 'Besidubliuojantis mokėjimas' },
-  { value: 'fraudulent', label: 'Galimai apgaulingas mokėjimas' },
-];
-
-const REFUND_EXCEPTION_OPTIONS = [
-  { value: 'manual_refund_required', label: 'Reikia grąžinti rankiniu būdu' },
-  { value: 'bank_side_followup', label: 'Reikia susisiekti su banku' },
-  { value: 'stripe_refund_failed', label: '„Stripe“ grąžinimas nepavyko' },
-];
-
 const ADMIN_VALUE_LABELS: Record<string, string> = {
   active: 'Aktyvus',
   admin: 'Administratorius',
@@ -177,6 +162,8 @@ const ADMIN_VALUE_LABELS: Record<string, string> = {
   update_contact: 'Kontaktų atnaujinimas',
   automatic_makeup: 'Automatiškai suplanuotas pakaitinis vizitas',
   adjust_usage: 'Užsiėmimų likučio korekcija',
+  restore_attendance: 'Lankymo žymos atšaukimas',
+  remove_reservation: 'Apsilankymo pašalinimas',
 };
 
 const WEEKDAY_LABELS = [
@@ -281,9 +268,6 @@ export default function RecurringAdminPage() {
   const [cancelRefundAmount, setCancelRefundAmount] = useState('');
   const [cancelRefundReference, setCancelRefundReference] = useState('');
   const [changePlanId, setChangePlanId] = useState('');
-  const [refundReason, setRefundReason] = useState<RefundReason>('requested_by_customer');
-  const [refundExceptionCode, setRefundExceptionCode] = useState('manual_refund_required');
-  const [refundExceptionMessage, setRefundExceptionMessage] = useState('');
   const [reservationActionNotes, setReservationActionNotes] = useState('');
   const [reservationCancelReason, setReservationCancelReason] = useState('');
   const [groupSingleVisitDrafts, setGroupSingleVisitDrafts] = useState<
@@ -408,9 +392,6 @@ export default function RecurringAdminPage() {
     setCancelRefundAmount('');
     setCancelRefundReference('');
     setChangePlanId(firstEligiblePlan?.plan?.id || '');
-    setRefundReason('requested_by_customer');
-    setRefundExceptionCode('manual_refund_required');
-    setRefundExceptionMessage('');
     setReservationActionNotes('');
     setReservationCancelReason('');
   };
@@ -618,35 +599,6 @@ export default function RecurringAdminPage() {
       },
       successMessage: 'Planas pakeistas',
       loadingKey: 'change-plan',
-    });
-  };
-
-  const runRefundExecute = async () => {
-    if (!selectedSubscription?.subscription?.id) return;
-    await postRecurringAction({
-      path: `/api/admin/recurring/subscriptions/${selectedSubscription.subscription.id}/refund`,
-      body: {
-        mode: 'execute',
-        reason: refundReason,
-        ...(actionNotes.trim() ? { notes: actionNotes.trim() } : {}),
-      },
-      successMessage: 'Pinigų grąžinimas pradėtas',
-      loadingKey: 'refund-execute',
-    });
-  };
-
-  const runRefundException = async () => {
-    if (!selectedSubscription?.subscription?.id) return;
-    await postRecurringAction({
-      path: `/api/admin/recurring/subscriptions/${selectedSubscription.subscription.id}/refund`,
-      body: {
-        mode: 'record_exception',
-        exceptionCode: refundExceptionCode,
-        exceptionMessage: refundExceptionMessage.trim() || undefined,
-        ...(actionNotes.trim() ? { notes: actionNotes.trim() } : {}),
-      },
-      successMessage: 'Pinigų grąžinimo išimtis įrašyta',
-      loadingKey: 'refund-exception',
     });
   };
 
@@ -1969,6 +1921,177 @@ export default function RecurringAdminPage() {
                     </Text>
                   )}
                 </Stack>
+                <Divider my="md" />
+                <Stack gap="md">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Title order={6}>Rezervacijos ir lankymo istorija</Title>
+                      <Text size="sm" c="dimmed">
+                        Šio abonemento rezervacijų istorija ir jų valdymas
+                      </Text>
+                    </div>
+                    <Button
+                      variant="light"
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={() => void refreshSelectedOperationalContext()}
+                    >
+                      Atnaujinti
+                    </Button>
+                  </Group>
+
+                  <SimpleGrid cols={{ base: 1, md: 2 }}>
+                    <Textarea
+                      label="Dalyvavimo arba atšaukimo pastabos"
+                      withAsterisk
+                      description="Administratoriaus atliekamam pakeitimui pastaba privaloma; po sėkmingo veiksmo laukas išvalomas."
+                      placeholder="Pastaba artimiausiam dalyvavimo arba atšaukimo veiksmui"
+                      value={reservationActionNotes}
+                      onChange={(event) => setReservationActionNotes(event.currentTarget.value)}
+                      minRows={3}
+                    />
+                    <TextInput
+                      label="Atšaukimo priežastis"
+                      placeholder="Pvz., klientas susirgo"
+                      value={reservationCancelReason}
+                      onChange={(event) => setReservationCancelReason(event.currentTarget.value)}
+                    />
+                  </SimpleGrid>
+
+                  {selectedReservationsError ? (
+                    <Alert color="red" title="Klaida">
+                      {selectedReservationsError.message}
+                    </Alert>
+                  ) : isLoadingSelectedReservations ? (
+                    <Group justify="center" py="md">
+                      <Loader size="sm" />
+                    </Group>
+                  ) : selectedReservations.length ? (
+                    <SubscriptionDetailTable label="Abonemento rezervacijos" minWidth={1100}>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Data</Table.Th>
+                          <Table.Th>Tipas</Table.Th>
+                          <Table.Th>Statusas</Table.Th>
+                          <Table.Th>Įskaitoma</Table.Th>
+                          <Table.Th>Atšaukimo priežastis</Table.Th>
+                          <Table.Th>Veiksmai</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {selectedReservations.map((reservation: any) => {
+                          const isScheduled = reservation.status === 'scheduled';
+                          return (
+                            <Table.Tr key={reservation.id}>
+                              <Table.Td>
+                                <Stack gap={2}>
+                                  <Text size="sm" style={{ whiteSpace: 'nowrap' }}>
+                                    {formatDateTime(reservation.occurrence?.startISO)}
+                                  </Text>
+                                  <Text size="xs" c="dimmed">
+                                    {reservation.group?.name || '-'}
+                                  </Text>
+                                </Stack>
+                              </Table.Td>
+                              <Table.Td>
+                                <Badge variant="light" w="max-content">
+                                  {adminValueLabel(reservation.reservationType)}
+                                </Badge>
+                                {reservation.coverage === 'uncovered' && (
+                                  <Text size="xs" c="orange">
+                                    Be abonemento · apmokėjimas nesuregistruotas
+                                  </Text>
+                                )}
+                              </Table.Td>
+                              <Table.Td>
+                                <Badge
+                                  color={statusColor(reservation.status)}
+                                  variant="light"
+                                  w="max-content"
+                                >
+                                  {adminValueLabel(reservation.status)}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">
+                                  {reservation.countsTowardsUsage ? 'Taip' : 'Ne'}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">{reservation.cancelReason || '-'}</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                {isScheduled && reservation.occurrenceId ? (
+                                  <Group gap="xs" wrap="wrap" miw={240}>
+                                    <Button
+                                      size="xs"
+                                      variant="light"
+                                      disabled={!hasReservationActionNotes}
+                                      loading={actionLoading === `${reservation.id}-early`}
+                                      onClick={() =>
+                                        void runReservationCannotAttend(reservation.id, 'early')
+                                      }
+                                    >
+                                      Atšaukti laiku
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      variant="light"
+                                      color="orange"
+                                      disabled={!hasReservationActionNotes}
+                                      loading={actionLoading === `${reservation.id}-late`}
+                                      onClick={() =>
+                                        void runReservationCannotAttend(reservation.id, 'late')
+                                      }
+                                    >
+                                      Atšaukti pavėluotai
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      color="green"
+                                      disabled={!hasReservationActionNotes}
+                                      loading={actionLoading === `${reservation.id}-attended`}
+                                      onClick={() =>
+                                        void runReservationAttendance({
+                                          occurrenceId: reservation.occurrenceId,
+                                          reservationId: reservation.id,
+                                          result: 'attended',
+                                        })
+                                      }
+                                    >
+                                      Dalyvavo
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      color="red"
+                                      variant="light"
+                                      disabled={!hasReservationActionNotes}
+                                      loading={actionLoading === `${reservation.id}-no_show`}
+                                      onClick={() =>
+                                        void runReservationAttendance({
+                                          occurrenceId: reservation.occurrenceId,
+                                          reservationId: reservation.id,
+                                          result: 'no_show',
+                                        })
+                                      }
+                                    >
+                                      Neatvyko
+                                    </Button>
+                                  </Group>
+                                ) : (
+                                  <Text size="xs" c="dimmed">
+                                    Rezervacija nebėra suplanuota.
+                                  </Text>
+                                )}
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })}
+                      </Table.Tbody>
+                    </SubscriptionDetailTable>
+                  ) : (
+                    <Text c="dimmed">Šio abonemento rezervacijų kol kas nėra.</Text>
+                  )}
+                </Stack>
               </SubscriptionDetailSection>
 
               <SubscriptionDetailSection value="actions" title="Abonemento būsenos veiksmai">
@@ -2106,276 +2229,6 @@ export default function RecurringAdminPage() {
                       </Group>
                     </Stack>
                   </Card>
-                </Stack>
-              </SubscriptionDetailSection>
-
-              <SubscriptionDetailSection value="refunds" title="Pinigų grąžinimas ir išimtys">
-                <Stack gap="md">
-                  <SimpleGrid cols={{ base: 1, md: 2 }}>
-                    <Card withBorder>
-                      <Stack gap="xs">
-                        <Text>
-                          <strong>Mokėjimo paslaugų teikėjas:</strong>{' '}
-                          {adminValueLabel(selectedSubscription.refund?.paymentProvider)}
-                        </Text>
-                        <Text component="div">
-                          <strong>Mokėjimo būsena:</strong>{' '}
-                          <Badge
-                            color={statusColor(selectedSubscription.refund?.paymentStatus)}
-                            variant="light"
-                          >
-                            {adminValueLabel(selectedSubscription.refund?.paymentStatus)}
-                          </Badge>
-                        </Text>
-                        <Text component="div">
-                          <strong>Vykdymo būsena:</strong>{' '}
-                          <Badge
-                            color={statusColor(selectedSubscription.refund?.execution?.state)}
-                            variant="light"
-                          >
-                            {adminValueLabel(selectedSubscription.refund?.execution?.state)}
-                          </Badge>
-                        </Text>
-                        <Text>
-                          <strong>Grąžinama suma:</strong>{' '}
-                          {formatMoney(selectedSubscription.refund?.amountEur)}
-                        </Text>
-                        <Text>
-                          <strong>Grąžinimo nuoroda:</strong>{' '}
-                          {selectedSubscription.refund?.execution?.refundReference || '-'}
-                        </Text>
-                        <Text>
-                          <strong>Teikėjo būsena:</strong>{' '}
-                          {adminValueLabel(selectedSubscription.refund?.execution?.providerStatus)}
-                        </Text>
-                        <Text>
-                          <strong>Paskutinė klaida:</strong>{' '}
-                          {selectedSubscription.refund?.execution?.lastError || '-'}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {selectedSubscription.refund?.reason || 'Pinigus galima grąžinti'}
-                        </Text>
-                      </Stack>
-                    </Card>
-
-                    <Card withBorder>
-                      <Stack gap="sm">
-                        <Select
-                          label="„Stripe“ grąžinimo priežastis"
-                          data={REFUND_REASON_OPTIONS}
-                          value={refundReason}
-                          onChange={(value) =>
-                            setRefundReason((value as RefundReason) || 'requested_by_customer')
-                          }
-                          allowDeselect={false}
-                        />
-                        <Button
-                          leftSection={<IconReceiptRefund size={16} />}
-                          disabled={!selectedSubscription.refund?.eligible}
-                          loading={actionLoading === 'refund-execute'}
-                          onClick={runRefundExecute}
-                        >
-                          Grąžinti per „Stripe“
-                        </Button>
-                        <Divider />
-                        <Select
-                          label="Išimties kodas"
-                          data={REFUND_EXCEPTION_OPTIONS}
-                          value={refundExceptionCode}
-                          onChange={(value) =>
-                            setRefundExceptionCode(value || 'manual_refund_required')
-                          }
-                          allowDeselect={false}
-                        />
-                        <Textarea
-                          label="Išimties paaiškinimas"
-                          placeholder="Kodėl pinigų negalima grąžinti automatiškai"
-                          value={refundExceptionMessage}
-                          onChange={(event) => setRefundExceptionMessage(event.currentTarget.value)}
-                          minRows={3}
-                        />
-                        <Button
-                          variant="light"
-                          loading={actionLoading === 'refund-exception'}
-                          onClick={runRefundException}
-                        >
-                          Užfiksuoti grąžinimo išimtį
-                        </Button>
-                      </Stack>
-                    </Card>
-                  </SimpleGrid>
-                </Stack>
-              </SubscriptionDetailSection>
-
-              <SubscriptionDetailSection value="reservations" title="Operacinės rezervacijos">
-                <Stack gap="md">
-                  <Group justify="space-between" align="center">
-                    <div>
-                      <Text size="sm" c="dimmed">
-                        Šio abonemento rezervacijų istorija ir jų valdymas
-                      </Text>
-                    </div>
-                    <Button
-                      variant="light"
-                      leftSection={<IconRefresh size={16} />}
-                      onClick={() => void refreshSelectedOperationalContext()}
-                    >
-                      Atnaujinti
-                    </Button>
-                  </Group>
-
-                  <SimpleGrid cols={{ base: 1, md: 2 }}>
-                    <Textarea
-                      label="Dalyvavimo arba atšaukimo pastabos"
-                      withAsterisk
-                      description="Administratoriaus atliekamam pakeitimui pastaba privaloma; po sėkmingo veiksmo laukas išvalomas."
-                      placeholder="Pastaba artimiausiam dalyvavimo arba atšaukimo veiksmui"
-                      value={reservationActionNotes}
-                      onChange={(event) => setReservationActionNotes(event.currentTarget.value)}
-                      minRows={3}
-                    />
-                    <TextInput
-                      label="Atšaukimo priežastis"
-                      placeholder="Pvz., klientas susirgo"
-                      value={reservationCancelReason}
-                      onChange={(event) => setReservationCancelReason(event.currentTarget.value)}
-                    />
-                  </SimpleGrid>
-
-                  {selectedReservationsError ? (
-                    <Alert color="red" title="Klaida">
-                      {selectedReservationsError.message}
-                    </Alert>
-                  ) : isLoadingSelectedReservations ? (
-                    <Group justify="center" py="md">
-                      <Loader size="sm" />
-                    </Group>
-                  ) : selectedReservations.length ? (
-                    <SubscriptionDetailTable label="Operacinės rezervacijos" minWidth={1100}>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Data</Table.Th>
-                          <Table.Th>Tipas</Table.Th>
-                          <Table.Th>Statusas</Table.Th>
-                          <Table.Th>Įskaitoma</Table.Th>
-                          <Table.Th>Atšaukimo priežastis</Table.Th>
-                          <Table.Th>Veiksmai</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {selectedReservations.map((reservation: any) => {
-                          const isScheduled = reservation.status === 'scheduled';
-                          return (
-                            <Table.Tr key={reservation.id}>
-                              <Table.Td>
-                                <Stack gap={2}>
-                                  <Text size="sm" style={{ whiteSpace: 'nowrap' }}>
-                                    {formatDateTime(reservation.occurrence?.startISO)}
-                                  </Text>
-                                  <Text size="xs" c="dimmed">
-                                    {reservation.group?.name || '-'}
-                                  </Text>
-                                </Stack>
-                              </Table.Td>
-                              <Table.Td>
-                                <Badge variant="light" w="max-content">
-                                  {adminValueLabel(reservation.reservationType)}
-                                </Badge>
-                                {reservation.coverage === 'uncovered' && (
-                                  <Text size="xs" c="orange">
-                                    Be abonemento · apmokėjimas nesuregistruotas
-                                  </Text>
-                                )}
-                              </Table.Td>
-                              <Table.Td>
-                                <Badge
-                                  color={statusColor(reservation.status)}
-                                  variant="light"
-                                  w="max-content"
-                                >
-                                  {adminValueLabel(reservation.status)}
-                                </Badge>
-                              </Table.Td>
-                              <Table.Td>
-                                <Text size="sm">
-                                  {reservation.countsTowardsUsage ? 'Taip' : 'Ne'}
-                                </Text>
-                              </Table.Td>
-                              <Table.Td>
-                                <Text size="sm">{reservation.cancelReason || '-'}</Text>
-                              </Table.Td>
-                              <Table.Td>
-                                {isScheduled && reservation.occurrenceId ? (
-                                  <Group gap="xs" wrap="wrap" miw={240}>
-                                    <Button
-                                      size="xs"
-                                      variant="light"
-                                      disabled={!hasReservationActionNotes}
-                                      loading={actionLoading === `${reservation.id}-early`}
-                                      onClick={() =>
-                                        void runReservationCannotAttend(reservation.id, 'early')
-                                      }
-                                    >
-                                      Atšaukti laiku
-                                    </Button>
-                                    <Button
-                                      size="xs"
-                                      variant="light"
-                                      color="orange"
-                                      disabled={!hasReservationActionNotes}
-                                      loading={actionLoading === `${reservation.id}-late`}
-                                      onClick={() =>
-                                        void runReservationCannotAttend(reservation.id, 'late')
-                                      }
-                                    >
-                                      Atšaukti pavėluotai
-                                    </Button>
-                                    <Button
-                                      size="xs"
-                                      color="green"
-                                      disabled={!hasReservationActionNotes}
-                                      loading={actionLoading === `${reservation.id}-attended`}
-                                      onClick={() =>
-                                        void runReservationAttendance({
-                                          occurrenceId: reservation.occurrenceId,
-                                          reservationId: reservation.id,
-                                          result: 'attended',
-                                        })
-                                      }
-                                    >
-                                      Dalyvavo
-                                    </Button>
-                                    <Button
-                                      size="xs"
-                                      color="red"
-                                      variant="light"
-                                      disabled={!hasReservationActionNotes}
-                                      loading={actionLoading === `${reservation.id}-no_show`}
-                                      onClick={() =>
-                                        void runReservationAttendance({
-                                          occurrenceId: reservation.occurrenceId,
-                                          reservationId: reservation.id,
-                                          result: 'no_show',
-                                        })
-                                      }
-                                    >
-                                      Neatvyko
-                                    </Button>
-                                  </Group>
-                                ) : (
-                                  <Text size="xs" c="dimmed">
-                                    Rezervacija nebėra suplanuota.
-                                  </Text>
-                                )}
-                              </Table.Td>
-                            </Table.Tr>
-                          );
-                        })}
-                      </Table.Tbody>
-                    </SubscriptionDetailTable>
-                  ) : (
-                    <Text c="dimmed">Būsimų rezervacijų šiam abonementui kol kas nėra.</Text>
-                  )}
                 </Stack>
               </SubscriptionDetailSection>
 

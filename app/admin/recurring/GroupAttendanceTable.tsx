@@ -18,6 +18,10 @@ import { IconPlus } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import {
+  type AttendanceCorrection,
+  attendanceCorrectionMessage,
+} from '@/lib/recurring/attendance-correction';
+import {
   type AttendanceRegister,
   homeGroupLabels,
   REGISTER_MARKS,
@@ -29,13 +33,13 @@ import {
   registerRows,
   reservedMembershipCount,
 } from '@/lib/recurring/attendance-register';
+import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
 import {
   type ParticipantEnrollment,
   participantStatusLabels,
   vilniusDate,
 } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
-import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
 import { AttendanceCell, type AttendanceChange } from './AttendanceCell';
 import styles from './GroupAttendanceTable.module.css';
 import { GroupMembershipEditor } from './GroupMembershipEditor';
@@ -74,7 +78,11 @@ export function GroupAttendanceTable({
   const saveLock = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [makeupWarning, setMakeupWarning] = useState<string | null>(null);
-  const recordAttendance = async (change: AttendanceChange) => {
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    change: AttendanceCorrection;
+    name: string;
+  } | null>(null);
+  const recordAttendance = async (change: AttendanceChange | AttendanceCorrection) => {
     if (saveLock.current) return;
     saveLock.current = true;
     setSaving(true);
@@ -84,7 +92,7 @@ export function GroupAttendanceTable({
       const response = await fetch(
         `/api/admin/recurring/groups/${group.id}/attendance?${new URLSearchParams({ site })}`,
         {
-          method: 'POST',
+          method: 'action' in change ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           body: JSON.stringify(change),
         },
@@ -93,14 +101,17 @@ export function GroupAttendanceTable({
       if (!response.ok) throw new Error(result.error || 'Nepavyko išsaugoti lankymo.');
       notifications.show({
         color: 'green',
-        title: 'Lankymas išsaugotas',
+        title: 'action' in change ? 'Apsilankymas pataisytas' : 'Lankymas išsaugotas',
         message:
-          result.coverage === 'uncovered'
-            ? 'Pažymėta be abonemento. Apmokėjimas nesuregistruotas, abonemento likutis nekeistas.'
-            : change.result === 'attended'
-              ? 'Dalyvis atvyko.'
-              : 'Dalyvis neatvyko.',
+          'action' in change
+            ? attendanceCorrectionMessage(result)
+            : result.coverage === 'uncovered'
+              ? 'Pažymėta be abonemento. Apmokėjimas nesuregistruotas, abonemento likutis nekeistas.'
+              : change.result === 'attended'
+                ? 'Dalyvis atvyko.'
+                : 'Dalyvis neatvyko.',
       });
+      if ('action' in change) setPendingRemoval(null);
       const makeupNotice = automaticMakeupNotification(result.automaticMakeup);
       if (makeupNotice) {
         notifications.show(makeupNotice);
@@ -109,14 +120,27 @@ export function GroupAttendanceTable({
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Nepavyko išsaugoti lankymo.');
     } finally {
-      await refresh(
-        (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
-        undefined,
-        { revalidate: true },
-      );
-      saveLock.current = false;
-      setSaving(false);
+      try {
+        await refresh(
+          (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
+          undefined,
+          { revalidate: true },
+        );
+      } catch {
+        setSaveError(
+          (previous) => previous || 'Nepavyko atnaujinti lentelės. Įkelkite puslapį iš naujo.',
+        );
+      } finally {
+        saveLock.current = false;
+        setSaving(false);
+      }
     }
+  };
+  const correctAttendance = (change: AttendanceCorrection, name: string) => {
+    if (change.action === 'remove') {
+      setSaveError(null);
+      setPendingRemoval({ change, name });
+    } else void recordAttendance(change);
   };
   const columns = data ? registerColumns(data.group, data.occurrences) : [];
   const months = registerMonths(columns);
@@ -272,11 +296,6 @@ export function GroupAttendanceTable({
                             {homeGroupLabels(row, data).join('; ') || 'Pagrindinė grupė nenurodyta'}
                           </Text>
                         )}
-                        {row.subscriptions.length > 1 && (
-                          <Text size="xs" c="dimmed">
-                            Abonementų: {row.subscriptions.length}
-                          </Text>
-                        )}
                         {data.memberships
                           ?.filter((member) =>
                             member.subscriptionIds.some((id) =>
@@ -318,6 +337,7 @@ export function GroupAttendanceTable({
                                   reservation={reservation}
                                   busy={saving}
                                   onRecord={recordAttendance}
+                                  onCorrect={correctAttendance}
                                   onViewParticipant={onViewParticipant}
                                 />
                               ))
@@ -327,6 +347,7 @@ export function GroupAttendanceTable({
                                 column={column}
                                 busy={saving}
                                 onRecord={recordAttendance}
+                                onCorrect={correctAttendance}
                                 onViewParticipant={onViewParticipant}
                                 onEnroll={canAdd ? onEnroll : undefined}
                               />
@@ -371,6 +392,37 @@ export function GroupAttendanceTable({
           </>
         )}
       </Stack>
+      <Modal
+        opened={Boolean(pendingRemoval)}
+        onClose={() => !saving && setPendingRemoval(null)}
+        title="Pašalinti apsilankymą?"
+        closeOnClickOutside={!saving}
+        closeOnEscape={!saving}
+        withCloseButton={!saving}
+      >
+        <Stack>
+          <Text>
+            {pendingRemoval?.name} · {pendingRemoval?.change.date}
+          </Text>
+          <Text size="sm">
+            Apsilankymas bus pašalintas iš lankymo lentelės ir vieta atlaisvinta. Abonemento likutis
+            nesikeis. Veiksmas bus išsaugotas istorijoje.
+          </Text>
+          {saveError && <Alert color="red">{saveError}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" disabled={saving} onClick={() => setPendingRemoval(null)}>
+              Grįžti
+            </Button>
+            <Button
+              color="red"
+              loading={saving}
+              onClick={() => pendingRemoval && void recordAttendance(pendingRemoval.change)}
+            >
+              Pašalinti apsilankymą
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
       <Modal
         opened={Boolean(selectedParticipant)}
         onClose={() => setSelectedParticipant(null)}

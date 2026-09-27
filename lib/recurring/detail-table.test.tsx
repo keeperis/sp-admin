@@ -7,7 +7,7 @@ import { SubscriptionDetailTable } from '@/app/admin/recurring/SubscriptionDetai
 test('detail tables keep readable columns inside a keyboard-accessible native scroller', () => {
   const html = renderToStaticMarkup(
     <MantineProvider>
-      <SubscriptionDetailTable label="Operacinės rezervacijos" minWidth={1100}>
+      <SubscriptionDetailTable label="Abonemento rezervacijos" minWidth={1100}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Atšaukimo priežastis</Table.Th>
@@ -23,7 +23,7 @@ test('detail tables keep readable columns inside a keyboard-accessible native sc
   );
 
   assert.match(html, /role="region"/);
-  assert.match(html, /aria-label="Operacinės rezervacijos: slenkama lentelė"/);
+  assert.match(html, /aria-label="Abonemento rezervacijos: slenkama lentelė"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /--table-min-width:calc\(68\.75rem \* var\(--mantine-scale\)\)/);
   assert.match(html, /--table-overflow:auto/);

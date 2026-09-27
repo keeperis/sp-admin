@@ -1,7 +1,19 @@
 'use client';
 
 import { Menu } from '@mantine/core';
-import { IconCalendarPlus, IconCheck, IconTicket, IconUser, IconX } from '@tabler/icons-react';
+import {
+  IconArrowBackUp,
+  IconCalendarPlus,
+  IconCheck,
+  IconTicket,
+  IconTrash,
+  IconUser,
+  IconX,
+} from '@tabler/icons-react';
+import {
+  type AttendanceCorrection,
+  attendanceCorrectionAction,
+} from '@/lib/recurring/attendance-correction';
 import {
   makeupProgressLabel,
   makeupSourceLabel,
@@ -29,6 +41,7 @@ export function AttendanceCell({
   onRecord,
   onViewParticipant,
   onEnroll,
+  onCorrect,
 }: {
   row: RegisterRow;
   column: RegisterColumn;
@@ -37,6 +50,7 @@ export function AttendanceCell({
   onRecord: (change: AttendanceChange) => Promise<void>;
   onViewParticipant: (id: string) => Promise<void>;
   onEnroll?: (enrollment: ParticipantEnrollment) => void;
+  onCorrect: (change: AttendanceCorrection, name: string) => void;
 }) {
   const subscription = reservation
     ? row.subscriptions.find((item) => item.id === reservation.subscriptionId)
@@ -49,6 +63,21 @@ export function AttendanceCell({
   const canRecord =
     (!reservation || reservation.status === 'scheduled') &&
     column.occurrence?.status !== 'cancelled';
+  const correctionAction = attendanceCorrectionAction(reservation, column.occurrence?.status);
+  const correct = () => {
+    if (reservation?.updatedAt && correctionAction)
+      onCorrect(
+        {
+          action: correctionAction,
+          subscriptionId: reservation.subscriptionId,
+          reservationId: reservation.id,
+          date: column.date,
+          expectedStatus: reservation.status as AttendanceCorrection['expectedStatus'],
+          expectedUpdatedAt: reservation.updatedAt,
+        },
+        row.name,
+      );
+  };
   const label = `${row.name} · ${column.date} ${column.time} · ${replacement ? 'Atšaukta laiku' : mark?.label || 'Rezervacijos nėra'}${moved ? ' · Perkeltas užsiėmimas' : ''}${replacement ? ` · ${makeupProgressLabel(replacement)}` : ''}${source ? ` · ${makeupSourceLabel(source)}` : ''}${uncovered ? ' · Be abonemento' : ''}`;
   const record = (result: AttendanceChange['result']) => {
     if (subscription)
@@ -131,6 +160,25 @@ export function AttendanceCell({
               onClick={() => record('no_show')}
             >
               Neatvyko
+            </Menu.Item>
+            <Menu.Divider />
+          </>
+        )}
+        {correctionAction === 'restore' && (
+          <>
+            <Menu.Label>Grąžinti į „Suplanuota“</Menu.Label>
+            <Menu.Item leftSection={<IconArrowBackUp size={16} />} onClick={correct}>
+              {reservation?.status === 'attended'
+                ? 'Atšaukti dalyvavimo žymą'
+                : 'Atšaukti neatvykimo žymą'}
+            </Menu.Item>
+            <Menu.Divider />
+          </>
+        )}
+        {correctionAction === 'remove' && (
+          <>
+            <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={correct}>
+              Pašalinti apsilankymą
             </Menu.Item>
             <Menu.Divider />
           </>

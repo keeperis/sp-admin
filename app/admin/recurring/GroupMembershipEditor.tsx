@@ -1,13 +1,22 @@
 'use client';
 
-import { Alert, Button, Group, Modal, Stack, Switch, Text, TextInput } from '@mantine/core';
+import {
+  ActionIcon,
+  Alert,
+  Button,
+  Group,
+  Modal,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconArmchair } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import type { GroupMembership } from '@/lib/recurring/attendance-register';
 import { vilniusDate } from '@/lib/recurring/participants';
-import styles from './GroupAttendanceTable.module.css';
 
 export function GroupMembershipEditor({
   membership,
@@ -75,21 +84,12 @@ export function GroupMembershipEditor({
     : 'Vieta rezervuota neribotai';
   return (
     <>
-      <Button
+      <ActionIcon
         variant="subtle"
-        size="compact-xs"
+        size={28}
         color={membership.endsOn ? 'orange' : 'gray'}
-        leftSection={<IconArmchair size={13} />}
         aria-label={`${name}: ${label}`}
         title={label}
-        className={styles.membership}
-        style={{
-          height: 'auto',
-          minHeight: 'var(--membership-control-height, 28px)',
-          whiteSpace: 'normal',
-          textAlign: 'left',
-        }}
-        styles={{ label: { whiteSpace: 'normal' } }}
         onClick={() => {
           setEnding(Boolean(membership.endsOn));
           setEndsOn(membership.endsOn || '');
@@ -97,11 +97,8 @@ export function GroupMembershipEditor({
           setOpened(true);
         }}
       >
-        <span className={styles.membershipLabel}>{label}</span>
-        <span className={styles.membershipCompact} aria-hidden="true">
-          {membership.endsOn ? `Iki ${membership.endsOn.slice(5)}` : 'Vieta saugoma'}
-        </span>
-      </Button>
+        <IconArmchair size={16} aria-hidden="true" />
+      </ActionIcon>
       <Modal
         opened={opened}
         onClose={() => {

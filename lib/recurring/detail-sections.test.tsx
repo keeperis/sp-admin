@@ -22,11 +22,23 @@ test('subscription details contain only personal sections with history last', ()
     ['summary', 'Santrauka'],
     ['schedule', 'Tvarkaraštis ir perkelti užsiėmimai'],
     ['actions', 'Abonemento būsenos veiksmai'],
-    ['refunds', 'Pinigų grąžinimas ir išimtys'],
-    ['reservations', 'Operacinės rezervacijos'],
     ['history', 'Veiksmų istorija'],
   ]);
   assert.ok(!pageSource.includes('selectedOccurrences'));
+});
+
+test('schedule includes reservation history and management without separate refund or reservation sections', () => {
+  const schedule = pageSource.match(
+    /<SubscriptionDetailSection\s+value="schedule"[\s\S]*?<\/SubscriptionDetailSection>/,
+  )?.[0];
+  assert.ok(schedule);
+  assert.match(schedule, /Rezervacijos ir lankymo istorija/);
+  assert.match(schedule, /selectedReservations\.map/);
+  assert.match(schedule, /runReservationCannotAttend/);
+  assert.match(schedule, /runReservationAttendance/);
+  assert.match(schedule, /refreshSelectedOperationalContext/);
+  assert.doesNotMatch(pageSource, /value="(?:refunds|reservations)"/);
+  assert.doesNotMatch(pageSource, /runRefundExecute|runRefundException/);
 });
 
 function render(value: string[]) {
@@ -45,17 +57,17 @@ function render(value: string[]) {
 
 test('all subscription detail sections start collapsed with accessible headings', () => {
   const html = render([]);
-  assert.equal((html.match(/aria-expanded="false"/g) || []).length, 6);
+  assert.equal((html.match(/aria-expanded="false"/g) || []).length, 4);
   const panels = html.match(/<div[^>]*role="region"[^>]*>/g) || [];
-  assert.equal(panels.filter((tag) => tag.includes('aria-hidden="true"')).length, 6);
-  assert.equal((html.match(/<h5/g) || []).length, 6);
+  assert.equal(panels.filter((tag) => tag.includes('aria-hidden="true"')).length, 4);
+  assert.equal((html.match(/<h5/g) || []).length, 4);
   for (const [, title] of sections) assert.ok(html.includes(title));
 });
 
 test('multiple detail sections can be expanded independently', () => {
   const html = render(['summary', 'history']);
   assert.equal((html.match(/aria-expanded="true"/g) || []).length, 2);
-  assert.equal((html.match(/aria-expanded="false"/g) || []).length, 4);
+  assert.equal((html.match(/aria-expanded="false"/g) || []).length, 2);
   const panels = html.match(/<div[^>]*role="region"[^>]*>/g) || [];
-  assert.equal(panels.filter((tag) => tag.includes('aria-hidden="true"')).length, 4);
+  assert.equal(panels.filter((tag) => tag.includes('aria-hidden="true"')).length, 2);
 });
