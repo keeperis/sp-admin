@@ -38,9 +38,9 @@ import { appTheme } from '@/src/theme';
 
 const navItems = [
   { href: '/admin', label: 'Apžvalga', icon: IconDashboard },
-  { href: '/admin/workshops', label: 'Užsiėmimai', icon: IconCalendarEvent },
-  { href: '/admin/bookings', label: 'Rezervacijos', icon: IconTicket },
-  { href: '/admin/recurring', label: 'Abonementai', icon: IconRepeat },
+  { href: '/admin/workshops', label: 'Dirbtuvės', icon: IconCalendarEvent },
+  { href: '/admin/bookings', label: 'Rezervacijos į dirbtuves', icon: IconTicket },
+  { href: '/admin/recurring', label: 'Nuolatiniai užsiėmimai', icon: IconRepeat },
   { href: '/admin/corporate', label: 'Įmonės', icon: IconBuildingBank },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
@@ -219,6 +219,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   <Group
                     p="sm"
                     mb="xs"
+                    wrap="nowrap"
                     style={{
                       borderRadius: '4px',
                       backgroundColor: isActive
@@ -229,8 +230,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                       cursor: 'pointer',
                     }}
                   >
-                    <Icon size={18} />
-                    <Text size="sm" fw={isActive ? 600 : 400}>
+                    <Icon size={18} style={{ flexShrink: 0 }} />
+                    <Text size="sm" fw={isActive ? 600 : 400} style={{ minWidth: 0 }}>
                       {item.label}
                     </Text>
                   </Group>

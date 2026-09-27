@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ActionIcon,
   Alert,
   Badge,
   Button,
@@ -17,7 +16,6 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   Textarea,
   TextInput,
@@ -31,7 +29,6 @@ import {
   IconCopy,
   IconEdit,
   IconExternalLink,
-  IconEye,
   IconMailForward,
   IconMessage,
   IconPlus,
@@ -43,6 +40,16 @@ import { Suspense, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { buildApiUrl } from '@/lib/api';
 import type { SiteKey } from '@/lib/site';
+import {
+  bookingPaymentStatusLabel,
+  bookingWorkshopName,
+  deletedWorkshopLabel,
+  formatDateTime,
+  statusColor,
+  statusLabel,
+} from '@/lib/reservations/presentation';
+import { BookingRegistrationDetails } from './BookingRegistrationDetails';
+import { ReservationsList } from './ReservationsList';
 
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
   { value: 'ceramics', label: 'Keramika' },
@@ -90,66 +97,6 @@ const getCurrentVilniusDateTimeKey = () => {
       .map((part) => [part.type, part.value]),
   );
   return `${parts.get('year')}-${parts.get('month')}-${parts.get('day')}T${parts.get('hour')}:${parts.get('minute')}`;
-};
-
-const formatDateTime = (value: string) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('lt-LT', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date);
-};
-
-const statusColor = (status: string) => {
-  if (status === 'confirmed') return 'green';
-  if (status === 'pending_payment') return 'orange';
-  if (status === 'cancelled') return 'red';
-  if (status === 'expired') return 'gray';
-  return 'blue';
-};
-
-const statusLabel = (status: string | null | undefined) => {
-  const labels: Record<string, string> = {
-    cancelled: 'Atšaukta',
-    confirmed: 'Patvirtinta',
-    draft: 'Juodraštis',
-    expired: 'Pasibaigė',
-    failed: 'Nepavyko',
-    paid: 'Apmokėta',
-    pending: 'Laukiama',
-    pending_payment: 'Laukia mokėjimo',
-    refunded: 'Pinigai grąžinti',
-    sent: 'Išsiųsta',
-    valid: 'Galioja',
-  };
-  return status ? labels[status] || status : 'Nėra';
-};
-
-const deletedWorkshopLabel = 'Ištrintas užsiėmimas';
-
-const bookingWorkshopName = (booking: any) => {
-  if (booking?.workshop) {
-    return booking.workshop.titleLt || booking.workshop.titleEn || booking.workshopId || '-';
-  }
-
-  if (booking?.workshop === null) {
-    const snapshotName =
-      typeof booking.contractSnapshot?.serviceName === 'string'
-        ? booking.contractSnapshot.serviceName.trim()
-        : '';
-    return snapshotName || booking.workshopId || '-';
-  }
-
-  return booking?.workshopId || '-';
-};
-
-const bookingWorkshopStartISO = (booking: any) => {
-  const value =
-    booking?.workshop?.startISO ||
-    (booking?.workshop === null ? booking.contractSnapshot?.startISO : '');
-  return typeof value === 'string' ? value : '';
 };
 
 function ReservationsPageContent() {
@@ -528,11 +475,11 @@ function ReservationsPageContent() {
   };
 
   return (
-    <Container size="xl" py="md">
-      <Stack gap="xl">
+    <Container size="xl" py="md" w="100%" miw={0} px={{ base: 0, sm: 'md' }}>
+      <Stack gap="xl" miw={0}>
         <Group justify="space-between" align="flex-end">
-          <Title order={2}>Rezervacijos</Title>
-          <Group>
+          <Title order={2}>Rezervacijos į dirbtuves</Title>
+          <Group style={{ minWidth: 0 }}>
             <Button leftSection={<IconPlus size={16} />} onClick={openManualBookingModal}>
               Pridėti rezervaciją
             </Button>
@@ -549,7 +496,7 @@ function ReservationsPageContent() {
           </Group>
         </Group>
 
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" p={{ base: 'sm', sm: 'lg' }} radius="md" withBorder miw={0}>
           <Stack gap="md">
             <Group align="flex-end">
               <Select
@@ -563,7 +510,7 @@ function ReservationsPageContent() {
                   syncUrl({ site: nextSite, workshopId: '' });
                 }}
                 allowDeselect={false}
-                w={170}
+                w={{ base: '100%', sm: 170 }}
               />
               <Select
                 label="Statusas"
@@ -575,7 +522,7 @@ function ReservationsPageContent() {
                   syncUrl({ status: nextStatus });
                 }}
                 allowDeselect={false}
-                w={220}
+                w={{ base: '100%', sm: 220 }}
               />
               <Select
                 label="Renginys"
@@ -588,14 +535,19 @@ function ReservationsPageContent() {
                 }}
                 searchable
                 allowDeselect={false}
-                style={{ flex: 1, minWidth: 260 }}
+                style={{ flex: '1 1 260px', minWidth: 0, maxWidth: '100%' }}
               />
-              <TextInput label="Užsiėmimo ID" value={workshopId} readOnly w={260} />
+              <TextInput
+                label="Užsiėmimo ID"
+                value={workshopId}
+                readOnly
+                w={{ base: '100%', sm: 260 }}
+              />
             </Group>
           </Stack>
         </Card>
 
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" p={{ base: 'sm', sm: 'lg' }} radius="md" withBorder miw={0}>
           <Group justify="space-between" mb="md">
             <Title order={4}>Rezervacijos</Title>
             <Text size="sm" c="dimmed">
@@ -608,93 +560,7 @@ function ReservationsPageContent() {
           ) : bookings.length === 0 && !isLoading ? (
             <Text c="dimmed">Rezervacijų pagal pasirinktus filtrus nėra.</Text>
           ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Klientas</Table.Th>
-                  <Table.Th>Kontaktai</Table.Th>
-                  <Table.Th>Renginys</Table.Th>
-                  <Table.Th>Dalyviai</Table.Th>
-                  <Table.Th>Suma</Table.Th>
-                  <Table.Th>Mokėjimas</Table.Th>
-                  <Table.Th>Statusas</Table.Th>
-                  <Table.Th>Sukurta</Table.Th>
-                  <Table.Th />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {bookings.map((booking: any) => (
-                  <Table.Tr key={booking.id}>
-                    <Table.Td>
-                      <Text fw={500}>{booking.customerName}</Text>
-                      <Text size="xs" c="dimmed">
-                        {booking.source}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Text size="sm">{booking.customerEmail}</Text>
-                        <Text size="sm">{booking.customerPhone}</Text>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={2} align="flex-start">
-                        <Text size="sm" fw={500}>
-                          {bookingWorkshopName(booking)}
-                        </Text>
-                        {booking.workshop === null ? (
-                          <Badge color="red" variant="light" size="xs">
-                            {deletedWorkshopLabel}
-                          </Badge>
-                        ) : null}
-                        <Text size="xs" c="dimmed">
-                          {bookingWorkshopStartISO(booking)
-                            ? bookingWorkshopStartISO(booking).replace('T', ' ')
-                            : '-'}
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>{booking.participantsCount}</Table.Td>
-                    <Table.Td>
-                      {booking.totalAmount} {booking.currency}
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge
-                        color={
-                          booking.payment?.status === 'paid'
-                            ? 'green'
-                            : booking.payment?.status === 'refunded'
-                              ? 'grape'
-                              : booking.payment?.status === 'failed'
-                                ? 'red'
-                                : 'gray'
-                        }
-                        variant="light"
-                      >
-                        {booking.payment?.status || 'nėra'}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color={statusColor(booking.status)} variant="light">
-                        {statusLabel(booking.status)}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>{formatDateTime(booking.createdAt)}</Table.Td>
-                    <Table.Td>
-                      <Tooltip label="Rezervacijos detalės">
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="Rezervacijos detalės"
-                          onClick={() => openBookingDetails(booking.id)}
-                        >
-                          <IconEye size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+            <ReservationsList bookings={bookings} onView={openBookingDetails} />
           )}
         </Card>
 
@@ -709,7 +575,7 @@ function ReservationsPageContent() {
               <Loader />
             </Group>
           ) : (
-            <Stack gap="md">
+            <Stack gap="md" miw={0} style={{ overflowWrap: 'anywhere' }}>
               <Group justify="space-between" align="flex-start">
                 <div>
                   <Text fw={700}>{selectedBooking.customerName}</Text>
@@ -739,6 +605,7 @@ function ReservationsPageContent() {
                 <Text size="sm">
                   <strong>Suma:</strong> {selectedBooking.totalAmount} {selectedBooking.currency}
                 </Text>
+                <BookingRegistrationDetails booking={selectedBooking} />
                 <Text size="sm">
                   <strong>Galioja iki:</strong> {formatDateTime(selectedBooking.expiresAt)}
                 </Text>
@@ -750,12 +617,12 @@ function ReservationsPageContent() {
               </Stack>
 
               <Divider />
-              <Group grow align="stretch">
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                 <Card withBorder padding="sm" radius="sm">
                   <Text size="xs" c="dimmed">
-                    Mokėjimas
+                    Mokėjimo būsena
                   </Text>
-                  <Text fw={600}>{statusLabel(selectedBooking.payment?.status)}</Text>
+                  <Text fw={600}>{bookingPaymentStatusLabel(selectedBooking)}</Text>
                   {selectedBooking.payment ? (
                     <Text size="xs" c="dimmed">
                       {selectedBooking.payment.provider} · {selectedBooking.payment.amount}{' '}
@@ -785,7 +652,7 @@ function ReservationsPageContent() {
                     </Text>
                   ) : null}
                 </Card>
-              </Group>
+              </SimpleGrid>
 
               {selectedBooking.confirmationEmail?.lastError ? (
                 <Alert color="orange">{selectedBooking.confirmationEmail.lastError}</Alert>

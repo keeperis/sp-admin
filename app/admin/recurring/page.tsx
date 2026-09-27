@@ -838,7 +838,7 @@ export default function RecurringAdminPage() {
       <Stack gap="xl">
         <Group justify="space-between" align="flex-end">
           <div>
-            <Title order={2}>Abonementai</Title>
+            <Title order={2}>Nuolatiniai užsiėmimai</Title>
             <Text size="sm" c="dimmed" mt={4}>
               Abonementų, jų būsenų, pinigų grąžinimų ir veiksmų istorijos valdymas
             </Text>

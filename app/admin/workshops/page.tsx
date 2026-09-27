@@ -703,7 +703,7 @@ export default function WorkshopsPage() {
       <Stack gap="xl">
         <Group justify="space-between" align="end">
           <Stack gap="sm">
-            <Title order={2}>Užsiėmimai</Title>
+            <Title order={2}>Dirbtuvės</Title>
             <Select
               label="Projektas"
               data={PROJECT_OPTIONS}
