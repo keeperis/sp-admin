@@ -3,10 +3,12 @@
 import { Button, Card, Center, Stack, Text, Title } from '@mantine/core';
 import { IconBrandGoogle } from '@tabler/icons-react';
 import { signIn } from 'next-auth/react';
+import { InstallHelp } from '@/components/pwa/InstallHelp';
+import classes from './page.module.css';
 
 export default function LoginPage() {
   return (
-    <Center style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <Center className={classes.screen}>
       <Card
         shadow="sm"
         padding="xl"
@@ -29,6 +31,7 @@ export default function LoginPage() {
           >
             Sign in with Google
           </Button>
+          <InstallHelp />
         </Stack>
       </Card>
     </Center>

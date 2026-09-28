@@ -45,3 +45,44 @@ cp .env.example .env.local
 ```bash
 npm run build
 ```
+
+## iPhone Home Screen aplikacija
+
+Administravimas palaiko **online standalone** režimą, be Service Worker ar offline įrašymo.
+
+1. Safari atidarykite `https://soulpoetry.love/admin`.
+2. Pasirinkite **Bendrinti → Pridėti prie pagrindinio ekrano**.
+3. Jei rodomas **Open as Web App**, palikite įjungtą.
+4. Paleiskite iš naujos ikonos ir prireikus prisijunkite per Google.
+
+Jei senesnė pridėta nuoroda vis dar atidaro Safari skirtuką, pašalinkite tik tą Home Screen
+nuorodą ir pridėkite iš naujo. Google prisijungimas bei išorinės nuorodos gali parodyti
+sistemos naršymo langą; vidiniai `/admin` ekranai turi likti aplikacijoje.
+
+Manifestas: `/admin.webmanifest`, stabilus `id` ir `start_url` — `/admin`.
+`scope: /` sąmoningai apima `/login` ir `/api/auth` tame pačiame domene; tai nekeičia
+autorizacijos ir neapima keramikos / jogos domenų. Metaduomenys jungiami tik admin ir auth
+layout'uose; viešas pradžios puslapis neįgyja administravimo aplikacijos identiteto.
+
+Ikonos `/icons/admin-*.png` paruoštos iš esamo `public/favicon_dark.png`: 180 px Apple Touch,
+192 ir 512 px manifestui, nepermatomas baltas fonas. Naujų PWA priklausomybių nepridėta.
+
+### Patikra prieš pristatymą
+
+Read-only HTTP patikra prieš jau paleistą production build arba produkciją:
+
+```bash
+node scripts/check-admin-pwa.mjs http://localhost:3311
+node scripts/check-admin-pwa.mjs https://soulpoetry.love
+```
+
+- Login HTML turi vieną manifestą, Apple Touch ikoną ir `apple-mobile-web-app-capable=yes`;
+  viešas `/` HTML šių admin nustatymų neturi.
+- Manifestas ir visos jo ikonos grąžina 200 be prisijungimo, su tinkamais MIME tipais.
+- Neprisijungęs `/admin` nukreipia į `/login`; API vis dar grąžina 401 be sesijos.
+- Realiame iPhone patikrinti naują įdiegimą, atskirą langą aplikacijų perjungiklyje,
+  Google prisijungimą / grįžimą, uždarymą / pakartotinį paleidimą ir atsijungimą.
+- Patikrinti meniu, modalus, klaviatūrą ir bilietų kameros leidimą. Praradus internetą
+  įrašymo veiksmai neturi būti laikomi sėkmingais.
+
+Desktop / WebKit emuliacija nepakeičia iPhone Home Screen ir tikro Google OAuth testo.

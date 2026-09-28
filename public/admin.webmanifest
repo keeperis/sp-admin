@@ -1,0 +1,26 @@
+{
+  "id": "/admin",
+  "name": "SoulPoetry Admin",
+  "short_name": "SoulPoetry",
+  "description": "SoulPoetry studijos administravimas",
+  "lang": "lt",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icons/admin-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

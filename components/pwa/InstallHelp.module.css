@@ -1,0 +1,26 @@
+.help {
+  margin-top: var(--mantine-spacing-md);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.help summary {
+  cursor: pointer;
+}
+
+.help summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.help p {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+@media (display-mode: standalone) {
+  .help {
+    display: none;
+  }
+}
