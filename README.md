@@ -48,7 +48,7 @@ npm run build
 
 ## iPhone Home Screen aplikacija
 
-Administravimas palaiko **online standalone** režimą, be Service Worker ar offline įrašymo.
+Administravimas palaiko **online standalone** režimą, be offline įrašymo. Pasirinktiniai pranešimai naudoja tik push skirtą Service Worker (žr. žemiau), kuris nekešuoja administravimo duomenų.
 
 1. Safari atidarykite `https://soulpoetry.love/admin`.
 2. Pasirinkite **Bendrinti → Pridėti prie pagrindinio ekrano**.
@@ -86,3 +86,10 @@ node scripts/check-admin-pwa.mjs https://soulpoetry.love
   įrašymo veiksmai neturi būti laikomi sėkmingais.
 
 Desktop / WebKit emuliacija nepakeičia iPhone Home Screen ir tikro Google OAuth testo.
+# Admin registration notifications
+
+Open **Pranešimai į telefoną** (`/admin/notifications`) in the installed Home Screen app, press **Įjungti pranešimus**, allow notifications, then press **Bandomasis pranešimas**. iPhone requires iOS 16.4+. Each device opts in independently; normal logout unsubscribes this device.
+
+New recurring and one-time workshop registrations are sent by the API's minute worker. Transfers notify on submission, cards after confirmed fulfillment/payment. Historical registrations are not replayed. Notification payloads contain no customer contact data. Click opens the authenticated admin section.
+
+The worker `/admin-push-sw.js` is push-only: no fetch handler, offline administration, auth caching or API caching. Service-worker contract test: `node scripts/check-push-worker.mjs`. The test button reports push-provider acceptance; physical delivery must still be checked on the device (Focus/permissions apply). API setup and delivery semantics: `sp-api/docs/admin-registration-push.md`.

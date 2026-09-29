@@ -34,6 +34,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { InstallHelp } from '@/components/pwa/InstallHelp';
+import { disablePushOnLogout } from '@/lib/push-client';
 import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
 
@@ -45,6 +46,7 @@ const navItems = [
   { href: '/admin/corporate', label: 'Įmonės', icon: IconBuildingBank },
   { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
   { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
+  { href: '/admin/notifications', label: 'Pranešimai į telefoną', icon: IconBellRinging },
   { href: '/admin/content', label: 'Turinys', icon: IconEdit },
   { href: '/admin/legal', label: 'Teisinė informacija', icon: IconFileDescription },
   { href: '/admin/meta', label: 'Meta', icon: IconBrandFacebook },
@@ -96,6 +98,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         }
 
         setGateState('redirecting');
+        await disablePushOnLogout();
         await signOut({ redirect: false });
         if (cancelled) return;
 
@@ -201,7 +204,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   </Menu.Item>
                   <Menu.Item
                     leftSection={<IconLogout size={14} />}
-                    onClick={() => signOut({ redirectTo: '/login' })}
+                    onClick={async () => {
+                      await disablePushOnLogout();
+                      await signOut({ redirectTo: '/login' });
+                    }}
                   >
                     Atsijungti
                   </Menu.Item>
