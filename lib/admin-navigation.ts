@@ -10,7 +10,6 @@ import {
   IconHome,
   IconQrcode,
   IconRepeat,
-  IconTicket,
 } from '@tabler/icons-react';
 
 // Shared by the home launcher and sidebar so routes/labels cannot drift apart.
@@ -18,14 +17,8 @@ export const adminSections = [
   {
     href: '/admin/workshops',
     label: 'Dirbtuvės',
-    description: 'Dirbtuvių datos, vietos ir informacija.',
+    description: 'Planuojamos ir praėjusios dirbtuvės, rezervacijos ir apmokėjimai.',
     icon: IconCalendarEvent,
-  },
-  {
-    href: '/admin/bookings',
-    label: 'Rezervacijos į dirbtuves',
-    description: 'Registracijos, dalyviai ir apmokėjimai.',
-    icon: IconTicket,
   },
   {
     href: '/admin/recurring',

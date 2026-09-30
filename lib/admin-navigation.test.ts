@@ -13,9 +13,8 @@ test('home and sidebar share every real section, with a separate home entry', ()
   );
 });
 
-test('all eleven existing sections are retained and overview has its own route', () => {
+test('workshops and bookings share one section; other destinations are retained', () => {
   assert.deepEqual(adminSections.map((section) => section.href).sort(), [
-    '/admin/bookings',
     '/admin/content',
     '/admin/corporate',
     '/admin/legal',

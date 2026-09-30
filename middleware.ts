@@ -30,7 +30,7 @@ export default auth((request: NextRequest & { auth?: unknown }) => {
   // Protect /admin routes
   if (pathname.startsWith('/admin') && !request.auth) {
     const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', pathname);
+    url.searchParams.set('callbackUrl', `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(url);
   }
 
