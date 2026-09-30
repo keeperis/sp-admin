@@ -14,43 +14,16 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
-import {
-  IconBellRinging,
-  IconBrandFacebook,
-  IconBuildingBank,
-  IconCalendarEvent,
-  IconDashboard,
-  IconEdit,
-  IconFileDescription,
-  IconLogout,
-  IconMoon,
-  IconQrcode,
-  IconRepeat,
-  IconSun,
-  IconTicket,
-} from '@tabler/icons-react';
+import { IconLogout, IconMoon, IconSun } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { InstallHelp } from '@/components/pwa/InstallHelp';
+import { adminNavItems, isAdminNavActive } from '@/lib/admin-navigation';
 import { disablePushOnLogout } from '@/lib/push-client';
 import { useTheme } from '@/src/components/theme/ThemeProvider';
 import { appTheme } from '@/src/theme';
-
-const navItems = [
-  { href: '/admin', label: 'Apžvalga', icon: IconDashboard },
-  { href: '/admin/workshops', label: 'Dirbtuvės', icon: IconCalendarEvent },
-  { href: '/admin/bookings', label: 'Rezervacijos į dirbtuves', icon: IconTicket },
-  { href: '/admin/recurring', label: 'Nuolatiniai užsiėmimai', icon: IconRepeat },
-  { href: '/admin/corporate', label: 'Įmonės', icon: IconBuildingBank },
-  { href: '/admin/tickets', label: 'Bilietai', icon: IconQrcode },
-  { href: '/admin/reminders', label: 'Priminimų prenumeratoriai', icon: IconBellRinging },
-  { href: '/admin/notifications', label: 'Pranešimai į telefoną', icon: IconBellRinging },
-  { href: '/admin/content', label: 'Turinys', icon: IconEdit },
-  { href: '/admin/legal', label: 'Teisinė informacija', icon: IconFileDescription },
-  { href: '/admin/meta', label: 'Meta', icon: IconBrandFacebook },
-];
 
 const adminLightBg = '#ffffff';
 const adminDarkBg = '#1a1b1e';
@@ -174,10 +147,26 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <Group h="100%" px="md" justify="space-between" wrap="nowrap" gap="xs">
             <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
               <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-              <Text fw={700} size="lg" hiddenFrom="xs" style={{ whiteSpace: 'nowrap' }}>
+              <Text
+                component={Link}
+                href="/admin"
+                onClick={close}
+                fw={700}
+                size="lg"
+                hiddenFrom="xs"
+                style={{ whiteSpace: 'nowrap' }}
+              >
                 SoulPoetry
               </Text>
-              <Text fw={700} size="lg" visibleFrom="xs" style={{ whiteSpace: 'nowrap' }}>
+              <Text
+                component={Link}
+                href="/admin"
+                onClick={close}
+                fw={700}
+                size="lg"
+                visibleFrom="xs"
+                style={{ whiteSpace: 'nowrap' }}
+              >
                 SoulPoetry administravimas
               </Text>
             </Group>
@@ -218,14 +207,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </AppShell.Header>
 
         <AppShell.Navbar p="md">
-          <nav>
-            {navItems.map((item) => {
+          <nav aria-label="Pagrindinis meniu">
+            {adminNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive = isAdminNavActive(pathname, item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
                   style={{ textDecoration: 'none' }}
                   onClick={close}
                 >

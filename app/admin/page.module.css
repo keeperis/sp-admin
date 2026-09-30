@@ -1,0 +1,38 @@
+.section {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  min-width: 0;
+  min-height: 96px;
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  text-decoration: none;
+}
+
+.section:hover {
+  background: var(--mantine-color-default-hover);
+  border-color: var(--mantine-color-blue-4);
+}
+
+.section:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-6);
+  outline-offset: 3px;
+}
+
+.copy {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.icon,
+.chevron {
+  flex-shrink: 0;
+}
+
+.chevron {
+  color: var(--mantine-color-dimmed);
+}
