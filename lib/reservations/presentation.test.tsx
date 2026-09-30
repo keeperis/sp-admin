@@ -38,6 +38,10 @@ test('selected bank transfer is visible before any payment record exists', () =>
   assert.match(html, /Banko pavedimu/);
   assert.match(html, /Registruota \(Vilniaus laiku\):/);
   assert.match(html, /2026-09-25 16:45/);
+  assert.match(html, /Renginio pradžia:/);
+  assert.match(html, /2026-10-02 17:00/);
+  assert.match(html, /Registracijos šaltinis:/);
+  assert.match(html, /Svetainė/);
   assert.equal(bookingPaymentStatusLabel(booking), 'Laukia mokėjimo');
 });
 
@@ -65,33 +69,29 @@ test('registration times use Vilnius time including date rollover and winter off
     assert.equal(formatDateTime(value), 'Nenurodyta');
 });
 
-test('mobile cards include all reservation fields and a details button; desktop table has native scrolling', () => {
+test('compact list shows name, status and participant count once; full information stays in details', () => {
   const html = renderToStaticMarkup(
     <MantineProvider>
       <ReservationsList bookings={[booking]} onView={() => {}} />
     </MantineProvider>,
   );
-  assert.match(html, /role="listitem"/);
+  assert.match(html, /<ul/);
+  assert.match(html, /<li/);
+  for (const value of ['Testo Dalyvė', 'Laukia mokėjimo', 'Dalyviai: 1'])
+    assert.ok(html.includes(value), value);
   for (const value of [
-    'Testo Dalyvė',
     'test@example.invalid',
+    '+37060000000',
     'Puodelio dirbtuvės',
     'Banko pavedimu',
-    'Laukia mokėjimo',
     '2026-09-25 16:45',
-    'Dalyviai',
-    'Suma',
-    '50',
     'EUR',
   ])
-    assert.ok(html.includes(value), value);
+    assert.ok(!html.includes(value), value);
   assert.match(html, /aria-label="Rezervacijos detalės: Testo Dalyvė"/);
-  assert.match(html, /mantine-hidden-from-lg/);
-  assert.match(html, /mantine-visible-from-lg/);
-  assert.match(html, /aria-label="Rezervacijos: slenkama lentelė"/);
-  assert.match(html, /tabindex="0"/);
-  assert.match(html, /--table-overflow:auto/);
-  assert.match(html, /--table-min-width:calc\(71\.875rem/);
+  assert.match(html, /aria-haspopup="dialog"/);
+  assert.equal((html.match(/<button /g) || []).length, 1);
+  assert.ok(!html.includes('<table'));
 });
 
 test('deleted workshop names remain available from the reservation snapshot', () => {
@@ -103,9 +103,30 @@ test('deleted workshop names remain available from the reservation snapshot', ()
   assert.equal(bookingWorkshopName(old), 'Ankstesnės dirbtuvės');
   const html = renderToStaticMarkup(
     <MantineProvider>
-      <ReservationsList bookings={[old]} onView={() => {}} />
+      <BookingRegistrationDetails
+        booking={{
+          ...old,
+          contractSnapshot: { ...old.contractSnapshot, startISO: '2026-01-01T12:00' },
+        }}
+      />
     </MantineProvider>,
   );
-  assert.match(html, /Ištrintas užsiėmimas/);
-  assert.match(html, /Ankstesnės dirbtuvės/);
+  assert.match(html, /2026-01-01 12:00/);
+});
+
+test('eight reservations render as exactly eight compact buttons, including a group booking', () => {
+  const bookings = Array.from({ length: 8 }, (_, i) => ({
+    ...booking,
+    id: `booking-${i}`,
+    customerName: `Dalyvis ${i + 1}`,
+    participantsCount: i === 7 ? 3 : 1,
+  }));
+  const html = renderToStaticMarkup(
+    <MantineProvider>
+      <ReservationsList bookings={bookings} onView={() => {}} />
+    </MantineProvider>,
+  );
+  assert.equal((html.match(/<button /g) || []).length, 8);
+  assert.equal((html.match(/<li/g) || []).length, 8);
+  assert.match(html, /Dalyviai: 3/);
 });

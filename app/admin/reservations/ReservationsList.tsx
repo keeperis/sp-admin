@@ -1,79 +1,8 @@
 'use client';
 
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Group,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Table,
-  Text,
-  Tooltip,
-} from '@mantine/core';
-import { IconEye } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
-import {
-  bookingPaymentStatus,
-  bookingPaymentStatusLabel,
-  bookingWorkshopName,
-  bookingWorkshopStartISO,
-  deletedWorkshopLabel,
-  formatDateTime,
-  paymentMethodLabel,
-  type ReservationBooking,
-  statusColor,
-  statusLabel,
-} from '@/lib/reservations/presentation';
-
-function Workshop({ booking }: { booking: ReservationBooking }) {
-  return (
-    <Stack gap={2} align="flex-start">
-      <Text size="sm" fw={500}>
-        {bookingWorkshopName(booking)}
-      </Text>
-      {booking.workshop === null && (
-        <Badge color="red" variant="light" size="xs">
-          {deletedWorkshopLabel}
-        </Badge>
-      )}
-      <Text size="xs" c="dimmed">
-        {bookingWorkshopStartISO(booking).replace('T', ' ') || '-'}
-      </Text>
-    </Stack>
-  );
-}
-
-function Payment({ booking }: { booking: ReservationBooking }) {
-  return (
-    <Stack gap={4} align="flex-start">
-      <Text size="sm">{paymentMethodLabel(booking.paymentMethod)}</Text>
-      <Badge
-        color={statusColor(bookingPaymentStatus(booking))}
-        variant="light"
-        maw="100%"
-        h="auto"
-        py={4}
-        styles={{ label: { whiteSpace: 'normal', overflow: 'visible', lineHeight: 1.3 } }}
-      >
-        {bookingPaymentStatusLabel(booking)}
-      </Badge>
-    </Stack>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Stack gap={3} miw={0}>
-      <Text size="xs" c="dimmed">
-        {label}
-      </Text>
-      {children}
-    </Stack>
-  );
-}
+import { Badge, Box, Button, Text } from '@mantine/core';
+import { IconChevronRight, IconUsers } from '@tabler/icons-react';
+import { type ReservationBooking, statusColor, statusLabel } from '@/lib/reservations/presentation';
 
 export function ReservationsList({
   bookings,
@@ -83,151 +12,75 @@ export function ReservationsList({
   onView: (id: string) => void;
 }) {
   return (
-    <Box miw={0} maw="100%">
-      <Stack hiddenFrom="lg" gap="md" role="list" aria-label="Rezervacijos į dirbtuves">
-        {bookings.map((booking) => (
-          <Paper
-            key={booking.id}
-            withBorder
-            p="md"
-            radius="sm"
-            role="listitem"
-            miw={0}
-            style={{ overflowWrap: 'anywhere' }}
+    <Box
+      component="ul"
+      aria-label="Rezervacijos į dirbtuves"
+      m={0}
+      p={0}
+      miw={0}
+      style={{
+        listStyle: 'none',
+        border: '1px solid var(--mantine-color-default-border)',
+        borderRadius: 'var(--mantine-radius-sm)',
+        overflow: 'hidden',
+      }}
+    >
+      {bookings.map((booking, index) => (
+        <Box
+          component="li"
+          key={booking.id}
+          style={{ borderTop: index ? '1px solid var(--mantine-color-default-border)' : undefined }}
+        >
+          <Button
+            variant="subtle"
+            color="gray"
+            fullWidth
+            h={52}
+            px="xs"
+            radius={0}
+            styles={{
+              root: { color: 'var(--mantine-color-text)' },
+              label: { width: '100%', display: 'block' },
+            }}
+            aria-label={`Rezervacijos detalės: ${booking.customerName}`}
+            aria-haspopup="dialog"
+            onClick={() => onView(booking.id)}
           >
-            <Stack gap="md">
-              <Group justify="space-between" align="flex-start" gap="xs">
-                <Stack gap={2} miw={0} style={{ flex: '1 1 10rem' }}>
-                  <Text fw={600}>{booking.customerName}</Text>
-                  <Text size="xs" c="dimmed">
-                    {booking.source}
-                  </Text>
-                </Stack>
-                <Badge
-                  color={statusColor(booking.status)}
-                  variant="light"
-                  style={{ flexShrink: 0 }}
+            <Box
+              component="span"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}
+            >
+              <Box component="span" style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <Text
+                  component="span"
+                  display="block"
+                  size="sm"
+                  fw={500}
+                  lh="18px"
+                  truncate="end"
+                  title={booking.customerName}
                 >
+                  {booking.customerName}
+                </Text>
+                <Badge size="xs" variant="light" color={statusColor(booking.status)}>
                   {statusLabel(booking.status)}
                 </Badge>
-              </Group>
-              <Field label="Kontaktai">
-                <Text size="sm">{booking.customerEmail || 'El. paštas nenurodytas'}</Text>
-                <Text size="sm">{booking.customerPhone || 'Telefonas nenurodytas'}</Text>
-              </Field>
-              <Field label="Renginys">
-                <Workshop booking={booking} />
-              </Field>
-              <SimpleGrid cols={2} spacing="sm">
-                <Field label="Dalyviai">
-                  <Text size="sm">{booking.participantsCount}</Text>
-                </Field>
-                <Field label="Suma">
-                  <Text size="sm">
-                    {booking.totalAmount} {booking.currency}
-                  </Text>
-                </Field>
-              </SimpleGrid>
-              <Field label="Mokėjimas">
-                <Payment booking={booking} />
-              </Field>
-              <Field label="Registruota (Vilniaus laiku)">
-                <Text size="sm">{formatDateTime(booking.createdAt)}</Text>
-              </Field>
-              <Button
-                variant="light"
-                fullWidth
-                leftSection={<IconEye size={16} />}
-                aria-label={`Rezervacijos detalės: ${booking.customerName}`}
-                onClick={() => onView(booking.id)}
+              </Box>
+              <Box
+                component="span"
+                aria-label={`Dalyviai: ${booking.participantsCount}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
               >
-                Rezervacijos detalės
-              </Button>
-            </Stack>
-          </Paper>
-        ))}
-      </Stack>
-      <Stack visibleFrom="lg" gap="xs" miw={0}>
-        <Text size="xs" c="dimmed">
-          Jei lentelė netelpa, ją galite slinkti į šonus.
-        </Text>
-        <Table.ScrollContainer
-          minWidth={1150}
-          type="native"
-          w="100%"
-          role="region"
-          tabIndex={0}
-          aria-label="Rezervacijos: slenkama lentelė"
-        >
-          <Table
-            striped
-            highlightOnHover
-            aria-label="Rezervacijos į dirbtuves"
-            styles={{
-              th: { whiteSpace: 'nowrap' },
-              td: { verticalAlign: 'top' },
-              table: { wordBreak: 'normal', overflowWrap: 'normal' },
-            }}
-          >
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Klientas</Table.Th>
-                <Table.Th>Kontaktai</Table.Th>
-                <Table.Th>Renginys</Table.Th>
-                <Table.Th>Dalyviai</Table.Th>
-                <Table.Th>Suma</Table.Th>
-                <Table.Th>Mokėjimas</Table.Th>
-                <Table.Th>Statusas</Table.Th>
-                <Table.Th>Registruota</Table.Th>
-                <Table.Th>Veiksmai</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {bookings.map((booking) => (
-                <Table.Tr key={booking.id}>
-                  <Table.Td miw={140}>
-                    <Text fw={500}>{booking.customerName}</Text>
-                    <Text size="xs" c="dimmed">
-                      {booking.source}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td miw={185} maw={260} style={{ overflowWrap: 'anywhere' }}>
-                    <Text size="sm">{booking.customerEmail || 'El. paštas nenurodytas'}</Text>
-                    <Text size="sm">{booking.customerPhone || 'Telefonas nenurodytas'}</Text>
-                  </Table.Td>
-                  <Table.Td miw={170}>
-                    <Workshop booking={booking} />
-                  </Table.Td>
-                  <Table.Td>{booking.participantsCount}</Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                    {booking.totalAmount} {booking.currency}
-                  </Table.Td>
-                  <Table.Td miw={150}>
-                    <Payment booking={booking} />
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={statusColor(booking.status)} variant="light">
-                      {statusLabel(booking.status)}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td miw={155}>{formatDateTime(booking.createdAt)}</Table.Td>
-                  <Table.Td>
-                    <Tooltip label="Rezervacijos detalės">
-                      <ActionIcon
-                        variant="subtle"
-                        aria-label={`Rezervacijos detalės: ${booking.customerName}`}
-                        onClick={() => onView(booking.id)}
-                      >
-                        <IconEye size={18} />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Stack>
+                <IconUsers size={14} aria-hidden="true" />
+                <Text component="span" size="xs" fw={500}>
+                  {booking.participantsCount}
+                </Text>
+              </Box>
+              <IconChevronRight size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+            </Box>
+          </Button>
+        </Box>
+      ))}
     </Box>
   );
 }

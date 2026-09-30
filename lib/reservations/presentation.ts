@@ -84,7 +84,9 @@ export function bookingWorkshopName(booking: ReservationBooking) {
   return booking.workshopId || '-';
 }
 
-export function bookingWorkshopStartISO(booking: ReservationBooking) {
+export function bookingWorkshopStartISO(
+  booking: Pick<ReservationBooking, 'workshop' | 'contractSnapshot'>,
+) {
   const value =
     booking.workshop?.startISO ||
     (booking.workshop === null ? booking.contractSnapshot?.startISO : '');
