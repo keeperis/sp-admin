@@ -10,6 +10,7 @@ import {
   type RegisterReservation,
   registerColumns,
   registerMonths,
+  registerPeriodFrames,
   registerRows,
   reservationMark,
   reservedMembershipCount,
@@ -81,6 +82,85 @@ const data = (extra: Partial<AttendanceRegister> = {}): AttendanceRegister => ({
   subscriptions: [member('s1')],
   reservations: [reservation('s1')],
   ...extra,
+});
+
+test('payment determines scheduled/attended color independently of attendance symbol', () => {
+  for (const [status, symbol] of [
+    ['scheduled', 'P'],
+    ['attended', '✓'],
+  ]) {
+    for (const paymentStatus of [undefined, 'pending', 'paid', 'refunded']) {
+      const mark = reservationMark(
+        reservation('s1', { status }),
+        occurrence,
+        member('s1', { paymentStatus }),
+      );
+      assert.equal(mark.symbol, symbol);
+      assert.equal(mark.tone, paymentStatus === 'paid' ? 'attended' : 'planned');
+    }
+  }
+  assert.equal(
+    reservationMark(
+      reservation('s1', { status: 'no_show' }),
+      occurrence,
+      member('s1', { paymentStatus: 'paid' }),
+    ).tone,
+    'missed',
+  );
+  assert.equal(
+    reservationMark(
+      reservation('s1', { status: 'attended', coverage: 'uncovered' }),
+      occurrence,
+      member('s1', { paymentStatus: 'paid' }),
+    ).tone,
+    'planned',
+  );
+});
+
+test('period frames include a fifth makeup date, cross months, and separate the renewal', () => {
+  const columns = Array.from({ length: 10 }, (_, index) => ({
+    date: String(index),
+    time: '18:00',
+  }));
+  const row = registerRows(data())[0];
+  row.cells = new Map(
+    columns.slice(0, 9).map((column, index) => [
+      column.date,
+      [
+        reservation(index < 5 ? 's1' : 's2', {
+          reservationType: index === 4 ? 'makeup' : 'default',
+        }),
+      ],
+    ]),
+  );
+  const frames = registerPeriodFrames(row, columns);
+  assert.deepEqual(frames[0], { subscriptionId: 's1', start: true, end: false });
+  assert.deepEqual(frames[3], { subscriptionId: 's1', start: false, end: false });
+  assert.deepEqual(frames[4], { subscriptionId: 's1', start: false, end: true });
+  assert.deepEqual(frames[5], { subscriptionId: 's2', start: true, end: false });
+  assert.deepEqual(frames[8], { subscriptionId: 's2', start: false, end: true });
+  assert.equal(frames[9], null);
+});
+
+test('period frames bridge interior gaps without claiming uncovered or overlapping visits', () => {
+  const columns = Array.from({ length: 5 }, (_, index) => ({ date: String(index), time: '18:00' }));
+  const row = registerRows(data())[0];
+  row.cells = new Map([
+    ['0', [reservation('s1')]],
+    ['4', [reservation('s1')]],
+  ]);
+  assert.equal(registerPeriodFrames(row, columns)[2]?.subscriptionId, 's1');
+  row.cells.set('2', [reservation('s1', { coverage: 'uncovered' })]);
+  let frames = registerPeriodFrames(row, columns);
+  assert.equal(frames[2], null);
+  assert.equal(frames[1]?.end, true);
+  assert.equal(frames[3]?.start, true);
+  row.cells.set('2', [reservation('s1'), reservation('s2')]);
+  assert.equal(registerPeriodFrames(row, columns)[2], null);
+  row.cells = new Map([['2', [reservation('single')]]]);
+  frames = registerPeriodFrames(row, columns);
+  assert.deepEqual(frames[2], { subscriptionId: 'single', start: true, end: true });
+  assert.equal(frames[1], null);
 });
 
 test('explicit renewals and single visits stay in one row without merging unrelated namesakes', () => {

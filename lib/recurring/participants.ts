@@ -12,6 +12,9 @@ export type ParticipantSubscription = {
   remainingSessions: number;
   totalSessions: number;
   purchaseChannel?: string;
+  paymentStatus?: string;
+  canMarkPaid?: boolean;
+  paidAt?: string | null;
 };
 
 export type ParticipantEnrollment = {

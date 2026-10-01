@@ -4,6 +4,7 @@ import { Menu } from '@mantine/core';
 import {
   IconArrowBackUp,
   IconCalendarPlus,
+  IconCash,
   IconCheck,
   IconTicket,
   IconTrash,
@@ -22,6 +23,7 @@ import {
   type RegisterReservation,
   type RegisterRow,
   reservationMark,
+  reservationPaymentLabel,
 } from '@/lib/recurring/attendance-register';
 import type { ParticipantEnrollment } from '@/lib/recurring/participants';
 import styles from './GroupAttendanceTable.module.css';
@@ -42,6 +44,7 @@ export function AttendanceCell({
   onViewParticipant,
   onEnroll,
   onCorrect,
+  onMarkPaid,
 }: {
   row: RegisterRow;
   column: RegisterColumn;
@@ -51,11 +54,12 @@ export function AttendanceCell({
   onViewParticipant: (id: string) => Promise<void>;
   onEnroll?: (enrollment: ParticipantEnrollment) => void;
   onCorrect: (change: AttendanceCorrection, name: string) => void;
+  onMarkPaid?: (subscriptionId: string) => Promise<void>;
 }) {
   const subscription = reservation
     ? row.subscriptions.find((item) => item.id === reservation.subscriptionId)
     : manualAttendanceSubscription(row, column.date);
-  const mark = reservation ? reservationMark(reservation, column.occurrence) : null;
+  const mark = reservation ? reservationMark(reservation, column.occurrence, subscription) : null;
   const moved = reservation?.reservationType === 'makeup';
   const replacement = reservation?.status === 'cancelled_early' ? reservation.makeup : null;
   const source = moved ? reservation.makeupFor : null;
@@ -78,7 +82,11 @@ export function AttendanceCell({
         row.name,
       );
   };
-  const label = `${row.name} · ${column.date} ${column.time} · ${replacement ? 'Atšaukta laiku' : mark?.label || 'Rezervacijos nėra'}${moved ? ' · Perkeltas užsiėmimas' : ''}${replacement ? ` · ${makeupProgressLabel(replacement)}` : ''}${source ? ` · ${makeupSourceLabel(source)}` : ''}${uncovered ? ' · Be abonemento' : ''}`;
+  const paymentLabel = reservation && !uncovered ? reservationPaymentLabel(subscription) : null;
+  const periodLabel = subscription
+    ? `${subscription.totalSessions === 1 ? 'Vienas apsilankymas' : 'Abonemento periodas'}: ${subscription.validFrom} – ${subscription.validUntil}`
+    : '';
+  const label = `${row.name} · ${column.date} ${column.time} · ${replacement ? 'Atšaukta laiku' : mark?.label || 'Rezervacijos nėra'}${moved ? ' · Perkeltas užsiėmimas' : ''}${replacement ? ` · ${makeupProgressLabel(replacement)}` : ''}${source ? ` · ${makeupSourceLabel(source)}` : ''}${uncovered ? ' · Be abonemento' : ''}${paymentLabel ? ` · ${paymentLabel} · ${periodLabel}` : ''}`;
   const record = (result: AttendanceChange['result']) => {
     if (subscription)
       void onRecord({
@@ -134,6 +142,26 @@ export function AttendanceCell({
           </>
         )}
         {uncovered && <Menu.Label>Be abonemento · apmokėjimas nesuregistruotas</Menu.Label>}
+        {paymentLabel && (
+          <>
+            <Menu.Label>{periodLabel}</Menu.Label>
+            <Menu.Label c={subscription?.paymentStatus === 'paid' ? 'green' : undefined}>
+              {paymentLabel}
+            </Menu.Label>
+            {subscription?.canMarkPaid && onMarkPaid && (
+              <Menu.Item
+                color="green"
+                leftSection={<IconCash size={16} />}
+                onClick={() => void onMarkPaid(subscription.id)}
+              >
+                {subscription.totalSessions === 1
+                  ? 'Apmokėjo už apsilankymą'
+                  : 'Apmokėjo už visą periodą'}
+              </Menu.Item>
+            )}
+            <Menu.Divider />
+          </>
+        )}
         {replacement && (
           <Menu.Label c={replacement.fulfilled ? 'green' : undefined}>
             {makeupProgressLabel(replacement)}

@@ -30,6 +30,7 @@ import {
   type RegisterRow,
   registerColumns,
   registerMonths,
+  registerPeriodFrames,
   registerRows,
   reservedMembershipCount,
 } from '@/lib/recurring/attendance-register';
@@ -142,6 +143,48 @@ export function GroupAttendanceTable({
       setPendingRemoval({ change, name });
     } else void recordAttendance(change);
   };
+  const markPaid = async (subscriptionId: string) => {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const response = await fetch(
+        `/api/admin/recurring/subscriptions/${subscriptionId}/mark-paid?${new URLSearchParams({ site })}`,
+        {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Nepavyko patvirtinti apmokėjimo.');
+      notifications.show({
+        color: 'green',
+        title: 'Apmokėjimas pažymėtas',
+        message:
+          result.subscription.totalSessions === 1
+            ? 'Apmokėtas vienas apsilankymas.'
+            : 'Apmokėtas visas abonemento periodas. Lankymo žymos nepakeistos.',
+      });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Nepavyko patvirtinti apmokėjimo.');
+    } finally {
+      try {
+        await refresh(
+          (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
+          undefined,
+          { revalidate: true },
+        );
+      } catch {
+        setSaveError(
+          (previous) => previous || 'Nepavyko atnaujinti lentelės. Įkelkite puslapį iš naujo.',
+        );
+      } finally {
+        saveLock.current = false;
+        setSaving(false);
+      }
+    }
+  };
   const columns = data ? registerColumns(data.group, data.occurrences) : [];
   const months = registerMonths(columns);
   const rows = data ? registerRows(data) : [];
@@ -209,7 +252,7 @@ export function GroupAttendanceTable({
         {saveError && (
           <Alert
             color="red"
-            title="Lankymas neišsaugotas"
+            title="Veiksmo nepavyko užbaigti"
             withCloseButton
             onClose={() => setSaveError(null)}
           >
@@ -275,89 +318,98 @@ export function GroupAttendanceTable({
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, index) => (
-                    <tr key={row.key}>
-                      <th scope="row" className={styles.participant}>
-                        {row.subscriptions.length > 0 ? (
-                          <Anchor
-                            component="button"
-                            type="button"
-                            ta="left"
-                            className={styles.name}
-                            onClick={() => openParticipant(row)}
-                          >
-                            {index + 1}. {row.name}
-                          </Anchor>
-                        ) : (
-                          <Text size="sm">{row.name}</Text>
-                        )}
-                        {row.guest && (
-                          <Text size="xs" c="dimmed">
-                            {homeGroupLabels(row, data).join('; ') || 'Pagrindinė grupė nenurodyta'}
-                          </Text>
-                        )}
-                        {data.memberships
-                          ?.filter((member) =>
-                            member.subscriptionIds.some((id) =>
-                              row.subscriptions.some((item) => item.id === id),
-                            ),
-                          )
-                          .map((membership) => (
-                            <GroupMembershipEditor
-                              key={membership.key}
-                              membership={membership}
-                              name={row.name}
-                              groupId={group.id}
-                              site={site}
-                            />
-                          ))}
-                      </th>
-                      {columns.map((column, columnIndex) => {
-                        const reservations = row.cells.get(column.date) || [];
-                        return (
-                          <td
-                            key={column.date}
-                            data-month-start={
-                              columnIndex === 0 ||
-                              column.date.slice(0, 7) !== columns[columnIndex - 1].date.slice(0, 7)
-                            }
-                            data-today={column.date === today}
-                            title={
-                              reservations.length
-                                ? undefined
-                                : `${row.name} · ${column.date} · Rezervacijos nėra`
-                            }
-                          >
-                            {reservations.length ? (
-                              reservations.map((reservation) => (
+                  {rows.map((row, index) => {
+                    const frames = registerPeriodFrames(row, columns);
+                    return (
+                      <tr key={row.key}>
+                        <th scope="row" className={styles.participant}>
+                          {row.subscriptions.length > 0 ? (
+                            <Anchor
+                              component="button"
+                              type="button"
+                              ta="left"
+                              className={styles.name}
+                              onClick={() => openParticipant(row)}
+                            >
+                              {index + 1}. {row.name}
+                            </Anchor>
+                          ) : (
+                            <Text size="sm">{row.name}</Text>
+                          )}
+                          {row.guest && (
+                            <Text size="xs" c="dimmed">
+                              {homeGroupLabels(row, data).join('; ') ||
+                                'Pagrindinė grupė nenurodyta'}
+                            </Text>
+                          )}
+                          {data.memberships
+                            ?.filter((member) =>
+                              member.subscriptionIds.some((id) =>
+                                row.subscriptions.some((item) => item.id === id),
+                              ),
+                            )
+                            .map((membership) => (
+                              <GroupMembershipEditor
+                                key={membership.key}
+                                membership={membership}
+                                name={row.name}
+                                groupId={group.id}
+                                site={site}
+                              />
+                            ))}
+                        </th>
+                        {columns.map((column, columnIndex) => {
+                          const reservations = row.cells.get(column.date) || [];
+                          return (
+                            <td
+                              key={column.date}
+                              data-period={frames[columnIndex]?.subscriptionId}
+                              data-period-start={frames[columnIndex]?.start}
+                              data-period-end={frames[columnIndex]?.end}
+                              data-month-start={
+                                columnIndex === 0 ||
+                                column.date.slice(0, 7) !==
+                                  columns[columnIndex - 1].date.slice(0, 7)
+                              }
+                              data-today={column.date === today}
+                              title={
+                                reservations.length
+                                  ? undefined
+                                  : `${row.name} · ${column.date} · Rezervacijos nėra`
+                              }
+                            >
+                              {reservations.length ? (
+                                reservations.map((reservation) => (
+                                  <AttendanceCell
+                                    key={reservation.id}
+                                    row={row}
+                                    column={column}
+                                    reservation={reservation}
+                                    busy={saving}
+                                    onRecord={recordAttendance}
+                                    onCorrect={correctAttendance}
+                                    onMarkPaid={markPaid}
+                                    onViewParticipant={onViewParticipant}
+                                  />
+                                ))
+                              ) : (
                                 <AttendanceCell
-                                  key={reservation.id}
                                   row={row}
                                   column={column}
-                                  reservation={reservation}
                                   busy={saving}
                                   onRecord={recordAttendance}
                                   onCorrect={correctAttendance}
                                   onViewParticipant={onViewParticipant}
+                                  onEnroll={canAdd ? onEnroll : undefined}
                                 />
-                              ))
-                            ) : (
-                              <AttendanceCell
-                                row={row}
-                                column={column}
-                                busy={saving}
-                                onRecord={recordAttendance}
-                                onCorrect={correctAttendance}
-                                onViewParticipant={onViewParticipant}
-                                onEnroll={canAdd ? onEnroll : undefined}
-                              />
-                            )}
-                          </td>
-                        );
-                      })}
-                      {columns.length === 0 && <td />}
-                    </tr>
-                  ))}
+                              )}
+                            </td>
+                          );
+                        })}
+                        {columns.length === 0 && <td />}
+                      </tr>
+                    );
+                  })}
                   {rows.length === 0 && (
                     <tr>
                       <td className={styles.empty} colSpan={Math.max(columns.length, 1) + 1}>
@@ -369,14 +421,40 @@ export function GroupAttendanceTable({
               </table>
             </section>
             <div className={styles.legend}>
-              {Object.entries(REGISTER_MARKS).map(([key, mark]) => (
-                <span key={key}>
-                  <span className={styles.key} data-tone={mark.tone}>
-                    {mark.symbol}
+              {Object.entries(REGISTER_MARKS)
+                .filter(([key]) => !['scheduled', 'attended'].includes(key))
+                .map(([key, mark]) => (
+                  <span key={key}>
+                    <span className={styles.key} data-tone={mark.tone}>
+                      {mark.symbol}
+                    </span>
+                    {mark.label}
                   </span>
-                  {mark.label}
+                ))}
+              <span>
+                <span className={styles.key} data-tone="planned">
+                  P
                 </span>
-              ))}
+                Suplanuota · apmokėjimas nepažymėtas
+              </span>
+              <span>
+                <span className={styles.key} data-tone="attended">
+                  P
+                </span>
+                Suplanuota · apmokėta
+              </span>
+              <span>
+                <span className={styles.key} data-tone="planned">
+                  ✓
+                </span>
+                Atvyko · apmokėjimas nepažymėtas
+              </span>
+              <span>
+                <span className={styles.key} data-tone="attended">
+                  ✓
+                </span>
+                Atvyko · apmokėta
+              </span>
               <span>↔ Perkeltas užsiėmimas</span>
               <span>
                 <span className={styles.key} data-tone="attended">
@@ -385,6 +463,10 @@ export function GroupAttendanceTable({
                 Atšauktas užsiėmimas atlankytas
               </span>
               <span>€ Be abonemento · apmokėjimas nesuregistruotas</span>
+              <span>
+                <span className={styles.periodKey} />
+                Vienas abonemento periodas
+              </span>
               <span>
                 Tuščia — naujas abonemento periodas, vienas apsilankymas arba lankymo žyma
               </span>

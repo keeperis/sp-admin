@@ -133,12 +133,33 @@ export function manualAttendanceSubscription(row: RegisterRow, date: string) {
   return sorted.filter((subscription) => subscription.validFrom <= date).at(-1) || sorted[0];
 }
 
-export function reservationMark(reservation: RegisterReservation, occurrence?: RegisterOccurrence) {
+export function reservationPaymentLabel(subscription?: ParticipantSubscription) {
+  return subscription?.paymentStatus === 'paid'
+    ? 'Apmokėta'
+    : subscription?.paymentStatus === 'refunded'
+      ? 'Mokėjimas grąžintas'
+      : 'Apmokėjimas nepažymėtas';
+}
+
+export function reservationMark(
+  reservation: RegisterReservation,
+  occurrence?: RegisterOccurrence,
+  subscription?: ParticipantSubscription,
+) {
   if (reservation.status === 'cancelled_early' && reservation.makeup?.fulfilled) {
     return { symbol: 'A', label: 'Atšaukta laiku · Atlankyta', tone: 'attended' };
   }
   if (occurrence?.status === 'cancelled' && reservation.status === 'scheduled') {
     return { symbol: 'A', label: 'Atšauktas visas užsiėmimas', tone: 'cancelled' };
+  }
+  if (reservation.status === 'scheduled' || reservation.status === 'attended') {
+    return {
+      ...REGISTER_MARKS[reservation.status],
+      tone:
+        reservation.coverage !== 'uncovered' && subscription?.paymentStatus === 'paid'
+          ? 'attended'
+          : 'planned',
+    };
   }
   return (
     REGISTER_MARKS[reservation.status] || {
@@ -146,6 +167,39 @@ export function reservationMark(reservation: RegisterReservation, occurrence?: R
       label: 'Nežinoma būsena',
       tone: 'cancelled',
     }
+  );
+}
+
+// A period is a subscription identity, not a fixed number of columns. Include
+// its makeup visits and interior gaps, but never absorb another pass or an
+// uncovered attendance mark. Overlapping imported periods stay unmerged.
+export function registerPeriodFrames(row: RegisterRow, columns: RegisterColumn[]) {
+  const ranges = new Map<string, { start: number; end: number }>();
+  columns.forEach((column, index) => {
+    for (const reservation of row.cells.get(column.date) || []) {
+      if (reservation.coverage === 'uncovered') continue;
+      const existing = ranges.get(reservation.subscriptionId);
+      ranges.set(reservation.subscriptionId, { start: existing?.start ?? index, end: index });
+    }
+  });
+  const owners = columns.map((column, index) => {
+    const reservations = row.cells.get(column.date) || [];
+    if (reservations.some((item) => item.coverage === 'uncovered')) return null;
+    const ids = reservations.length
+      ? [...new Set(reservations.map((item) => item.subscriptionId))]
+      : [...ranges]
+          .filter(([, range]) => range.start <= index && index <= range.end)
+          .map(([id]) => id);
+    return ids.length === 1 ? ids[0] : null;
+  });
+  return owners.map((subscriptionId, index) =>
+    subscriptionId
+      ? {
+          subscriptionId,
+          start: owners[index - 1] !== subscriptionId,
+          end: owners[index + 1] !== subscriptionId,
+        }
+      : null,
   );
 }
 

@@ -41,17 +41,17 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import type { SiteKey } from '@/lib/site';
-import type { ContactDetails } from '@/lib/recurring/contact-details';
 import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
+import type { ContactDetails } from '@/lib/recurring/contact-details';
+import type { SiteKey } from '@/lib/site';
 import { GroupParticipants } from './GroupParticipants';
 import { RecurringCycleWizard } from './RecurringCycleWizard';
+import { SubscriptionContactDetails } from './SubscriptionContactDetails';
 import {
   SubscriptionDetailSection,
   SubscriptionDetailSections,
 } from './SubscriptionDetailSections';
 import { SubscriptionDetailTable } from './SubscriptionDetailTable';
-import { SubscriptionContactDetails } from './SubscriptionContactDetails';
 
 type ClassGroupDto = {
   id: string;
@@ -163,6 +163,7 @@ const ADMIN_VALUE_LABELS: Record<string, string> = {
   automatic_makeup: 'Automatiškai suplanuotas pakaitinis vizitas',
   adjust_usage: 'Užsiėmimų likučio korekcija',
   restore_attendance: 'Lankymo žymos atšaukimas',
+  mark_paid: 'Abonemento apmokėjimas',
   remove_reservation: 'Apsilankymo pašalinimas',
 };
 
@@ -1838,6 +1839,14 @@ export default function RecurringAdminPage() {
                   <Text>
                     <strong>Likutis:</strong> {selectedSubscription.subscription.remainingSessions}{' '}
                     / {selectedSubscription.subscription.totalSessions}
+                  </Text>
+                  <Text>
+                    <strong>Apmokėjimas:</strong>{' '}
+                    {selectedSubscription.subscription.paymentStatus === 'paid'
+                      ? 'Apmokėta'
+                      : selectedSubscription.subscription.paymentStatus === 'refunded'
+                        ? 'Mokėjimas grąžintas'
+                        : 'Apmokėjimas nepažymėtas'}
                   </Text>
                   <Text>
                     <strong>Susietas pirkimas:</strong>{' '}
