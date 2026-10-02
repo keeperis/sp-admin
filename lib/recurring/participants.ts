@@ -53,6 +53,11 @@ export function participantStatusColor(status: string) {
   return 'gray';
 }
 
+// Hide cancelled passes in the name picker without removing their attendance history.
+export function selectableParticipantSubscriptions(subscriptions: ParticipantSubscription[]) {
+  return subscriptions.filter((subscription) => subscription.status !== 'cancelled');
+}
+
 export function vilniusDate(now = new Date()) {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Vilnius' }).format(now);
 }

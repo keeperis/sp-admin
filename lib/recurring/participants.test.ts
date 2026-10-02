@@ -3,9 +3,47 @@ import test from 'node:test';
 import {
   nextGroupDate,
   type ParticipantReservation,
+  type ParticipantSubscription,
   rosterCounts,
+  selectableParticipantSubscriptions,
   vilniusDate,
 } from './participants';
+
+const subscription = (id: string, status: string): ParticipantSubscription => ({
+  id,
+  status,
+  customerName: 'Testo Dalyvis',
+  customerEmail: '',
+  defaultGroupId: 'group',
+  validFrom: '2026-09-21',
+  validUntil: '2026-10-25',
+  remainingSessions: 2,
+  totalSessions: 4,
+});
+
+test('participant picker excludes cancelled passes before deciding whether a choice is needed', () => {
+  const cancelled = subscription('cancelled-single', 'cancelled');
+  const active = subscription('active-pass', 'active');
+  const subscriptions = [cancelled, active];
+  assert.deepEqual(selectableParticipantSubscriptions(subscriptions), [active]);
+  assert.deepEqual(subscriptions, [cancelled, active]);
+  assert.deepEqual(selectableParticipantSubscriptions([cancelled]), []);
+  assert.deepEqual(selectableParticipantSubscriptions([]), []);
+});
+
+test('participant picker retains completed, expired, paused and unpaid periods in their original order', () => {
+  const retained = ['completed', 'active', 'expired', 'paused', 'pending_payment'].map((status) =>
+    subscription(status, status),
+  );
+  assert.deepEqual(
+    selectableParticipantSubscriptions([
+      retained[0],
+      subscription('cancelled', 'cancelled'),
+      ...retained.slice(1),
+    ]),
+    retained,
+  );
+});
 
 test('local today uses Vilnius date, not UTC date', () => {
   assert.equal(vilniusDate(new Date('2026-09-19T22:30:00Z')), '2026-09-20');

@@ -25,7 +25,6 @@ import {
   type AttendanceRegister,
   homeGroupLabels,
   REGISTER_MARKS,
-  REGISTER_WEEKDAYS,
   type RegisterGroup,
   type RegisterRow,
   registerColumns,
@@ -38,6 +37,7 @@ import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
 import {
   type ParticipantEnrollment,
   participantStatusLabels,
+  selectableParticipantSubscriptions,
   vilniusDate,
 } from '@/lib/recurring/participants';
 import type { SiteKey } from '@/lib/site';
@@ -55,7 +55,6 @@ const fetcher = async (url: string): Promise<AttendanceRegister> => {
 export function GroupAttendanceTable({
   site,
   group,
-  programName,
   canAdd,
   onAddParticipant,
   onViewParticipant,
@@ -63,7 +62,6 @@ export function GroupAttendanceTable({
 }: {
   site: SiteKey;
   group: RegisterGroup & { name: string; durationMin: number };
-  programName: string;
   canAdd: boolean;
   onAddParticipant: () => void;
   onViewParticipant: (id: string) => Promise<void>;
@@ -199,27 +197,17 @@ export function GroupAttendanceTable({
   const onlyRenewals = Boolean(
     fullyAllocated && !data?.memberships?.some((member) => member.endsOn && member.endsOn > today),
   );
-  const endMinutes =
-    Number(group.startTime.slice(0, 2)) * 60 + Number(group.startTime.slice(3)) + group.durationMin;
-  const endTime = `${String(Math.floor(endMinutes / 60) % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
   const openParticipant = (row: RegisterRow) => {
-    if (row.subscriptions.length === 1) void onViewParticipant(row.subscriptions[0].id);
-    else setSelectedParticipant(row);
+    const subscriptions = selectableParticipantSubscriptions(row.subscriptions);
+    if (subscriptions.length === 1) void onViewParticipant(subscriptions[0].id);
+    else if (subscriptions.length > 1) setSelectedParticipant({ ...row, subscriptions });
   };
 
   return (
     <Paper withBorder radius="md" p={{ base: 8, sm: 'md' }} className={styles.group}>
       <Stack gap="sm">
         <Group justify="space-between" align="flex-start">
-          <div>
-            <Text size="xs" c="dimmed">
-              {programName}
-            </Text>
-            <Title order={5}>{group.name}</Title>
-            <Text size="sm">
-              {REGISTER_WEEKDAYS[group.weekday - 1]} · {group.startTime}–{endTime}
-            </Text>
-          </div>
+          <Title order={5}>{group.name}</Title>
           <Group gap="xs">
             {data?.seats && (
               <Badge variant="light" color={fullyAllocated ? 'orange' : 'green'}>
@@ -320,10 +308,12 @@ export function GroupAttendanceTable({
                 <tbody>
                   {rows.map((row, index) => {
                     const frames = registerPeriodFrames(row, columns);
+                    const canViewParticipant =
+                      selectableParticipantSubscriptions(row.subscriptions).length > 0;
                     return (
                       <tr key={row.key}>
                         <th scope="row" className={styles.participant}>
-                          {row.subscriptions.length > 0 ? (
+                          {canViewParticipant ? (
                             <Anchor
                               component="button"
                               type="button"
@@ -420,57 +410,60 @@ export function GroupAttendanceTable({
                 </tbody>
               </table>
             </section>
-            <div className={styles.legend}>
-              {Object.entries(REGISTER_MARKS)
-                .filter(([key]) => !['scheduled', 'attended'].includes(key))
-                .map(([key, mark]) => (
-                  <span key={key}>
-                    <span className={styles.key} data-tone={mark.tone}>
-                      {mark.symbol}
+            <details className={styles.legendDisclosure}>
+              <summary>Žymėjimų paaiškinimai</summary>
+              <div className={styles.legend}>
+                {Object.entries(REGISTER_MARKS)
+                  .filter(([key]) => !['scheduled', 'attended'].includes(key))
+                  .map(([key, mark]) => (
+                    <span key={key}>
+                      <span className={styles.key} data-tone={mark.tone}>
+                        {mark.symbol}
+                      </span>
+                      {mark.label}
                     </span>
-                    {mark.label}
+                  ))}
+                <span>
+                  <span className={styles.key} data-tone="planned">
+                    P
                   </span>
-                ))}
-              <span>
-                <span className={styles.key} data-tone="planned">
-                  P
+                  Suplanuota · apmokėjimas nepažymėtas
                 </span>
-                Suplanuota · apmokėjimas nepažymėtas
-              </span>
-              <span>
-                <span className={styles.key} data-tone="attended">
-                  P
+                <span>
+                  <span className={styles.key} data-tone="attended">
+                    P
+                  </span>
+                  Suplanuota · apmokėta
                 </span>
-                Suplanuota · apmokėta
-              </span>
-              <span>
-                <span className={styles.key} data-tone="planned">
-                  ✓
+                <span>
+                  <span className={styles.key} data-tone="planned">
+                    ✓
+                  </span>
+                  Atvyko · apmokėjimas nepažymėtas
                 </span>
-                Atvyko · apmokėjimas nepažymėtas
-              </span>
-              <span>
-                <span className={styles.key} data-tone="attended">
-                  ✓
+                <span>
+                  <span className={styles.key} data-tone="attended">
+                    ✓
+                  </span>
+                  Atvyko · apmokėta
                 </span>
-                Atvyko · apmokėta
-              </span>
-              <span>↔ Perkeltas užsiėmimas</span>
-              <span>
-                <span className={styles.key} data-tone="attended">
-                  A↔
+                <span>↔ Perkeltas užsiėmimas</span>
+                <span>
+                  <span className={styles.key} data-tone="attended">
+                    A↔
+                  </span>
+                  Atšauktas užsiėmimas atlankytas
                 </span>
-                Atšauktas užsiėmimas atlankytas
-              </span>
-              <span>€ Be abonemento · apmokėjimas nesuregistruotas</span>
-              <span>
-                <span className={styles.periodKey} />
-                Vienas abonemento periodas
-              </span>
-              <span>
-                Tuščia — naujas abonemento periodas, vienas apsilankymas arba lankymo žyma
-              </span>
-            </div>
+                <span>€ Be abonemento · apmokėjimas nesuregistruotas</span>
+                <span>
+                  <span className={styles.periodKey} />
+                  Vienas abonemento periodas
+                </span>
+                <span>
+                  Tuščia — naujas abonemento periodas, vienas apsilankymas arba lankymo žyma
+                </span>
+              </div>
+            </details>
           </>
         )}
       </Stack>

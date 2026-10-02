@@ -119,10 +119,6 @@ export function GroupParticipants({
               Atnaujinti
             </Button>
           </Group>
-          <Text size="sm" c="dimmed">
-            Visos grupės ir jų užsiėmimų datos. Paspauskite langelį lankymui pažymėti, o dalyvio
-            vardą — jo informacijai peržiūrėti.
-          </Text>
         </Stack>
         {loadError ? (
           <Alert color="red" title="Nepavyko įkelti grupių">
@@ -138,7 +134,6 @@ export function GroupParticipants({
               key={group.id}
               site={site}
               group={group}
-              programName={programById.get(group.programId)?.nameLt || 'Užsiėmimų ciklas'}
               canAdd={
                 group.status === 'active' && programById.get(group.programId)?.status === 'active'
               }

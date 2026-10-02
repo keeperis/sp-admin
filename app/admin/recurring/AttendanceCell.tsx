@@ -119,11 +119,6 @@ export function AttendanceCell({
         </button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label>
-          {row.name}
-          <br />
-          {column.date} · {column.time}
-        </Menu.Label>
         {!reservation && canRecord && onEnroll && subscription && (
           <>
             <Menu.Item
@@ -141,40 +136,22 @@ export function AttendanceCell({
             <Menu.Divider />
           </>
         )}
-        {uncovered && <Menu.Label>Be abonemento · apmokėjimas nesuregistruotas</Menu.Label>}
-        {paymentLabel && (
+        {paymentLabel && subscription?.canMarkPaid && onMarkPaid && (
           <>
-            <Menu.Label>{periodLabel}</Menu.Label>
-            <Menu.Label c={subscription?.paymentStatus === 'paid' ? 'green' : undefined}>
-              {paymentLabel}
-            </Menu.Label>
-            {subscription?.canMarkPaid && onMarkPaid && (
-              <Menu.Item
-                color="green"
-                leftSection={<IconCash size={16} />}
-                onClick={() => void onMarkPaid(subscription.id)}
-              >
-                {subscription.totalSessions === 1
-                  ? 'Apmokėjo už apsilankymą'
-                  : 'Apmokėjo už visą periodą'}
-              </Menu.Item>
-            )}
+            <Menu.Item
+              color="green"
+              leftSection={<IconCash size={16} />}
+              onClick={() => void onMarkPaid(subscription.id)}
+            >
+              {subscription.totalSessions === 1
+                ? 'Apmokėjo už apsilankymą'
+                : 'Apmokėjo už visą periodą'}
+            </Menu.Item>
             <Menu.Divider />
           </>
         )}
-        {replacement && (
-          <Menu.Label c={replacement.fulfilled ? 'green' : undefined}>
-            {makeupProgressLabel(replacement)}
-          </Menu.Label>
-        )}
-        {source && (
-          <Menu.Label c={source.fulfilled ? 'green' : undefined}>
-            {makeupSourceLabel(source)}
-          </Menu.Label>
-        )}
         {canRecord && (
           <>
-            {!reservation && <Menu.Label>Tik lankymas (be abonemento ir apmokėjimo)</Menu.Label>}
             <Menu.Item
               color="green"
               leftSection={<IconCheck size={16} />}
@@ -194,7 +171,6 @@ export function AttendanceCell({
         )}
         {correctionAction === 'restore' && (
           <>
-            <Menu.Label>Grąžinti į „Suplanuota“</Menu.Label>
             <Menu.Item leftSection={<IconArrowBackUp size={16} />} onClick={correct}>
               {reservation?.status === 'attended'
                 ? 'Atšaukti dalyvavimo žymą'
