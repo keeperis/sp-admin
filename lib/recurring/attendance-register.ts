@@ -174,6 +174,9 @@ export function reservationMark(
 // its makeup visits and interior gaps, but never absorb another pass or an
 // uncovered attendance mark. Overlapping imported periods stay unmerged.
 export function registerPeriodFrames(row: RegisterRow, columns: RegisterColumn[]) {
+  const paidSubscriptions = new Set(
+    row.subscriptions.filter((item) => item.paymentStatus === 'paid').map((item) => item.id),
+  );
   const ranges = new Map<string, { start: number; end: number }>();
   columns.forEach((column, index) => {
     for (const reservation of row.cells.get(column.date) || []) {
@@ -196,6 +199,7 @@ export function registerPeriodFrames(row: RegisterRow, columns: RegisterColumn[]
     subscriptionId
       ? {
           subscriptionId,
+          paid: paidSubscriptions.has(subscriptionId),
           start: owners[index - 1] !== subscriptionId,
           end: owners[index + 1] !== subscriptionId,
         }

@@ -22,6 +22,17 @@ test('attendance headings omit repeated program, weekday/time and introductory c
   assert.match(participants, /Atnaujinti/);
 });
 
+test('full-group explanation is a compact informational note, not a prominent alert', () => {
+  const note = source.match(/\{fullyAllocated && \(([\s\S]*?)\n {8}\)\}/)?.[1];
+  assert.ok(note);
+  assert.match(note, /role="note"/);
+  assert.match(note, /aria-label="Informacija apie grupės vietas"/);
+  assert.match(note, /IconInfoCircle/);
+  assert.match(note, /<Text size="xs" lh=\{1\.45\} c="inherit">/);
+  assert.match(note, /Esamo dalyvio abonemento/);
+  assert.doesNotMatch(note, /<Alert/);
+});
+
 test('each group legend is hidden in a native keyboard-accessible disclosure by default', () => {
   const disclosure = source.match(/<details\b([^>]*)>([\s\S]*?)<\/details>/);
   assert.ok(disclosure);

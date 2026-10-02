@@ -1,5 +1,29 @@
 .group {
+  --register-unpaid-color: var(--mantine-color-blue-9);
+  --register-paid-color: var(--mantine-color-green-9);
   min-width: 0;
+}
+
+:global([data-mantine-color-scheme="dark"]) .group {
+  --register-unpaid-color: #a5d8ff;
+  --register-paid-color: #b2f2bb;
+}
+
+.capacityNotice {
+  padding: 8px 10px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 4px;
+  color: var(--mantine-color-gray-7);
+  background: var(--mantine-color-default-hover);
+}
+
+:global([data-mantine-color-scheme="dark"]) .capacityNotice {
+  color: var(--mantine-color-gray-5);
+}
+
+.capacityNotice > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .scroller {
@@ -96,22 +120,32 @@
   position: relative;
 }
 
+.table td[data-period],
+.periodKey {
+  --period-color: var(--register-unpaid-color);
+}
+
+.table td[data-period-paid="true"],
+.periodKey[data-period-paid="true"] {
+  --period-color: var(--register-paid-color);
+}
+
 .table td[data-period]::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border-block: 1px solid var(--mantine-color-gray-6);
+  border-block: 1px solid var(--period-color);
 }
 
 .table td[data-period-start="true"]::after {
-  border-left: 1px solid var(--mantine-color-gray-6);
+  border-left: 1px solid var(--period-color);
   border-start-start-radius: 4px;
   border-end-start-radius: 4px;
 }
 
 .table td[data-period-end="true"]::after {
-  border-right: 1px solid var(--mantine-color-gray-6);
+  border-right: 1px solid var(--period-color);
   border-start-end-radius: 4px;
   border-end-end-radius: 4px;
 }
@@ -119,7 +153,7 @@
 .periodKey {
   width: 24px;
   height: 17px;
-  border: 1px solid var(--mantine-color-gray-6);
+  border: 1px solid var(--period-color);
   border-radius: 3px;
 }
 
@@ -183,13 +217,13 @@
 .mark[data-tone="planned"],
 .key[data-tone="planned"] {
   --mark-bg: var(--mantine-color-blue-1);
-  --mark-color: var(--mantine-color-blue-9);
+  --mark-color: var(--register-unpaid-color);
 }
 
 .mark[data-tone="attended"],
 .key[data-tone="attended"] {
   --mark-bg: var(--mantine-color-green-1);
-  --mark-color: var(--mantine-color-green-9);
+  --mark-color: var(--register-paid-color);
 }
 
 .mark[data-tone="cancelled"],
@@ -207,13 +241,11 @@
 :global([data-mantine-color-scheme="dark"]) .mark[data-tone="planned"],
 :global([data-mantine-color-scheme="dark"]) .key[data-tone="planned"] {
   --mark-bg: #1d3b52;
-  --mark-color: #a5d8ff;
 }
 
 :global([data-mantine-color-scheme="dark"]) .mark[data-tone="attended"],
 :global([data-mantine-color-scheme="dark"]) .key[data-tone="attended"] {
   --mark-bg: #23402c;
-  --mark-color: #b2f2bb;
 }
 
 :global([data-mantine-color-scheme="dark"]) .mark[data-tone="cancelled"],

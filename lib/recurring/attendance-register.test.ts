@@ -134,11 +134,11 @@ test('period frames include a fifth makeup date, cross months, and separate the 
     ]),
   );
   const frames = registerPeriodFrames(row, columns);
-  assert.deepEqual(frames[0], { subscriptionId: 's1', start: true, end: false });
-  assert.deepEqual(frames[3], { subscriptionId: 's1', start: false, end: false });
-  assert.deepEqual(frames[4], { subscriptionId: 's1', start: false, end: true });
-  assert.deepEqual(frames[5], { subscriptionId: 's2', start: true, end: false });
-  assert.deepEqual(frames[8], { subscriptionId: 's2', start: false, end: true });
+  assert.deepEqual(frames[0], { subscriptionId: 's1', paid: false, start: true, end: false });
+  assert.deepEqual(frames[3], { subscriptionId: 's1', paid: false, start: false, end: false });
+  assert.deepEqual(frames[4], { subscriptionId: 's1', paid: false, start: false, end: true });
+  assert.deepEqual(frames[5], { subscriptionId: 's2', paid: false, start: true, end: false });
+  assert.deepEqual(frames[8], { subscriptionId: 's2', paid: false, start: false, end: true });
   assert.equal(frames[9], null);
 });
 
@@ -159,8 +159,41 @@ test('period frames bridge interior gaps without claiming uncovered or overlappi
   assert.equal(registerPeriodFrames(row, columns)[2], null);
   row.cells = new Map([['2', [reservation('single')]]]);
   frames = registerPeriodFrames(row, columns);
-  assert.deepEqual(frames[2], { subscriptionId: 'single', start: true, end: true });
+  assert.deepEqual(frames[2], { subscriptionId: 'single', paid: false, start: true, end: true });
   assert.equal(frames[1], null);
+});
+
+test('period color follows payment across attendance states, gaps and makeup dates', () => {
+  const columns = Array.from({ length: 6 }, (_, index) => ({ date: String(index), time: '18:00' }));
+  for (const paymentStatus of [undefined, 'pending', 'paid', 'refunded']) {
+    const row = registerRows(data())[0];
+    row.subscriptions = [member('s1', { paymentStatus }), member('renewal')];
+    row.cells = new Map([
+      ['0', [reservation('s1', { status: 'attended' })]],
+      ['1', [reservation('s1', { status: 'no_show' })]],
+      ['3', [reservation('s1', { status: 'cancelled_early' })]],
+      ['4', [reservation('s1', { reservationType: 'makeup' })]],
+      ['5', [reservation('renewal')]],
+    ]);
+    const frames = registerPeriodFrames(row, columns);
+    assert.deepEqual(
+      frames.slice(0, 5).map((frame) => frame?.paid),
+      Array(5).fill(paymentStatus === 'paid'),
+    );
+    assert.equal(frames[5]?.paid, false, 'payment must not carry over to the next period');
+  }
+});
+
+test('paid single visits get paid frames but uncovered marks stay outside them', () => {
+  const columns = [{ date: occurrence.date, time: '10:30' }];
+  const row = registerRows(
+    data({ subscriptions: [member('s1', { totalSessions: 1, paymentStatus: 'paid' })] }),
+  )[0];
+  assert.deepEqual(registerPeriodFrames(row, columns), [
+    { subscriptionId: 's1', paid: true, start: true, end: true },
+  ]);
+  row.cells.set(occurrence.date, [reservation('s1', { coverage: 'uncovered' })]);
+  assert.deepEqual(registerPeriodFrames(row, columns), [null]);
 });
 
 test('explicit renewals and single visits stay in one row without merging unrelated namesakes', () => {

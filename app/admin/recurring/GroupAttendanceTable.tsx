@@ -14,7 +14,7 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus } from '@tabler/icons-react';
+import { IconInfoCircle, IconPlus } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import {
@@ -40,6 +40,7 @@ import {
   selectableParticipantSubscriptions,
   vilniusDate,
 } from '@/lib/recurring/participants';
+import { revalidateRecurringData } from '@/lib/recurring/revalidate';
 import type { SiteKey } from '@/lib/site';
 import { AttendanceCell, type AttendanceChange } from './AttendanceCell';
 import styles from './GroupAttendanceTable.module.css';
@@ -120,11 +121,7 @@ export function GroupAttendanceTable({
       setSaveError(error instanceof Error ? error.message : 'Nepavyko išsaugoti lankymo.');
     } finally {
       try {
-        await refresh(
-          (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
-          undefined,
-          { revalidate: true },
-        );
+        await revalidateRecurringData(refresh);
       } catch {
         setSaveError(
           (previous) => previous || 'Nepavyko atnaujinti lentelės. Įkelkite puslapį iš naujo.',
@@ -168,11 +165,7 @@ export function GroupAttendanceTable({
       setSaveError(error instanceof Error ? error.message : 'Nepavyko patvirtinti apmokėjimo.');
     } finally {
       try {
-        await refresh(
-          (key) => typeof key === 'string' && key.startsWith('/api/admin/recurring/'),
-          undefined,
-          { revalidate: true },
-        );
+        await revalidateRecurringData(refresh);
       } catch {
         setSaveError(
           (previous) => previous || 'Nepavyko atnaujinti lentelės. Įkelkite puslapį iš naujo.',
@@ -232,10 +225,21 @@ export function GroupAttendanceTable({
           </Group>
         </Group>
         {fullyAllocated && (
-          <Text size="sm" c="dimmed">
-            Grupė pilna. Vieta saugoma iki nurodytos lankymo pabaigos. Esamo dalyvio abonemento
-            pratęsimas iš jo tuščio langelio antros vietos neužima, net jei el. paštas nenurodytas.
-          </Text>
+          <Group
+            role="note"
+            aria-label="Informacija apie grupės vietas"
+            gap={8}
+            align="flex-start"
+            wrap="nowrap"
+            className={styles.capacityNotice}
+          >
+            <IconInfoCircle size={16} aria-hidden="true" />
+            <Text size="xs" lh={1.45} c="inherit">
+              Grupė pilna. Vieta saugoma iki nurodytos lankymo pabaigos. Esamo dalyvio abonemento
+              pratęsimas iš jo tuščio langelio antros vietos neužima, net jei el. paštas
+              nenurodytas.
+            </Text>
+          </Group>
         )}
         {saveError && (
           <Alert
@@ -354,6 +358,7 @@ export function GroupAttendanceTable({
                             <td
                               key={column.date}
                               data-period={frames[columnIndex]?.subscriptionId}
+                              data-period-paid={frames[columnIndex]?.paid}
                               data-period-start={frames[columnIndex]?.start}
                               data-period-end={frames[columnIndex]?.end}
                               data-month-start={
@@ -456,8 +461,12 @@ export function GroupAttendanceTable({
                 </span>
                 <span>€ Be abonemento · apmokėjimas nesuregistruotas</span>
                 <span>
-                  <span className={styles.periodKey} />
-                  Vienas abonemento periodas
+                  <span className={styles.periodKey} data-period-paid="false" />
+                  Vienas abonemento periodas · apmokėjimas nepažymėtas
+                </span>
+                <span>
+                  <span className={styles.periodKey} data-period-paid="true" />
+                  Vienas abonemento periodas · apmokėta
                 </span>
                 <span>
                   Tuščia — naujas abonemento periodas, vienas apsilankymas arba lankymo žyma

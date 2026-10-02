@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ActionIcon,
   Alert,
   Badge,
   Button,
@@ -28,7 +27,6 @@ import { notifications } from '@mantine/notifications';
 import {
   IconArrowsExchange,
   IconCancel,
-  IconCheck,
   IconCopy,
   IconEye,
   IconLink,
@@ -43,8 +41,11 @@ import { useEffect, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { automaticMakeupNotification } from '@/lib/recurring/automatic-makeup';
 import type { ContactDetails } from '@/lib/recurring/contact-details';
+import { revalidateRecurringData } from '@/lib/recurring/revalidate';
 import type { SiteKey } from '@/lib/site';
 import { GroupParticipants } from './GroupParticipants';
+import { ManualTransferList } from './ManualTransferList';
+import styles from './RecurringAdminPage.module.css';
 import { RecurringCycleWizard } from './RecurringCycleWizard';
 import { SubscriptionContactDetails } from './SubscriptionContactDetails';
 import {
@@ -90,16 +91,6 @@ type RecurringProgramDto = {
 const PROJECT_OPTIONS: Array<{ value: SiteKey; label: string }> = [
   { value: 'ceramics', label: 'Keramika' },
   { value: 'yoga', label: 'Joga' },
-];
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'Visi statusai' },
-  { value: 'pending_payment', label: 'Laukia mokėjimo' },
-  { value: 'active', label: 'Aktyvus' },
-  { value: 'paused', label: 'Pristabdytas' },
-  { value: 'completed', label: 'Užbaigtas' },
-  { value: 'expired', label: 'Pasibaigęs' },
-  { value: 'cancelled', label: 'Atšauktas' },
 ];
 
 const REFUND_STATUS_OPTIONS = [
@@ -210,12 +201,6 @@ function adminValueLabel(value: string | null | undefined) {
   return ADMIN_VALUE_LABELS[value] || value;
 }
 
-function siteLabel(value: SiteKey | string | null | undefined) {
-  if (value === 'ceramics') return 'Keramika';
-  if (value === 'yoga') return 'Joga';
-  return value || '-';
-}
-
 function statusColor(status: string | null | undefined) {
   if (status === 'active' || status === 'completed') return 'green';
   if (status === 'paused' || status === 'pending') return 'yellow';
@@ -258,8 +243,6 @@ export default function RecurringAdminPage() {
   const [site, setSite] = useState<SiteKey>('ceramics');
   const [cycleWizardOpened, setCycleWizardOpened] = useState(false);
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
-  const [status, setStatus] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
   const [expandedDetailSections, setExpandedDetailSections] = useState<string[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -287,12 +270,6 @@ export default function RecurringAdminPage() {
     operatorReason: string;
   }>(null);
 
-  const subscriptionsApiUrl = useMemo(() => {
-    const params = new URLSearchParams({ site });
-    if (status) params.set('status', status);
-    if (customerEmail.trim()) params.set('customerEmail', customerEmail.trim().toLowerCase());
-    return `/api/admin/recurring/subscriptions?${params.toString()}`;
-  }, [customerEmail, site, status]);
   const observabilityApiUrl = useMemo(() => {
     const params = new URLSearchParams({ site });
     return `/api/admin/recurring/observability?${params.toString()}`;
@@ -306,7 +283,6 @@ export default function RecurringAdminPage() {
     return `/api/admin/recurring/programs?${params.toString()}`;
   }, [site]);
 
-  const { data, error, isLoading, mutate } = useSWR(subscriptionsApiUrl, fetcher);
   const {
     data: observabilityData,
     error: observabilityError,
@@ -325,7 +301,6 @@ export default function RecurringAdminPage() {
     isLoading: isLoadingPrograms,
     mutate: mutatePrograms,
   } = useSWR<{ programs: RecurringProgramDto[] }>(programsApiUrl, fetcher);
-  const subscriptions = data?.subscriptions || [];
   const recurringGroups = useMemo(
     () => (groupsConfigData?.groups || []).filter((group) => group.status !== 'archived'),
     [groupsConfigData],
@@ -347,7 +322,6 @@ export default function RecurringAdminPage() {
     data: selectedReservationsData,
     error: selectedReservationsError,
     isLoading: isLoadingSelectedReservations,
-    mutate: mutateSelectedReservations,
   } = useSWR(selectedReservationsApiUrl, fetcher);
 
   const selectedPlanOptions = selectedSubscription?.lifecycle?.planOptions || [];
@@ -487,7 +461,7 @@ export default function RecurringAdminPage() {
         throw new Error(result.error || 'Veiksmas nepavyko');
       }
       notifications.show({ message: successMessage, color: 'green' });
-      await Promise.all([mutate(), mutateObservability()]);
+      await revalidateRecurringData(refreshRecurringCache);
       await openSubscriptionDetails(selectedSubscription.subscription.id);
     } catch (nextError: any) {
       notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
@@ -551,7 +525,7 @@ export default function RecurringAdminPage() {
         throw new Error(result.error || 'Nepavyko pažymėti abonemento mokėjimo');
       }
       notifications.show({ message: 'Abonemento pavedimas pažymėtas apmokėtu', color: 'green' });
-      await Promise.all([mutate(), mutateObservability()]);
+      await revalidateRecurringData(refreshRecurringCache);
       if (result.subscription?.id) {
         await openSubscriptionDetails(result.subscription.id);
       }
@@ -658,7 +632,7 @@ export default function RecurringAdminPage() {
         });
       }
 
-      await Promise.all([mutate(), mutateObservability()]);
+      await revalidateRecurringData(refreshRecurringCache);
       if (selectedSubscriptionId === subscriptionId) {
         await openSubscriptionDetails(subscriptionId);
       }
@@ -676,7 +650,7 @@ export default function RecurringAdminPage() {
 
   const refreshSelectedOperationalContext = async () => {
     if (!selectedSubscriptionId) return;
-    await Promise.all([mutate(), mutateObservability(), mutateSelectedReservations()]);
+    await revalidateRecurringData(refreshRecurringCache);
     await openSubscriptionDetails(selectedSubscriptionId);
   };
 
@@ -769,11 +743,6 @@ export default function RecurringAdminPage() {
     });
   };
 
-  const clearFilters = () => {
-    setStatus('');
-    setCustomerEmail('');
-  };
-
   const openSubscriptionFromAttention = async (subscriptionId: string | null | undefined) => {
     if (!subscriptionId) {
       notifications.show({
@@ -787,34 +756,31 @@ export default function RecurringAdminPage() {
   };
 
   return (
-    <Container size="xl" py="md">
-      <Stack gap="xl">
-        <Group justify="space-between" align="flex-end">
-          <div>
+    <Container size="xl" py={{ base: 'xs', sm: 'md' }}>
+      <Stack className={styles.pageStack}>
+        <Stack gap="sm">
+          <Group justify="space-between" align="center" gap="xs">
             <Title order={2}>Nuolatiniai užsiėmimai</Title>
-            <Text size="sm" c="dimmed" mt={4}>
-              Abonementų, jų būsenų, pinigų grąžinimų ir veiksmų istorijos valdymas
-            </Text>
-          </div>
-          <Button
-            leftSection={<IconPlus size={17} />}
-            onClick={() => {
-              setEditingCycleId(null);
-              setCycleWizardOpened(true);
-            }}
-          >
-            Naujas užsiėmimų ciklas
-          </Button>
-        </Group>
+            <Button
+              leftSection={<IconPlus size={17} />}
+              onClick={() => {
+                setEditingCycleId(null);
+                setCycleWizardOpened(true);
+              }}
+            >
+              Naujas užsiėmimų ciklas
+            </Button>
+          </Group>
 
-        <Group>
-          <SegmentedControl
-            aria-label="Projektas"
-            data={PROJECT_OPTIONS}
-            value={site}
-            onChange={(value) => setSite(value === 'yoga' ? 'yoga' : 'ceramics')}
-          />
-        </Group>
+          <Group>
+            <SegmentedControl
+              aria-label="Projektas"
+              data={PROJECT_OPTIONS}
+              value={site}
+              onChange={(value) => setSite(value === 'yoga' ? 'yoga' : 'ceramics')}
+            />
+          </Group>
+        </Stack>
 
         <RecurringCycleWizard
           opened={cycleWizardOpened}
@@ -931,11 +897,22 @@ export default function RecurringAdminPage() {
           </Stack>
         </Card>
 
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
+        <Card
+          component="details"
+          className={styles.settings}
+          shadow="sm"
+          padding="lg"
+          radius="md"
+          withBorder
+        >
+          <summary className={styles.settingsSummary}>
+            <Title order={4} component="span">
+              Grupių vieno apsilankymo nustatymai
+            </Title>
+          </summary>
+          <Stack gap="md" mt="md">
             <Group justify="space-between" align="center">
               <div>
-                <Title order={4}>Grupių vieno apsilankymo nustatymai</Title>
                 <Text size="sm" c="dimmed">
                   Čia nustatoma, ar konkrečiame savaitės laike galima pirkti vieną apsilankymą ir
                   kokia jam taikoma kaina.
@@ -957,7 +934,7 @@ export default function RecurringAdminPage() {
             ) : recurringGroups.length === 0 && !isLoadingGroupsConfig ? (
               <Text c="dimmed">Šiame projekte nuolatinių užsiėmimų grupių nėra.</Text>
             ) : (
-              <Table striped highlightOnHover>
+              <SubscriptionDetailTable label="Grupių vieno apsilankymo nustatymai" minWidth={760}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Grupė</Table.Th>
@@ -1038,7 +1015,7 @@ export default function RecurringAdminPage() {
                     );
                   })}
                 </Table.Tbody>
-              </Table>
+              </SubscriptionDetailTable>
             )}
 
             {isLoadingGroupsConfig ? (
@@ -1055,7 +1032,7 @@ export default function RecurringAdminPage() {
               <div>
                 <Title order={4}>Abonementų procesų stebėsena</Title>
                 <Text size="sm" c="dimmed">
-                  Mokėjimų, abonementų sukūrimo, prieigos pristatymo ir pinigų grąžinimo būklė
+                  Mokėjimų, abonementų sukūrimo ir prieigos pristatymo būklė
                 </Text>
               </div>
               <Text size="sm" c="dimmed">
@@ -1071,7 +1048,7 @@ export default function RecurringAdminPage() {
               </Alert>
             ) : (
               <>
-                <SimpleGrid cols={{ base: 2, md: 3, xl: 7 }}>
+                <SimpleGrid cols={{ base: 2, md: 3, xl: 6 }}>
                   <Card withBorder>
                     <Stack gap={2}>
                       <Text size="xs" c="dimmed">
@@ -1108,19 +1085,6 @@ export default function RecurringAdminPage() {
                       </Text>
                       <Text size="xs" c="dimmed">
                         Nepavyko, nepasiekiama arba pasenusi
-                      </Text>
-                    </Stack>
-                  </Card>
-                  <Card withBorder>
-                    <Stack gap={2}>
-                      <Text size="xs" c="dimmed">
-                        Pinigų grąžinimo problemos
-                      </Text>
-                      <Text fw={700} size="xl">
-                        {observabilitySummary?.refundAttention ?? '-'}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Laukiama arba užfiksuota išimtis
                       </Text>
                     </Stack>
                   </Card>
@@ -1170,60 +1134,20 @@ export default function RecurringAdminPage() {
                     <Stack gap="sm">
                       <Title order={5}>Rankiniai pavedimai</Title>
                       {observabilityQueues.manualPendingTransfers?.length ? (
-                        <Table striped highlightOnHover>
-                          <Table.Thead>
-                            <Table.Tr>
-                              <Table.Th>Klientas</Table.Th>
-                              <Table.Th>Suma</Table.Th>
-                              <Table.Th>Amžius</Table.Th>
-                              <Table.Th>Veiksmai</Table.Th>
-                            </Table.Tr>
-                          </Table.Thead>
-                          <Table.Tbody>
-                            {observabilityQueues.manualPendingTransfers.map((item: any) => (
-                              <Table.Tr key={item.purchase.id}>
-                                <Table.Td>
-                                  <Stack gap={2}>
-                                    <Text size="sm" fw={600}>
-                                      {item.purchase.customerName}
-                                    </Text>
-                                    <Text size="xs" c="dimmed">
-                                      {item.purchase.customerEmail}
-                                    </Text>
-                                  </Stack>
-                                </Table.Td>
-                                <Table.Td>
-                                  <Stack gap={2}>
-                                    <Text size="sm">{formatMoney(item.purchase.priceEur)}</Text>
-                                    <Text size="xs" c="dimmed">
-                                      {item.purchase.selectedStartDate}
-                                    </Text>
-                                  </Stack>
-                                </Table.Td>
-                                <Table.Td>
-                                  <Stack gap={2}>
-                                    <Text size="sm">{formatAgeMinutes(item.ageMinutes)}</Text>
-                                    <Code>{item.purchase.id}</Code>
-                                  </Stack>
-                                </Table.Td>
-                                <Table.Td>
-                                  <Button
-                                    size="xs"
-                                    leftSection={<IconCheck size={14} />}
-                                    loading={
-                                      actionLoading === `manual-purchase-paid-${item.purchase.id}`
-                                    }
-                                    onClick={() =>
-                                      void markManualRecurringPurchasePaid(item.purchase.id)
-                                    }
-                                  >
-                                    Pažymėti apmokėta
-                                  </Button>
-                                </Table.Td>
-                              </Table.Tr>
-                            ))}
-                          </Table.Tbody>
-                        </Table>
+                        <ManualTransferList
+                          transfers={observabilityQueues.manualPendingTransfers.map(
+                            (item: any) => ({
+                              id: item.purchase.id,
+                              customerName: item.purchase.customerName,
+                              customerEmail: item.purchase.customerEmail,
+                              amount: formatMoney(item.purchase.priceEur),
+                              startDate: item.purchase.selectedStartDate,
+                              age: formatAgeMinutes(item.ageMinutes),
+                            }),
+                          )}
+                          loadingId={actionLoading?.replace('manual-purchase-paid-', '') ?? null}
+                          onMarkPaid={(id) => void markManualRecurringPurchasePaid(id)}
+                        />
                       ) : (
                         <Text c="dimmed">Nėra laukiančių abonementų pavedimų.</Text>
                       )}
@@ -1234,7 +1158,10 @@ export default function RecurringAdminPage() {
                     <Stack gap="sm">
                       <Title order={5}>Apmokėta, bet abonementas nesukurtas</Title>
                       {observabilityQueues.fulfillmentAttention?.length ? (
-                        <Table striped highlightOnHover>
+                        <SubscriptionDetailTable
+                          label="Apmokėta, bet abonementas nesukurtas"
+                          minWidth={760}
+                        >
                           <Table.Thead>
                             <Table.Tr>
                               <Table.Th>Klientas</Table.Th>
@@ -1293,7 +1220,7 @@ export default function RecurringAdminPage() {
                               </Table.Tr>
                             ))}
                           </Table.Tbody>
-                        </Table>
+                        </SubscriptionDetailTable>
                       ) : (
                         <Text c="dimmed">Nėra apmokėtų, bet nesukurtų abonementų.</Text>
                       )}
@@ -1304,7 +1231,10 @@ export default function RecurringAdminPage() {
                     <Stack gap="sm">
                       <Title order={5}>Prieigos pristatymo problemos</Title>
                       {observabilityQueues.accessAttention?.length ? (
-                        <Table striped highlightOnHover>
+                        <SubscriptionDetailTable
+                          label="Prieigos pristatymo problemos"
+                          minWidth={760}
+                        >
                           <Table.Thead>
                             <Table.Tr>
                               <Table.Th>Klientas</Table.Th>
@@ -1403,7 +1333,7 @@ export default function RecurringAdminPage() {
                               </Table.Tr>
                             ))}
                           </Table.Tbody>
-                        </Table>
+                        </SubscriptionDetailTable>
                       ) : (
                         <Text c="dimmed">Prieigos pristatymo problemų šiuo metu nėra.</Text>
                       )}
@@ -1412,78 +1342,9 @@ export default function RecurringAdminPage() {
 
                   <Card withBorder>
                     <Stack gap="sm">
-                      <Title order={5}>Pinigų grąžinimo problemos</Title>
-                      {observabilityQueues.refundAttention?.length ? (
-                        <Table striped highlightOnHover>
-                          <Table.Thead>
-                            <Table.Tr>
-                              <Table.Th>Klientas</Table.Th>
-                              <Table.Th>Grąžinimo būsena</Table.Th>
-                              <Table.Th>Signalas</Table.Th>
-                              <Table.Th>Veiksmai</Table.Th>
-                            </Table.Tr>
-                          </Table.Thead>
-                          <Table.Tbody>
-                            {observabilityQueues.refundAttention.map((item: any) => (
-                              <Table.Tr key={item.purchase.id}>
-                                <Table.Td>
-                                  <Stack gap={2}>
-                                    <Text size="sm" fw={600}>
-                                      {item.purchase.customerName}
-                                    </Text>
-                                    <Text size="xs" c="dimmed">
-                                      {item.purchase.customerEmail}
-                                    </Text>
-                                  </Stack>
-                                </Table.Td>
-                                <Table.Td>
-                                  <Stack gap={2}>
-                                    <Badge color={statusColor(item.refund?.state)} variant="light">
-                                      {adminValueLabel(item.refund?.state)}
-                                    </Badge>
-                                    <Text size="xs" c="dimmed">
-                                      {adminValueLabel(item.refund?.providerStatus)}
-                                    </Text>
-                                  </Stack>
-                                </Table.Td>
-                                <Table.Td>
-                                  <Stack gap={2}>
-                                    <Text size="sm">{item.refund?.lastError || '-'}</Text>
-                                    <Text size="xs" c="dimmed">
-                                      {formatDateTime(item.refund?.updatedAt)}
-                                    </Text>
-                                  </Stack>
-                                </Table.Td>
-                                <Table.Td>
-                                  <Button
-                                    size="xs"
-                                    variant="light"
-                                    leftSection={<IconEye size={14} />}
-                                    disabled={!item.purchase.subscriptionId}
-                                    onClick={() =>
-                                      void openSubscriptionFromAttention(
-                                        item.purchase.subscriptionId,
-                                      )
-                                    }
-                                  >
-                                    Atidaryti
-                                  </Button>
-                                </Table.Td>
-                              </Table.Tr>
-                            ))}
-                          </Table.Tbody>
-                        </Table>
-                      ) : (
-                        <Text c="dimmed">Laukiančių grąžinimų ar jų išimčių nėra.</Text>
-                      )}
-                    </Stack>
-                  </Card>
-
-                  <Card withBorder>
-                    <Stack gap="sm">
                       <Title order={5}>Naujausios mokėjimų klaidos</Title>
                       {observabilityQueues.recentPaymentFailures?.length ? (
-                        <Table striped highlightOnHover>
+                        <SubscriptionDetailTable label="Naujausios mokėjimų klaidos" minWidth={760}>
                           <Table.Thead>
                             <Table.Tr>
                               <Table.Th>Klientas</Table.Th>
@@ -1528,7 +1389,7 @@ export default function RecurringAdminPage() {
                               </Table.Tr>
                             ))}
                           </Table.Tbody>
-                        </Table>
+                        </SubscriptionDetailTable>
                       ) : (
                         <Text c="dimmed">Per paskutines 24 val. mokėjimo klaidų neužfiksuota.</Text>
                       )}
@@ -1540,7 +1401,10 @@ export default function RecurringAdminPage() {
                   <Stack gap="sm">
                     <Title order={5}>Naujausios abonementų būsenų problemos</Title>
                     {observabilityQueues.recentLifecycleAttention?.length ? (
-                      <Table striped highlightOnHover>
+                      <SubscriptionDetailTable
+                        label="Naujausios abonementų būsenų problemos"
+                        minWidth={760}
+                      >
                         <Table.Thead>
                           <Table.Tr>
                             <Table.Th>Klientas</Table.Th>
@@ -1607,7 +1471,7 @@ export default function RecurringAdminPage() {
                             </Table.Tr>
                           ))}
                         </Table.Tbody>
-                      </Table>
+                      </SubscriptionDetailTable>
                     ) : (
                       <Text c="dimmed">
                         Per paskutines 24 val. su pinigų grąžinimu susijusių būsenos problemų nėra.
@@ -1618,155 +1482,6 @@ export default function RecurringAdminPage() {
               </>
             )}
           </Stack>
-        </Card>
-
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Group justify="space-between" mb="md">
-            <Title order={4}>Abonementai</Title>
-            <Text size="sm" c="dimmed">
-              {isLoading ? 'Kraunama...' : `${subscriptions.length} įrašai`}
-            </Text>
-          </Group>
-
-          <Group align="flex-end" wrap="wrap" mb="md">
-            <Select
-              label="Abonemento būsena"
-              data={STATUS_OPTIONS}
-              value={status}
-              onChange={(value) => setStatus(value || '')}
-              allowDeselect={false}
-              style={{ flex: '1 1 180px', minWidth: 0 }}
-            />
-            <TextInput
-              label="Kliento el. paštas"
-              placeholder="vardas@example.com"
-              value={customerEmail}
-              onChange={(event) => setCustomerEmail(event.currentTarget.value)}
-              style={{ flex: '2 1 240px', minWidth: 0 }}
-            />
-            <Button variant="light" onClick={clearFilters}>
-              Išvalyti filtrus
-            </Button>
-          </Group>
-
-          {error ? (
-            <Alert color="red" title="Klaida">
-              {error.message}
-            </Alert>
-          ) : subscriptions.length === 0 && !isLoading ? (
-            <Text c="dimmed">Abonementų pagal pasirinktus filtrus nėra.</Text>
-          ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Klientas</Table.Th>
-                  <Table.Th>Statusas</Table.Th>
-                  <Table.Th>Langas</Table.Th>
-                  <Table.Th>Likutis</Table.Th>
-                  <Table.Th>Paskutinis įvykis</Table.Th>
-                  <Table.Th />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {subscriptions.map((subscription: any) => (
-                  <Table.Tr key={subscription.id}>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Text fw={600}>{subscription.customerName}</Text>
-                        <Text size="sm" c="dimmed">
-                          {subscription.customerEmail}
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color={statusColor(subscription.status)} variant="light">
-                        {adminValueLabel(subscription.status)}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Text size="sm">
-                          {subscription.startDate} → {subscription.validUntil}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {siteLabel(subscription.site)} · {formatMoney(subscription.priceEur)}
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      {subscription.remainingSessions} / {subscription.totalSessions}
-                    </Table.Td>
-                    <Table.Td>
-                      {subscription.latestLifecycleEvent ? (
-                        <Stack gap={2}>
-                          <Badge
-                            color={statusColor(subscription.latestLifecycleEvent.refundStatus)}
-                            variant="light"
-                          >
-                            {adminValueLabel(subscription.latestLifecycleEvent.action)}
-                          </Badge>
-                          <Text size="xs" c="dimmed">
-                            {formatDateTime(subscription.latestLifecycleEvent.createdAt)}
-                          </Text>
-                        </Stack>
-                      ) : (
-                        <Text size="sm" c="dimmed">
-                          -
-                        </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td>
-                      <ActionIcon
-                        variant="subtle"
-                        color="blue"
-                        aria-label="Peržiūrėti"
-                        onClick={() => openSubscriptionDetails(subscription.id)}
-                      >
-                        <IconEye size={18} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        color="teal"
-                        aria-label="Siųsti prisijungimo nuorodą el. paštu"
-                        disabled={!subscription.customerEmail}
-                        title={
-                          !subscription.customerEmail ? 'Nenurodytas dalyvio el. paštas' : undefined
-                        }
-                        loading={actionLoading === `issue-magic-link-email-${subscription.id}`}
-                        onClick={() =>
-                          void issueAdminMagicLink({
-                            subscriptionId: subscription.id,
-                            deliveryMode: 'email',
-                          })
-                        }
-                      >
-                        <IconMail size={18} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        color="grape"
-                        aria-label="Išduoti prisijungimo nuorodą"
-                        disabled={!subscription.customerEmail}
-                        title={
-                          !subscription.customerEmail ? 'Nenurodytas dalyvio el. paštas' : undefined
-                        }
-                        loading={actionLoading === `issue-magic-link-manual-${subscription.id}`}
-                        onClick={() => requestManualMagicLinkReveal(subscription.id)}
-                      >
-                        <IconLink size={18} />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
-
-          {isLoading ? (
-            <Group justify="center" mt="lg">
-              <Loader size="sm" />
-            </Group>
-          ) : null}
         </Card>
 
         <Modal

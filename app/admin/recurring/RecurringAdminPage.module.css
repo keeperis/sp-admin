@@ -1,0 +1,57 @@
+.pageStack {
+  gap: var(--mantine-spacing-md);
+
+  @media (min-width: 48em) {
+    gap: var(--mantine-spacing-xl);
+  }
+}
+
+.settings {
+  display: block;
+}
+
+.settingsSummary {
+  cursor: pointer;
+}
+
+.settingsSummary::marker {
+  color: var(--mantine-primary-color-filled);
+}
+
+.settingsSummary:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 4px;
+}
+
+.transfer {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.transfer + .transfer {
+  border-top: 1px solid var(--mantine-color-default-border);
+  padding-top: var(--mantine-spacing-md);
+}
+
+.transferFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mantine-spacing-xs);
+  margin: 0;
+  font-size: var(--mantine-font-size-sm);
+}
+
+.transferFacts dt {
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-xs);
+}
+
+.transferFacts dd {
+  margin: 0;
+}
+
+.purchaseId {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

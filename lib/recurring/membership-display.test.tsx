@@ -75,7 +75,31 @@ test('period outline and its legend use the same thin one-pixel border', () => {
     '.table td[data-period-end="true"]::after',
     '.periodKey',
   ]) {
-    const rule = css.slice(css.indexOf(selector)).split('}')[0];
-    assert.match(rule, /border(?:-block|-left|-right)?: 1px solid var\(--mantine-color-gray-6\)/);
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((item) => item.trim() === selector))
+      .map(([, , declarations]) => declarations)
+      .join('\n');
+    assert.match(rules, /border(?:-block|-left|-right)?: 1px solid var\(--period-color\)/);
   }
+});
+
+test('period frames and legend colors share the paid and unpaid cell text colors', () => {
+  const source = readFileSync(
+    new URL('../../app/admin/recurring/GroupAttendanceTable.tsx', import.meta.url),
+    'utf8',
+  );
+  const css = readFileSync(
+    new URL('../../app/admin/recurring/GroupAttendanceTable.module.css', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /data-period-paid=\{frames\[columnIndex\]\?\.paid\}/);
+  for (const status of ['paid', 'unpaid']) {
+    assert.ok(css.includes(`--period-color: var(--register-${status}-color)`));
+    assert.ok(css.includes(`--mark-color: var(--register-${status}-color)`));
+  }
+  assert.match(css, /--register-unpaid-color: #a5d8ff/);
+  assert.match(css, /--register-paid-color: #b2f2bb/);
+  assert.match(css, /\.table td\[data-period-paid="true"\]/);
+  assert.match(source, /className=\{styles.periodKey\} data-period-paid="false"/);
+  assert.match(source, /className=\{styles.periodKey\} data-period-paid="true"/);
 });
