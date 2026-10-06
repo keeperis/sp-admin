@@ -108,7 +108,13 @@ export function AttendanceCell({
           aria-label={label}
           disabled={busy || !subscription || (!reservation && !canRecord)}
         >
-          {mark?.symbol}
+          {reservation?.status === 'attended' ? (
+            <span className={styles.attendanceCheck} aria-hidden="true">
+              {mark?.symbol}
+            </span>
+          ) : (
+            mark?.symbol
+          )}
           {(moved || replacement) && <small>↔</small>}
           {uncovered && <small>€</small>}
           {!reservation && (

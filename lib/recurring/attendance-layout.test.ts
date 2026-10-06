@@ -10,6 +10,39 @@ const participants = readFileSync(
   new URL('../../app/admin/recurring/GroupParticipants.tsx', import.meta.url),
   'utf8',
 );
+const cell = readFileSync(
+  new URL('../../app/admin/recurring/AttendanceCell.tsx', import.meta.url),
+  'utf8',
+);
+const styles = readFileSync(
+  new URL('../../app/admin/recurring/GroupAttendanceTable.module.css', import.meta.url),
+  'utf8',
+);
+
+test('attended visits get a separate check badge regardless of payment; other symbols stay plain', () => {
+  assert.match(
+    cell,
+    /reservation\?\.status === 'attended' \? \(\s*<span className=\{styles.attendanceCheck\} aria-hidden="true">\s*\{mark\?\.symbol\}\s*<\/span>\s*\) : \(\s*mark\?\.symbol\s*\)/,
+  );
+  assert.match(cell, /data-tone=\{mark\?\.tone \|\| 'empty'\}/);
+  assert.match(cell, /aria-label=\{label\}/);
+  assert.equal((source.match(/className=\{styles.attendanceCheck\}/g) || []).length, 2);
+});
+
+test('attendance badge adapts contrast to the theme and fits narrow mobile cells', () => {
+  assert.match(
+    styles,
+    /\.attendanceCheck \{[^}]*border-radius: 50%;[^}]*background: var\(--mantine-color-green-8\);[^}]*color: #fff;/,
+  );
+  assert.match(
+    styles,
+    /:global\(\[data-mantine-color-scheme="dark"\]\) \.attendanceCheck \{[^}]*background: var\(--mantine-color-green-3\);[^}]*color: #0b2110;/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 48em\)[\s\S]*\.mark \.attendanceCheck \{\s*width: 18px;\s*height: 18px;/,
+  );
+});
 
 test('attendance headings omit repeated program, weekday/time and introductory copy', () => {
   assert.match(source, /<Title order=\{5\}>\{group.name\}<\/Title>/);

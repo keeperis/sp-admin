@@ -442,13 +442,17 @@ export function GroupAttendanceTable({
                 </span>
                 <span>
                   <span className={styles.key} data-tone="planned">
-                    ✓
+                    <span className={styles.attendanceCheck} aria-hidden="true">
+                      ✓
+                    </span>
                   </span>
                   Atvyko · apmokėjimas nepažymėtas
                 </span>
                 <span>
                   <span className={styles.key} data-tone="attended">
-                    ✓
+                    <span className={styles.attendanceCheck} aria-hidden="true">
+                      ✓
+                    </span>
                   </span>
                   Atvyko · apmokėta
                 </span>

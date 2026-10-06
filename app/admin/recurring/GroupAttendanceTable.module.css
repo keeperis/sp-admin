@@ -183,6 +183,31 @@
   margin-left: 2px;
 }
 
+.attendanceCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--mantine-color-green-8);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+:global([data-mantine-color-scheme="dark"]) .attendanceCheck {
+  background: var(--mantine-color-green-3);
+  color: #0b2110;
+}
+
+.key .attendanceCheck {
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+}
+
 .mark:hover {
   filter: brightness(0.93);
 }
@@ -352,6 +377,12 @@
   .mark small {
     font-size: 8px;
     margin-left: 0;
+  }
+
+  .mark .attendanceCheck {
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
   }
 
   .legend {
