@@ -21,6 +21,7 @@ test('workshops and bookings share one section; other destinations are retained'
     '/admin/meta',
     '/admin/notifications',
     '/admin/overview',
+    '/admin/private-workshops',
     '/admin/recurring',
     '/admin/reminders',
     '/admin/tickets',

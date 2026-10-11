@@ -10,6 +10,7 @@ import {
   IconHome,
   IconQrcode,
   IconRepeat,
+  IconUsersGroup,
 } from '@tabler/icons-react';
 
 // Shared by the home launcher and sidebar so routes/labels cannot drift apart.
@@ -25,6 +26,12 @@ export const adminSections = [
     label: 'Nuolatiniai užsiėmimai',
     description: 'Grupės, abonementai ir lankomumas.',
     icon: IconRepeat,
+  },
+  {
+    href: '/admin/private-workshops',
+    label: 'Privatūs užsiėmimai',
+    description: 'Privačios keramikos dirbtuvės, laikai ir rezervacijos.',
+    icon: IconUsersGroup,
   },
   {
     href: '/admin/corporate',

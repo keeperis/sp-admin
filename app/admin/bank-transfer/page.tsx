@@ -76,7 +76,7 @@ export default function BankTransferSettingsPage() {
     initialValues: emptySettings(),
     validate: {
       beneficiaryName: (value) => (value.trim() ? null : 'Įveskite gavėjo pavadinimą'),
-      iban: (value) => (value.trim() ? null : 'Įveskite IBAN sąskaitą'),
+      iban: (value) => (value.trim() ? null : 'Įveskite sąskaitos numerį'),
       paymentPurposePrefix: (value) =>
         value.trim() ? null : 'Įveskite mokėjimo paskirties prefiksą',
     },
@@ -227,7 +227,7 @@ export default function BankTransferSettingsPage() {
                   />
                 </Group>
                 <TextInput
-                  label="IBAN sąskaita"
+                  label="Sąskaitos numeris"
                   required
                   placeholder="LT..."
                   {...form.getInputProps('iban')}
