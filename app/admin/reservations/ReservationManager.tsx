@@ -48,6 +48,7 @@ import {
   workshopTimeKey,
 } from '@/lib/workshop-reservations';
 import { BookingRegistrationDetails } from './BookingRegistrationDetails';
+import { BookingTransfer } from './BookingTransfer';
 
 const mutationHeaders = {
   'Content-Type': 'application/json',
@@ -77,7 +78,14 @@ export function ReservationManager({
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [bookingAction, setBookingAction] = useState<
-    'cancel' | 'delete' | 'email' | 'paid' | 'reservation-message' | null
+    | 'cancel'
+    | 'delete'
+    | 'email'
+    | 'paid'
+    | 'reservation-message'
+    | 'transfer'
+    | 'transfer-email'
+    | null
   >(null);
   const [manualBookingOpened, setManualBookingOpened] = useState(false);
   const [isCreatingManualBooking, setIsCreatingManualBooking] = useState(false);
@@ -256,6 +264,33 @@ export function ReservationManager({
     }
   };
 
+  const retryTransferEmail = async () => {
+    if (!selectedBooking?.id || bookingAction) return;
+    const bookingId = selectedBooking.id;
+    setBookingAction('transfer-email');
+    try {
+      const response = await fetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+        cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.booking) {
+        throw new Error(result.error || 'Nepavyko atnaujinti laiško būsenos');
+      }
+      setSelectedBooking(result.booking);
+      notifications.show({
+        color: result.booking.transferEmail?.status === 'sent' ? 'green' : 'orange',
+        message:
+          result.booking.transferEmail?.status === 'sent'
+            ? 'Laiškas apie pakeistą datą išsiųstas.'
+            : 'Laiškas apie pakeistą datą dar neišsiųstas. Patikrinkite siuntimo būseną.',
+      });
+    } catch (nextError: any) {
+      notifications.show({ message: nextError?.message || 'Klaida', color: 'red' });
+    } finally {
+      setBookingAction(null);
+    }
+  };
+
   const generateReservationMessage = async () => {
     if (!selectedBooking?.id) return;
 
@@ -404,7 +439,12 @@ export function ReservationManager({
       })}
       <Modal
         opened={Boolean(selectedBooking)}
-        onClose={() => setSelectedBooking(null)}
+        onClose={() => {
+          if (!bookingAction) setSelectedBooking(null);
+        }}
+        closeOnClickOutside={!bookingAction}
+        closeOnEscape={!bookingAction}
+        closeButtonProps={{ disabled: Boolean(bookingAction) }}
         title="Rezervacijos detalės"
         size="lg"
       >
@@ -481,7 +521,7 @@ export function ReservationManager({
               </Card>
               <Card withBorder padding="sm" radius="sm">
                 <Text size="xs" c="dimmed">
-                  Laiškas
+                  {selectedBooking.transferEmail ? 'Pirminis laiškas' : 'Laiškas'}
                 </Text>
                 <Text fw={600}>{statusLabel(selectedBooking.confirmationEmail?.status)}</Text>
                 {selectedBooking.confirmationEmail?.attempts != null ? (
@@ -492,8 +532,52 @@ export function ReservationManager({
               </Card>
             </SimpleGrid>
 
-            {selectedBooking.confirmationEmail?.lastError ? (
+            {!selectedBooking.transferEmail && selectedBooking.confirmationEmail?.lastError ? (
               <Alert color="orange">{selectedBooking.confirmationEmail.lastError}</Alert>
+            ) : null}
+
+            {selectedBooking.transferEmail ? (
+              <Alert
+                color={selectedBooking.transferEmail.status === 'sent' ? 'green' : 'orange'}
+                title="Laiškas apie pakeistą datą"
+              >
+                <Stack gap="xs">
+                  <Text size="sm">{statusLabel(selectedBooking.transferEmail.status)}</Text>
+                  {selectedBooking.transferEmail.lastError ? (
+                    <Text size="sm">{selectedBooking.transferEmail.lastError}</Text>
+                  ) : null}
+                  {selectedBooking.transferEmail.status !== 'sent' ? (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconMailForward size={14} />}
+                      loading={bookingAction === 'transfer-email'}
+                      disabled={Boolean(bookingAction)}
+                      onClick={() => void retryTransferEmail()}
+                    >
+                      Pakartoti pakeitimo laišką
+                    </Button>
+                  ) : null}
+                </Stack>
+              </Alert>
+            ) : null}
+
+            {selectedBooking.status === 'confirmed' &&
+            selectedBooking.workshop?.eventType === 'oneTime' &&
+            selectedBooking.ticket?.status === 'valid' &&
+            !selectedBooking.ticket?.checkedInAt ? (
+              <BookingTransfer
+                key={selectedBooking.id}
+                booking={selectedBooking}
+                disabled={Boolean(bookingAction)}
+                onBusyChange={(busy) => setBookingAction(busy ? 'transfer' : null)}
+                onTransferred={async () => {
+                  setDetailPaymentUrl('');
+                  setDetailReservationMessage('');
+                  await mutate();
+                  await openBookingDetails(selectedBooking.id);
+                }}
+              />
             ) : null}
 
             {detailPaymentUrl ? (
@@ -542,6 +626,7 @@ export function ReservationManager({
                   color="red"
                   leftSection={<IconTrash size={16} />}
                   loading={bookingAction === 'delete'}
+                  disabled={Boolean(bookingAction)}
                   onClick={deleteOrphanBooking}
                 >
                   Ištrinti našlaitę rezervaciją
@@ -553,6 +638,7 @@ export function ReservationManager({
                   variant="light"
                   leftSection={<IconCircleCheck size={16} />}
                   loading={bookingAction === 'paid'}
+                  disabled={Boolean(bookingAction)}
                   onClick={markBookingPaid}
                 >
                   Pažymėti apmokėta
@@ -563,6 +649,7 @@ export function ReservationManager({
                   variant="light"
                   leftSection={<IconMessage size={16} />}
                   loading={bookingAction === 'reservation-message'}
+                  disabled={Boolean(bookingAction)}
                   onClick={generateReservationMessage}
                 >
                   Rezervacijos žinutė
@@ -570,11 +657,13 @@ export function ReservationManager({
               ) : null}
               {selectedBooking.customerEmail &&
               selectedBooking.status === 'confirmed' &&
+              !selectedBooking.transferEmail &&
               selectedBooking.confirmationEmail?.status !== 'sent' ? (
                 <Button
                   variant="light"
                   leftSection={<IconMailForward size={16} />}
                   loading={bookingAction === 'email'}
+                  disabled={Boolean(bookingAction)}
                   onClick={() => runBookingAction('email')}
                 >
                   Pakartoti laišką
@@ -586,6 +675,7 @@ export function ReservationManager({
                   variant="light"
                   leftSection={<IconX size={16} />}
                   loading={bookingAction === 'cancel'}
+                  disabled={Boolean(bookingAction)}
                   onClick={() => runBookingAction('cancel')}
                 >
                   Atšaukti rezervaciją

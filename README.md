@@ -46,6 +46,24 @@ cp .env.example .env.local
 npm run build
 ```
 
+## Vienkartinių dirbtuvių rezervacijos perregistravimas
+
+`/admin/workshops` atverkite patvirtintos rezervacijos detales ir pasirinkite
+**Perregistruoti į kitas dirbtuves**. Siūlomos tik to paties projekto aktyvios būsimos
+vienkartinės dirbtuvės, kuriose pakanka vietų visiems rezervacijos dalyviams. Peržiūrėkite
+naują datą (Vilniaus laiku) ir patvirtinkite **Perregistruoti**.
+
+Visa rezervacija perkeliama kartu, išsaugant apmokėtą sumą bei bilieto kodą ir nuorodą.
+Panaudoto bilieto arba dar neapmokėtos rezervacijos perregistruoti negalima. Pirkėjui
+siunčiamas laiškas su ankstesne ir nauja data; jei el. paštas nenurodytas, klientą reikia
+informuoti patiems. Laiško būsena rodoma rezervacijos detalėse su atskiru pakartojimo
+mygtuku. API esamas minutinis rezervacijų priežiūros procesas taip pat kartoja nepavykusį
+siuntimą ir užbaigia pertrauktus perkėlimus.
+
+Funkcijai reikia kartu atnaujinti `sp-admin` ir `sp-api`. Perkėlimo API:
+`GET/POST /api/admin/bookings/:id/transfer`; administravimo proxy naudoja esamą sesijos,
+CSRF ir vidinio administratoriaus autorizaciją.
+
 ## iPhone Home Screen aplikacija
 
 Administravimas palaiko **online standalone** režimą, be offline įrašymo. Pasirinktiniai pranešimai naudoja tik push skirtą Service Worker (žr. žemiau), kuris nekešuoja administravimo duomenų.
