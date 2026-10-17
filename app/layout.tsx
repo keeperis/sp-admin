@@ -21,6 +21,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 const bodoni = Bodoni_Moda({
   subsets: ['latin'],
+  style: ['normal', 'italic'],
   variable: '--font-bodoni',
 });
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces' });

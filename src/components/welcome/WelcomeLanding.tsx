@@ -150,7 +150,7 @@ export function WelcomeLanding({ ceramicsUrl, yogaUrl }: WelcomeLandingProps) {
 
         <footer ref={footerRef} className={styles.footer}>
           <div className={styles.footerInner}>
-            <p className={styles.footerPoem}>Keramikos ir jogos namai - jaukiam laikui su savimi</p>
+            <p className={styles.footerPoem}>Keramikos ir jogos namai – jaukiam laikui su savimi</p>
 
             <nav className={styles.footerContact} aria-label="Soul Poetry kontaktai">
               <div className={styles.footerContactList}>
