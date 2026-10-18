@@ -151,7 +151,7 @@ export default function PrivateWorkshopsPage() {
           {config && (
             <fieldset disabled={saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
               <Tabs.Panel value="general" pt="md">
-                <GeneralSettings config={config} onChange={change} />
+                <GeneralSettings config={config} onChange={change} disabled={saving} />
               </Tabs.Panel>
               <Tabs.Panel value="types" pt="md">
                 <WorkshopTypes config={config} onChange={change} persistedIds={persistedIds} />

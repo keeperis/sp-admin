@@ -46,11 +46,9 @@ export function validateConfig(config: PrivateWorkshopConfig): string | null {
     config.settings.enabled &&
     (!config.settings.titleLt.trim() ||
       !config.settings.descriptionLt.trim() ||
-      !config.settings.placeName.trim() ||
-      !config.settings.cancellationTermsLt.trim() ||
-      !config.settings.reschedulingTermsLt.trim())
+      !config.settings.placeName.trim())
   ) {
-    return 'Prieš įjungdami registraciją užpildykite aprašymą, vietą, pavadinimą ir atšaukimo bei perkėlimo sąlygas.';
+    return 'Prieš įjungdami registraciją užpildykite aprašymą, vietą ir pavadinimą.';
   }
   for (const item of config.types) {
     if (

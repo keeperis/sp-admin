@@ -3,6 +3,7 @@
 import {
   ActionIcon,
   Alert,
+  Anchor,
   Badge,
   Button,
   Card,
@@ -26,6 +27,7 @@ import type {
   PrivateWorkshopSettings,
   PrivateWorkshopWindow,
 } from '@/lib/private-workshops/types';
+import { DescriptionEditor } from './DescriptionEditor';
 import { ImagePicker } from './ImagePicker';
 
 type Props = {
@@ -66,17 +68,15 @@ function EntryActions({
   );
 }
 
-export function GeneralSettings({ config, onChange }: Omit<Props, 'persistedIds'>) {
+export function GeneralSettings({
+  config,
+  onChange,
+  disabled = false,
+}: Omit<Props, 'persistedIds'> & { disabled?: boolean }) {
   const settings = config.settings;
   function update(patch: Partial<PrivateWorkshopSettings>) {
     onChange({ ...config, settings: { ...settings, ...patch } });
   }
-  const translatedFields = [
-    { label: 'Bendras aprašymas', lt: 'descriptionLt', en: 'descriptionEn' },
-    { label: 'Atšaukimo sąlygos', lt: 'cancellationTermsLt', en: 'cancellationTermsEn' },
-    { label: 'Perkėlimo sąlygos', lt: 'reschedulingTermsLt', en: 'reschedulingTermsEn' },
-    { label: 'Atmintinė patvirtinimo laiškui', lt: 'memoLt', en: 'memoEn' },
-  ] as const;
   return (
     <Card withBorder>
       <Stack>
@@ -90,6 +90,14 @@ export function GeneralSettings({ config, onChange }: Omit<Props, 'persistedIds'
           skiriamos 72 val., bet ne ilgiau nei iki užsiėmimo pradžios. Rezervuojant pavedimu mokama
           tik už minimalų dalyvių skaičių. Papildomos paslaugos ir likutis apmokami po užsiėmimo.
         </Alert>
+        <Text size="sm" c="dimmed">
+          Privačioms registracijoms taikomos bendros svetainės paslaugų teikimo, registracijos ir
+          atšaukimo sąlygos. Jas redaguokite skiltyje{' '}
+          <Anchor href="/admin/legal" size="sm">
+            Teisinė informacija
+          </Anchor>
+          .
+        </Text>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <TextInput
             label="Pavadinimas (LT)"
@@ -113,24 +121,46 @@ export function GeneralSettings({ config, onChange }: Omit<Props, 'persistedIds'
           value={settings.coverImageUrl}
           onChange={(coverImageUrl) => update({ coverImageUrl })}
         />
-        {translatedFields.map((field) => (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} key={field.lt}>
-            <Textarea
-              label={`${field.label} (LT)`}
-              autosize
-              minRows={4}
-              value={settings[field.lt]}
-              onChange={(event) => update({ [field.lt]: event.currentTarget.value })}
-            />
-            <Textarea
-              label={`${field.label} (EN)`}
-              autosize
-              minRows={4}
-              value={settings[field.en]}
-              onChange={(event) => update({ [field.en]: event.currentTarget.value })}
-            />
-          </SimpleGrid>
-        ))}
+        <Text size="sm" c="dimmed">
+          Bendras aprašymas rodomas registracijos lange. Puslapio pristatymo tekstą redaguokite
+          skilčių administravime.
+        </Text>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <DescriptionEditor
+            label="Bendras aprašymas (LT)"
+            value={settings.descriptionLt}
+            document={settings.descriptionDocumentLt}
+            disabled={disabled}
+            onChange={(descriptionDocumentLt, descriptionLt) =>
+              update({ descriptionDocumentLt, descriptionLt })
+            }
+          />
+          <DescriptionEditor
+            label="Bendras aprašymas (EN)"
+            value={settings.descriptionEn}
+            document={settings.descriptionDocumentEn}
+            disabled={disabled}
+            onChange={(descriptionDocumentEn, descriptionEn) =>
+              update({ descriptionDocumentEn, descriptionEn })
+            }
+          />
+        </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <Textarea
+            label="Atmintinė patvirtinimo laiškui (LT)"
+            autosize
+            minRows={4}
+            value={settings.memoLt}
+            onChange={(event) => update({ memoLt: event.currentTarget.value })}
+          />
+          <Textarea
+            label="Atmintinė patvirtinimo laiškui (EN)"
+            autosize
+            minRows={4}
+            value={settings.memoEn}
+            onChange={(event) => update({ memoEn: event.currentTarget.value })}
+          />
+        </SimpleGrid>
         <Text size="xs" c="dimmed">
           Tekstai laiškuose rodomi kaip paprastas tekstas. Atmintinė pridedama patvirtinus gautą
           pavedimą.

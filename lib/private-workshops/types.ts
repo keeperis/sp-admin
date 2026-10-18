@@ -1,9 +1,21 @@
+export type PrivateWorkshopDescriptionText = { text: string; bold?: boolean };
+
+export type PrivateWorkshopDescriptionDocument = {
+  version: 1;
+  blocks: Array<
+    | { type: 'paragraph' | 'heading'; content: PrivateWorkshopDescriptionText[] }
+    | { type: 'bulletList'; items: PrivateWorkshopDescriptionText[][] }
+  >;
+};
+
 export type PrivateWorkshopSettings = {
   enabled: boolean;
   titleLt: string;
   titleEn: string;
   descriptionLt: string;
   descriptionEn: string;
+  descriptionDocumentLt?: PrivateWorkshopDescriptionDocument | null;
+  descriptionDocumentEn?: PrivateWorkshopDescriptionDocument | null;
   coverImageUrl: string;
   cancellationTermsLt: string;
   cancellationTermsEn: string;
@@ -137,6 +149,20 @@ export type PrivateWorkshopBooking = PrivateWorkshopCustomer & {
   placeName: string;
   cancellationTerms: string;
   reschedulingTerms: string;
+  legalAcceptance?: {
+    termsVersion: string;
+    privacyNoticeVersion: string;
+    termsDocumentHash: string;
+    termsAcceptedAt: string;
+    operatorSnapshot: Record<string, unknown>;
+    termsSnapshot: {
+      title: string;
+      version: string;
+      effectiveDate: string;
+      sections: Array<{ title: string; paragraphs: string[] }>;
+    };
+    privacyNoticeSnapshot: Record<string, unknown>;
+  };
   createdAt: string;
   expiresAt: string | null;
   paidAt: string | null;

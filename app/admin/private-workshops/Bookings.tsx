@@ -210,17 +210,40 @@ export function BookingDetails({
           Kliento pastabos: {booking.notes}
         </Text>
       )}
-      <details>
-        <summary>Registruojantis patvirtintos sąlygos</summary>
-        <Stack mt="sm" gap="xs">
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-            {booking.cancellationTerms}
-          </Text>
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-            {booking.reschedulingTerms}
-          </Text>
-        </Stack>
-      </details>
+      {booking.legalAcceptance ? (
+        <details>
+          <summary>Registruojantis patvirtintos sąlygos</summary>
+          <Stack mt="sm" gap="xs">
+            <Text fw={600}>{booking.legalAcceptance.termsSnapshot.title}</Text>
+            <Text size="sm">Redakcija: {booking.legalAcceptance.termsVersion}</Text>
+            <Text size="sm">Sutikta: {localDateTime(booking.legalAcceptance.termsAcceptedAt)}</Text>
+            {booking.legalAcceptance.termsSnapshot.sections.map((section) => (
+              <Stack key={section.title} gap={4}>
+                <Text size="sm" fw={600}>
+                  {section.title}
+                </Text>
+                {section.paragraphs.map((paragraph) => (
+                  <Text key={paragraph} size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                    {paragraph}
+                  </Text>
+                ))}
+              </Stack>
+            ))}
+          </Stack>
+        </details>
+      ) : booking.cancellationTerms || booking.reschedulingTerms ? (
+        <details>
+          <summary>Registruojantis patvirtintos sąlygos</summary>
+          <Stack mt="sm" gap="xs">
+            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {booking.cancellationTerms}
+            </Text>
+            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {booking.reschedulingTerms}
+            </Text>
+          </Stack>
+        </details>
+      ) : null}
       <Divider />
       <Title order={5}>Laiškų pristatymas</Title>
       <EmailState label="Rezervacijos informacija" value={booking.emails?.requested} />
