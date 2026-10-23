@@ -121,8 +121,50 @@ export function completionPreview(booking: PrivateWorkshopBooking, participants:
     Math.round(booking.quote.addonsTotalEur * 100);
   return {
     total: totalCents / 100,
-    balance: (totalCents - Math.round(booking.quote.depositEur * 100)) / 100,
+    balance:
+      (totalCents -
+        (booking.source === 'admin' && !booking.paidAt
+          ? 0
+          : Math.round(booking.quote.depositEur * 100))) /
+      100,
   };
+}
+
+export function manualBookingPreview(
+  config: PrivateWorkshopConfig,
+  typeId: string,
+  participantsCount: number,
+  addonIds: string[],
+) {
+  const type = config.types.find((item) => item.id === typeId);
+  if (
+    !type ||
+    !Number.isInteger(participantsCount) ||
+    participantsCount < type.minParticipants ||
+    participantsCount > type.maxParticipants ||
+    new Set(addonIds).size !== addonIds.length ||
+    addonIds.some((id) => !config.addons.some((item) => item.id === id))
+  )
+    return null;
+  const addons = config.addons.filter((item) => addonIds.includes(item.id));
+  const priceCents = Math.round(type.pricePerPersonEur * 100);
+  const addonsCents = addons.reduce((total, item) => total + Math.round(item.priceEur * 100), 0);
+  return {
+    depositEur: (type.minParticipants * priceCents) / 100,
+    estimatedTotalEur: (participantsCount * priceCents + addonsCents) / 100,
+    durationMin: type.durationMin + addons.reduce((total, item) => total + item.durationMin, 0),
+  };
+}
+
+export class PrivateRequestError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+  ) {
+    super(message);
+    this.name = 'PrivateRequestError';
+  }
 }
 
 export async function privateRequest<T>(url: string, init?: RequestInit): Promise<T> {
@@ -137,10 +179,12 @@ export async function privateRequest<T>(url: string, init?: RequestInit): Promis
   });
   const data = await response.json();
   if (!response.ok)
-    throw new Error(
+    throw new PrivateRequestError(
       response.status === 409 && data.code === 'PRIVATE_CONFIG_CONFLICT'
         ? 'Duomenys pasikeitė kitame lange. Atnaujinkite duomenis ir pakartokite veiksmą. Jūsų pakeitimai dar neišsaugoti.'
         : data.error || 'Nepavyko atlikti veiksmo.',
+      response.status,
+      data.code,
     );
   return data as T;
 }

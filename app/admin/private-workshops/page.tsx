@@ -95,6 +95,21 @@ export default function PrivateWorkshopsPage() {
     );
     notifications.show({ color: 'green', message: 'Rezervacija atnaujinta.' });
   }
+  async function bookingCreated(booking: PrivateWorkshopBooking) {
+    await bookingsQuery.mutate(
+      (current) => ({
+        bookings: [booking, ...(current?.bookings || []).filter((item) => item.id !== booking.id)],
+      }),
+      { revalidate: false },
+    );
+    const sent = booking.emails?.created?.status === 'sent';
+    notifications.show({
+      color: sent ? 'green' : 'orange',
+      message: sent
+        ? 'Rezervacija sukurta. Užsakymo informacija išsiųsta užsakovui.'
+        : 'Rezervacija sukurta. Laiško būseną galite patikrinti rezervacijos detalėse ir prireikus persiųsti.',
+    });
+  }
   return (
     <Container size="xl" py="md">
       <Stack gap="md">
@@ -174,10 +189,12 @@ export default function PrivateWorkshopsPage() {
               <Loader aria-label="Įkeliamos rezervacijos" />
             ) : (
               <Bookings
+                config={saved}
                 bookings={bookingsQuery.data?.bookings || []}
                 refreshing={bookingsQuery.isValidating}
                 onRefresh={() => void bookingsQuery.mutate()}
                 onUpdated={(booking) => void bookingUpdated(booking)}
+                onCreated={(booking) => void bookingCreated(booking)}
               />
             )}
           </Tabs.Panel>

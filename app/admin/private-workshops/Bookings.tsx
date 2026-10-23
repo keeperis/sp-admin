@@ -17,7 +17,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { IconCheck, IconMail, IconRefresh } from '@tabler/icons-react';
+import { IconCheck, IconMail, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { useState } from 'react';
 import {
   bookingStatuses,
@@ -27,14 +27,15 @@ import {
   PRIVATE_API,
   privateRequest,
 } from '@/lib/private-workshops/admin';
-import type { PrivateWorkshopBooking } from '@/lib/private-workshops/types';
+import type { PrivateWorkshopBooking, PrivateWorkshopConfig } from '@/lib/private-workshops/types';
+import { ManualBooking } from './ManualBooking';
 
 type BookingAction = 'mark_paid' | 'cancel' | 'complete' | 'resend_email';
 type ActionPayload = {
   action: BookingAction;
   actualParticipants?: number;
   adminNotes?: string;
-  emailKind?: 'requested' | 'confirmed';
+  emailKind?: 'created' | 'requested' | 'confirmed';
 };
 
 function EmailState({
@@ -122,6 +123,11 @@ export function BookingDetails({
         {booking.customerPhone}
       </Text>
       <Text size="sm">Rezervacijos nr.: {booking.reference}</Text>
+      {booking.source === 'admin' && (
+        <Text size="sm" c="dimmed">
+          Įtraukta administratoriaus{booking.createdByAdmin ? `: ${booking.createdByAdmin}` : ''}
+        </Text>
+      )}
       <Divider />
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <Text size="sm">
@@ -164,6 +170,11 @@ export function BookingDetails({
             Preliminarus likutis po užsiėmimo: {money(booking.quote.remainingEstimateEur)}
           </Text>
           <Text size="sm">Pavedimo gavimas pažymėtas: {localDateTime(booking.paidAt)}</Text>
+          {booking.source === 'admin' && !booking.paidAt && (
+            <Text size="sm" c="orange">
+              Rezervacijos mokėjimas dar nepažymėtas kaip gautas.
+            </Text>
+          )}
           <Text size="sm">Mokėjimo paskirtis: {booking.bankTransfer.paymentPurpose}</Text>
           <Text size="xs" c="dimmed">
             {booking.bankTransfer.beneficiaryName} · {booking.bankTransfer.iban}
@@ -246,9 +257,31 @@ export function BookingDetails({
       ) : null}
       <Divider />
       <Title order={5}>Laiškų pristatymas</Title>
-      <EmailState label="Rezervacijos informacija" value={booking.emails?.requested} />
-      <EmailState label="Patvirtinimas ir atmintinė" value={booking.emails?.confirmed} />
+      {booking.source === 'admin' && (
+        <EmailState label="Užsakymo informacija" value={booking.emails?.created} />
+      )}
+      {booking.source !== 'admin' && (
+        <EmailState label="Rezervacijos informacija" value={booking.emails?.requested} />
+      )}
+      <EmailState
+        label={
+          booking.source === 'admin'
+            ? 'Apmokėjimo patvirtinimas ir atmintinė'
+            : 'Patvirtinimas ir atmintinė'
+        }
+        value={booking.emails?.confirmed}
+      />
       <Group>
+        {booking.source === 'admin' && ['confirmed', 'completed'].includes(booking.status) && (
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconMail size={14} />}
+            onClick={() => setAction({ action: 'resend_email', emailKind: 'created' })}
+          >
+            Persiųsti užsakymo informaciją
+          </Button>
+        )}
         {booking.status === 'pending_transfer' && (
           <Button
             size="xs"
@@ -280,7 +313,10 @@ export function BookingDetails({
         autosize
       />
       <Group>
-        {booking.status === 'pending_transfer' && (
+        {(booking.status === 'pending_transfer' ||
+          (booking.source === 'admin' &&
+            !booking.paidAt &&
+            ['confirmed', 'completed'].includes(booking.status))) && (
           <Button
             color="green"
             leftSection={<IconCheck size={16} />}
@@ -403,15 +439,21 @@ export function Bookings({
   onRefresh,
   onUpdated,
   refreshing,
+  config,
+  onCreated,
 }: {
   bookings: PrivateWorkshopBooking[];
   onRefresh: () => void;
   onUpdated: (booking: PrivateWorkshopBooking) => void;
   refreshing: boolean;
+  config?: PrivateWorkshopConfig;
+  onCreated?: (booking: PrivateWorkshopBooking) => void;
 }) {
   const [status, setStatus] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [creatingBusy, setCreatingBusy] = useState(false);
   const selected = bookings.find((booking) => booking.id === selectedId);
   const visible = bookings.filter(
     (booking) =>
@@ -424,14 +466,23 @@ export function Bookings({
     <Stack>
       <Group justify="space-between">
         <Title order={3}>Privačių užsiėmimų rezervacijos</Title>
-        <Button
-          variant="light"
-          loading={refreshing}
-          leftSection={<IconRefresh size={16} />}
-          onClick={onRefresh}
-        >
-          Atnaujinti
-        </Button>
+        <Group gap="xs">
+          <Button
+            leftSection={<IconPlus size={16} />}
+            disabled={!config}
+            onClick={() => setCreating(true)}
+          >
+            Pridėti rezervaciją
+          </Button>
+          <Button
+            variant="light"
+            loading={refreshing}
+            leftSection={<IconRefresh size={16} />}
+            onClick={onRefresh}
+          >
+            Atnaujinti
+          </Button>
+        </Group>
       </Group>
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <Select
@@ -478,6 +529,11 @@ export function Bookings({
                 {booking.customerPhone}
               </Text>
               <Text>{booking.quote.workshopType.titleLt}</Text>
+              {booking.source === 'admin' && (
+                <Badge variant="light" color="grape" w="fit-content">
+                  Įtraukta administratoriaus
+                </Badge>
+              )}
               <Text size="sm">
                 {localDateTime(booking.quote.startISO)} ·{' '}
                 {booking.quote.selection.participantsCount} dalyvių
@@ -496,6 +552,31 @@ export function Bookings({
           </Card>
         ))}
       </SimpleGrid>
+      <Modal
+        opened={creating}
+        onClose={() => {
+          if (!creatingBusy) setCreating(false);
+        }}
+        title="Pridėti privačią rezervaciją"
+        size="lg"
+        centered
+        closeOnEscape={!creatingBusy}
+        closeOnClickOutside={!creatingBusy}
+        withCloseButton={!creatingBusy}
+      >
+        {creating && config && (
+          <ManualBooking
+            config={config}
+            onBusyChange={setCreatingBusy}
+            onCancel={() => setCreating(false)}
+            onCreated={(booking) => {
+              setCreating(false);
+              setSelectedId(booking.id);
+              onCreated?.(booking);
+            }}
+          />
+        )}
+      </Modal>
       <Modal
         opened={!!selected}
         onClose={() => setSelectedId(null)}

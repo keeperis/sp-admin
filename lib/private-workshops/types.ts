@@ -145,6 +145,8 @@ export type PrivateWorkshopBooking = PrivateWorkshopCustomer & {
   site: 'ceramics';
   locale: 'lt' | 'en';
   status: PrivateWorkshopBookingStatus;
+  source?: 'website' | 'admin';
+  createdByAdmin?: string;
   quote: PrivateWorkshopQuote;
   placeName: string;
   cancellationTerms: string;
@@ -172,9 +174,25 @@ export type PrivateWorkshopBooking = PrivateWorkshopCustomer & {
   balanceDueEur: number | null;
   adminNotes: string;
   emails?: {
+    created?: { status: string; lastError?: string | null };
     requested?: { status: string; lastError?: string | null };
     confirmed?: { status: string; lastError?: string | null };
   };
+};
+
+export type PrivateWorkshopManualCreateRequest = PrivateWorkshopCustomer & {
+  idempotencyKey: string;
+  locale: 'lt' | 'en';
+  date: string;
+  startTime: string;
+  typeId: string;
+  participantsCount: number;
+  addonIds: string[];
+  paymentReceived: boolean;
+  adminNotes?: string;
+  configVersion: number;
+  expectedDepositEur: number;
+  expectedTotalEur: number;
 };
 
 export type PrivateWorkshopCreateRequest = PrivateWorkshopSelection &

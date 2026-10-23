@@ -5,9 +5,11 @@ import { MantineProvider } from '@mantine/core';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BookingDetails, Bookings } from '@/app/admin/private-workshops/Bookings';
 import { GeneralSettings, WorkshopTypes } from '@/app/admin/private-workshops/ConfigEditor';
+import { ManualBooking } from '@/app/admin/private-workshops/ManualBooking';
 import {
   addDates,
   completionPreview,
+  manualBookingPreview,
   privateRequest,
   validateConfig,
   validImageUrl,
@@ -157,14 +159,15 @@ test('configuration validates participant bounds, referential links and duration
   assert.match(validateConfig(draft) || '', /netelpa/);
 });
 
-test('extras cannot be requested upfront and enabling needs terms', () => {
+test('extras stay payable after the event and shared terms replace private-specific text', () => {
   const draft = config();
   draft.settings.addonsDueNow = true;
   assert.match(validateConfig(draft) || '', /tik po užsiėmimo/);
   draft.settings.addonsDueNow = false;
   draft.settings.enabled = true;
   draft.settings.cancellationTermsLt = '';
-  assert.match(validateConfig(draft) || '', /sąlygas/);
+  draft.settings.reschedulingTermsLt = '';
+  assert.equal(validateConfig(draft), null);
 });
 
 test('completion uses booking prices, adds extras after workshop and bills at least minimum', () => {
@@ -317,5 +320,75 @@ test('private proxy uses shared authenticated guard without destructive methods'
   assert.match(route, /proxyAdminApiRequest/);
   assert.match(route, /export const PUT/);
   assert.match(route, /export const PATCH/);
+  assert.match(route, /export const POST/);
   assert.doesNotMatch(route, /export const DELETE/);
+});
+
+test('manual price preview works outside public schedules, uses cents and validates the selected offer', () => {
+  const draft = config();
+  draft.windows = [];
+  draft.types[0].active = false;
+  draft.types[0].pricePerPersonEur = 45.15;
+  draft.addons[0].priceEur = 12.35;
+  draft.addons[0].durationMin = 30;
+  assert.deepEqual(manualBookingPreview(draft, 'type-1', 8, ['addon-1']), {
+    depositEur: 270.9,
+    estimatedTotalEur: 373.55,
+    durationMin: 150,
+  });
+  for (const count of [0, 5, 13, 6.5])
+    assert.equal(manualBookingPreview(draft, 'type-1', count, []), null);
+  assert.equal(manualBookingPreview(draft, 'missing', 8, []), null);
+  assert.equal(manualBookingPreview(draft, 'type-1', 8, ['missing']), null);
+  assert.equal(manualBookingPreview(draft, 'type-1', 8, ['addon-1', 'addon-1']), null);
+});
+
+test('manual unpaid bookings retain their full balance and offer the correct payment and email actions', () => {
+  const item = booking();
+  item.source = 'admin';
+  item.paidAt = null;
+  item.emails = { created: { status: 'failed', lastError: 'Nepavyko išsiųsti užsakymo' } };
+  for (const status of ['confirmed', 'completed'] as const) {
+    item.status = status;
+    const html = renderToStaticMarkup(
+      <MantineProvider>
+        <BookingDetails booking={item} onUpdated={() => {}} />
+      </MantineProvider>,
+    );
+    assert.match(html, /Pavedimas gautas/);
+    assert.match(html, /Persiųsti užsakymo informaciją/);
+    assert.match(html, /Nepavyko išsiųsti užsakymo/);
+    assert.doesNotMatch(html, /Persiųsti rezervacijos informaciją|Persiųsti patvirtinimą/);
+    assert.equal(completionPreview(item, 8).balance, 430);
+  }
+  item.paidAt = '2026-10-05T08:00:00Z';
+  assert.equal(completionPreview(item, 8).balance, 130);
+  item.status = 'cancelled';
+  const html = renderToStaticMarkup(
+    <MantineProvider>
+      <BookingDetails booking={item} onUpdated={() => {}} />
+    </MantineProvider>,
+  );
+  assert.doesNotMatch(html, /Persiųsti užsakymo informaciją|Pavedimas gautas/);
+});
+
+test('manual creation form has unrestricted date and minute inputs and an explicit payment choice', () => {
+  const draft = config();
+  draft.windows = [];
+  const html = renderToStaticMarkup(
+    <MantineProvider>
+      <ManualBooking
+        config={draft}
+        onCreated={() => {}}
+        onCancel={() => {}}
+        onBusyChange={() => {}}
+      />
+    </MantineProvider>,
+  );
+  assert.match(html, /type="date"/);
+  assert.match(html, /type="time"[^>]*step="60"/);
+  assert.match(html, /Rezervacijos mokėjimas jau gautas/);
+  assert.match(html, /Sukurti ir išsiųsti laišką/);
+  assert.doesNotMatch(html, /type="checkbox"[^>]*checked/);
+  assert.doesNotMatch(html, /Sutinku su/);
 });
