@@ -9,6 +9,11 @@ const apiOrigin = trimTrailingSlash(
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  logging: {
+    incomingRequests: {
+      ignore: [/^\/admin\/shop\/preview(?:\?|$)/, /^\/login(?:\?|$)/, /^\/api\/auth\//],
+    },
+  },
   async headers() {
     return [
       {
@@ -28,9 +33,9 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      // Keep local NextAuth and admin proxy routes in sp-admin.
+      // Keep authentication, admin APIs and authenticated shop image routes local.
       {
-        source: '/api/:path((?!auth|admin).*)',
+        source: '/api/:path((?!auth|admin|shop/(?:media|demo)(?:/|$)).*)',
         destination: `${apiOrigin}/api/:path*`,
       },
     ];

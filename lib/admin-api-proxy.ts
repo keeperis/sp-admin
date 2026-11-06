@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
+import { localDevelopmentAccess } from '@/lib/auth/local-development';
+import { allowedAdminEmail } from '@/lib/shop/preview-config';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4100';
 
@@ -67,6 +69,10 @@ export async function proxyAdminApiRequest(
   targetPath: string,
   options: { maxBodyBytes?: number } = {},
 ) {
+  // Grant issuance belongs to /admin/shop/preview, which binds the current
+  // session expiry and fixed audience server-side. Never accept those from a browser body.
+  if (targetPath.startsWith('/api/admin/shop/access/'))
+    return diagnosticJson({ error: 'Nerastas veiksmas.' }, { status: 404 });
   console.info('[sp-admin:admin-api-proxy] request received', {
     method: request.method,
     pathname: request.nextUrl.pathname,
@@ -78,7 +84,8 @@ export async function proxyAdminApiRequest(
     requestedWith: request.headers.get('x-requested-with') || '',
   });
 
-  const session = await auth();
+  const localAccess = localDevelopmentAccess(request);
+  const session = localAccess ? { user: { email: 'local-development@localhost' } } : await auth();
   if (!session?.user?.email) {
     console.warn('[sp-admin:admin-api-proxy] unauthorized request', {
       method: request.method,
@@ -88,6 +95,16 @@ export async function proxyAdminApiRequest(
     return diagnosticJson(
       { error: 'Unauthorized', code: 'NO_SESSION' },
       { status: 401, headers: { 'X-SP-Admin-Proxy-Stage': 'auth' } },
+    );
+  }
+  if (
+    (targetPath === '/api/admin/shop/access' || targetPath.startsWith('/api/admin/shop/access/')) &&
+    !localAccess &&
+    !allowedAdminEmail(session.user.email, process.env.ADMIN_EMAIL_ALLOWLIST)
+  ) {
+    return diagnosticJson(
+      { error: 'Prieiga nesuteikta.', code: 'ADMIN_ACCESS_DENIED' },
+      { status: 403 },
     );
   }
   if (!mutationRequestIsSafe(request)) {

@@ -10,6 +10,7 @@ import {
   IconHome,
   IconQrcode,
   IconRepeat,
+  IconShoppingBag,
   IconUsersGroup,
 } from '@tabler/icons-react';
 
@@ -56,6 +57,12 @@ export const adminSections = [
     label: 'Pranešimai į telefoną',
     description: 'Pranešimų apie naujas registracijas nustatymai.',
     icon: IconBell,
+  },
+  {
+    href: '/admin/shop',
+    label: 'Parduotuvė',
+    description: 'Kūriniai, užsakymai, pristatymas ir parduotuvės prieiga.',
+    icon: IconShoppingBag,
   },
   {
     href: '/admin/content',

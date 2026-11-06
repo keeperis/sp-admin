@@ -9,7 +9,8 @@
     "lint": "next lint",
     "worker": "tsx worker/index.ts",
     "biome:check": "biome check .",
-    "biome:write": "biome check . --write"
+    "biome:write": "biome check . --write",
+    "dev:local": "node scripts/dev-local.mjs"
   },
   "dependencies": {
     "@mantine/core": "^7.11.0",

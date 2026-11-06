@@ -24,6 +24,7 @@ test('workshops and bookings share one section; other destinations are retained'
     '/admin/private-workshops',
     '/admin/recurring',
     '/admin/reminders',
+    '/admin/shop',
     '/admin/tickets',
     '/admin/workshops',
   ]);

@@ -1,5 +1,6 @@
 import NextAuth, { type NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
+import { revokeAdminShopPreviews } from '@/lib/shop/preview-revoke';
 
 const authOptions = {
   trustHost: true,
@@ -23,6 +24,11 @@ const authOptions = {
   },
   pages: {
     signIn: '/login',
+  },
+  events: {
+    async signOut(message) {
+      if ('token' in message) await revokeAdminShopPreviews(message.token?.email);
+    },
   },
   session: {
     strategy: 'jwt' as const,
