@@ -21,6 +21,13 @@ import {
 } from '@/lib/shop/contract';
 import { ImagesEditor } from './ImagesEditor';
 
+const visibleContentFields = contentFields.filter(
+  ([key]) =>
+    !['headerNote', 'footerTagline', 'footerClosing', 'defaultCare', 'defaultDelivery'].includes(
+      key,
+    ),
+);
+
 export function ContentEditor({
   data,
   save,
@@ -38,7 +45,7 @@ export function ContentEditor({
     dirtyChanged(dirty);
     return () => dirtyChanged(false);
   }, [dirty, dirtyChanged]);
-  const sections = [...new Set(contentFields.map((f) => f[2]))];
+  const sections = [...new Set(visibleContentFields.map((f) => f[2]))];
   const setText = (key: ContentKey, value: string) =>
     setContent((c) => ({ ...c, text: { ...c.text, [key]: value } }));
   return (
@@ -70,7 +77,7 @@ export function ContentEditor({
             <Accordion.Control>{section}</Accordion.Control>
             <Accordion.Panel>
               <Stack gap="md">
-                {contentFields
+                {visibleContentFields
                   .filter((f) => f[2] === section)
                   .map(([key, label]) =>
                     /Description|Paragraph|Bottom|defaultCare|defaultDelivery/.test(key) ? (
@@ -87,6 +94,11 @@ export function ContentEditor({
                       <TextInput
                         key={key}
                         label={label}
+                        description={
+                          key === 'announcement'
+                            ? 'Palikus tuščią, naujienų eilutė nerodoma.'
+                            : undefined
+                        }
                         value={content.text[key]}
                         onChange={(e) => setText(key, e.target.value)}
                         maxLength={5000}

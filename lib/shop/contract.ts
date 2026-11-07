@@ -32,7 +32,7 @@ export type ShopProduct = {
   order: number;
 };
 export const contentFields = [
-  ['announcement', 'Viršutinės juostos tekstas', 'Bendra'],
+  ['announcement', 'Naujienų eilutė', 'Bendra'],
   ['headerNote', 'Viršutinės juostos dešinysis tekstas', 'Bendra'],
   ['brandTagline', 'Tekstas po logotipu', 'Bendra'],
   ['footerTagline', 'Poraštės šūkis', 'Bendra'],

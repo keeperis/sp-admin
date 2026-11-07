@@ -217,7 +217,7 @@ export function ProductEditor({
               />
               <Textarea
                 label="Priežiūra"
-                description="Palikus tuščią, bus rodoma numatytoji informacija iš svetainės turinio."
+                description="Palikus tuščią, ši skiltis gaminio puslapyje nebus rodoma."
                 value={product.care}
                 onChange={(e) => field('care', e.target.value)}
                 autosize
@@ -226,7 +226,7 @@ export function ProductEditor({
               />
               <Textarea
                 label="Pristatymas"
-                description="Palikus tuščią, bus rodoma numatytoji pristatymo informacija."
+                description="Palikus tuščią, ši skiltis gaminio puslapyje nebus rodoma."
                 value={product.delivery}
                 onChange={(e) => field('delivery', e.target.value)}
                 autosize
