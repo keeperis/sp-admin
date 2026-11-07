@@ -52,11 +52,14 @@ export function ProductEditor({
       setError('Įrašyk pavadinimą, nuorodą ir pasirink kategoriją.');
       return;
     }
-    if (
-      product.status === 'published' &&
-      (!product.images.length || !product.description.trim() || product.price <= 0)
-    ) {
-      setError('Paskelbtam produktui reikia teigiamos kainos, aprašymo ir bent vienos nuotraukos.');
+    if (product.status === 'published' && product.price <= 0) {
+      setTab('details');
+      setError('Paskelbtam produktui įrašyk kainą, didesnę už nulį.');
+      return;
+    }
+    if (product.status === 'published' && !product.images.length) {
+      setTab('images');
+      setError('Paskelbtam produktui įkelk bent vieną nuotrauką.');
       return;
     }
     setSaving(true);
@@ -133,6 +136,7 @@ export function ProductEditor({
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <NumberInput
                   label="Kaina, €"
+                  withAsterisk={product.status === 'published'}
                   value={product.price}
                   min={0}
                   max={1000000}
@@ -159,7 +163,8 @@ export function ProductEditor({
                 maxLength={160}
               />
               <Textarea
-                label="Aprašymas"
+                label="Aprašymas (neprivalomas)"
+                description="Palikus tuščią, aprašymas gaminio puslapyje nebus rodomas."
                 autosize
                 minRows={4}
                 maxRows={12}
