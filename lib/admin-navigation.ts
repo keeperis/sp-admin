@@ -17,6 +17,12 @@ import {
 // Shared by the home launcher and sidebar so routes/labels cannot drift apart.
 export const adminSections = [
   {
+    href: '/admin/shop',
+    label: 'Parduotuvė',
+    description: 'Kūriniai, užsakymai, pristatymas ir parduotuvės prieiga.',
+    icon: IconShoppingBag,
+  },
+  {
     href: '/admin/workshops',
     label: 'Dirbtuvės',
     description: 'Planuojamos ir praėjusios dirbtuvės, rezervacijos ir apmokėjimai.',
@@ -57,12 +63,6 @@ export const adminSections = [
     label: 'Pranešimai į telefoną',
     description: 'Pranešimų apie naujas registracijas nustatymai.',
     icon: IconBell,
-  },
-  {
-    href: '/admin/shop',
-    label: 'Parduotuvė',
-    description: 'Kūriniai, užsakymai, pristatymas ir parduotuvės prieiga.',
-    icon: IconShoppingBag,
   },
   {
     href: '/admin/content',

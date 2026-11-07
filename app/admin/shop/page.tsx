@@ -36,14 +36,15 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { shopRequest, shopSlug } from '@/lib/shop/client';
 import type { ShopCategory, ShopContent, ShopProduct, ShopSnapshot } from '@/lib/shop/contract';
-import { productChanges } from '@/lib/shop/product-changes';
 import { shopPreviewStartUrl } from '@/lib/shop/preview-config';
+import { productChanges } from '@/lib/shop/product-changes';
 import { CommerceEditor } from './CommerceEditor';
 import { ContentEditor } from './ContentEditor';
 import { DpdIntegration } from './DpdIntegration';
 import { ImagesEditor } from './ImagesEditor';
 import { OrdersPanel } from './OrdersPanel';
 import { ProductEditor } from './ProductEditor';
+import styles from './ProductList.module.css';
 import { ShopAccessPanel } from './ShopAccessPanel';
 
 const storefrontPreview = shopPreviewStartUrl();
@@ -332,9 +333,14 @@ export default function ShopAdmin() {
                   Pirmiausia pridėk bent vieną kategoriją skiltyje „Kategorijos“.
                 </Alert>
               )}
-              <Table.ScrollContainer minWidth={750}>
-                <Table verticalSpacing="md" highlightOnHover>
-                  <Table.Thead>
+              <div className={styles.products}>
+                <Table
+                  className={styles.productTable}
+                  role="table"
+                  verticalSpacing="md"
+                  highlightOnHover
+                >
+                  <Table.Thead role="rowgroup">
                     <Table.Tr>
                       <Table.Th>Dirbinys</Table.Th>
                       <Table.Th>Kategorija</Table.Th>
@@ -344,20 +350,21 @@ export default function ShopAdmin() {
                       <Table.Th>Veiksmai</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
-                  <Table.Tbody>
+                  <Table.Tbody role="rowgroup">
                     {visible.map((p) => (
-                      <Table.Tr key={p.id}>
-                        <Table.Td>
-                          <Group wrap="nowrap">
+                      <Table.Tr key={p.id} role="row">
+                        <Table.Td role="cell" className={styles.productIdentity}>
+                          <Group wrap="nowrap" align="flex-start">
                             <Image
                               src={p.images[0]?.url}
                               alt={p.images[0]?.alt || p.name}
                               w={65}
                               h={65}
+                              style={{ flexShrink: 0 }}
                               radius="sm"
                               fallbackSrc="/favicon.png"
                             />
-                            <div>
+                            <div className={styles.productName}>
                               <Text size="sm" fw={600}>
                                 {p.name}
                               </Text>
@@ -372,18 +379,20 @@ export default function ShopAdmin() {
                             </div>
                           </Group>
                         </Table.Td>
-                        <Table.Td>
+                        <Table.Td role="cell" data-label="Kategorija">
                           <Text size="sm">
                             {data.categories.find((c) => c.id === p.category)?.label}
                           </Text>
                         </Table.Td>
-                        <Table.Td>{prices.format(p.price)}</Table.Td>
-                        <Table.Td>
+                        <Table.Td role="cell" data-label="Kaina">
+                          {prices.format(p.price)}
+                        </Table.Td>
+                        <Table.Td role="cell" data-label="Likutis">
                           <Text c={p.stock ? undefined : 'red'} size="sm">
                             {p.stock} vnt.
                           </Text>
                         </Table.Td>
-                        <Table.Td>
+                        <Table.Td role="cell" data-label="Būsena">
                           <Badge
                             variant="light"
                             color={
@@ -397,11 +406,12 @@ export default function ShopAdmin() {
                             {statusLabels[p.status]}
                           </Badge>
                         </Table.Td>
-                        <Table.Td>
-                          <Group gap={5}>
+                        <Table.Td role="cell" className={styles.productActions}>
+                          <Group gap="sm" wrap="nowrap">
                             <Button
-                              variant="subtle"
-                              size="xs"
+                              variant="light"
+                              color="teal"
+                              className={styles.editButton}
                               leftSection={<IconEdit size={14} />}
                               onClick={() => {
                                 setProduct(structuredClone(p));
@@ -422,6 +432,7 @@ export default function ShopAdmin() {
                                 target="_blank"
                                 rel="noreferrer"
                                 variant="subtle"
+                                size={40}
                                 aria-label={`Peržiūrėti ${p.name}`}
                               >
                                 <IconArrowUpRight size={16} />
@@ -433,7 +444,7 @@ export default function ShopAdmin() {
                     ))}
                   </Table.Tbody>
                 </Table>
-              </Table.ScrollContainer>
+              </div>
               {!visible.length && (
                 <Paper withBorder p="xl" ta="center">
                   <Text c="dimmed">Produktų nerasta. Pridėk naują arba pakeisk filtrus.</Text>
