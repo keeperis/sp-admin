@@ -36,6 +36,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { shopRequest, shopSlug } from '@/lib/shop/client';
 import type { ShopCategory, ShopContent, ShopProduct, ShopSnapshot } from '@/lib/shop/contract';
+import { productChanges } from '@/lib/shop/product-changes';
 import { shopPreviewStartUrl } from '@/lib/shop/preview-config';
 import { CommerceEditor } from './CommerceEditor';
 import { ContentEditor } from './ContentEditor';
@@ -87,12 +88,16 @@ export default function ShopAdmin() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty, contentDirty]);
 
-  async function commit(path: string, value: unknown, method = 'PUT') {
+  async function commit(path: string, value: unknown, method = 'PUT', baseStock?: number) {
     if (!snapshot) return false;
     setBusy(true);
     setError('');
     try {
-      const updated = await shopRequest(path, method, { revision: snapshot.revision, data: value });
+      const updated = await shopRequest(path, method, {
+        revision: snapshot.revision,
+        data: value,
+        ...(baseStock === undefined ? {} : { baseStock }),
+      });
       setSnapshot(updated);
       setDirty(false);
       notifications.show({
@@ -542,8 +547,9 @@ export default function ShopAdmin() {
             save={async (p) => {
               const ok = await commit(
                 p.id ? `products/${p.id}` : 'products',
-                p,
-                p.id ? 'PUT' : 'POST',
+                p.id ? productChanges(product, p) : p,
+                p.id ? 'PATCH' : 'POST',
+                p.id ? product.stock : undefined,
               );
               if (ok) setProduct(null);
               return ok;
