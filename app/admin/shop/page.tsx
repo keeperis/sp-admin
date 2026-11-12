@@ -15,7 +15,6 @@ import {
   SimpleGrid,
   Stack,
   Switch,
-  Table,
   Tabs,
   Text,
   Textarea,
@@ -38,6 +37,7 @@ import { shopRequest, shopSlug } from '@/lib/shop/client';
 import type { ShopCategory, ShopContent, ShopProduct, ShopSnapshot } from '@/lib/shop/contract';
 import { shopPreviewStartUrl } from '@/lib/shop/preview-config';
 import { productChanges } from '@/lib/shop/product-changes';
+import { filterShopProducts, type ProductStatusFilter } from '@/lib/shop/product-filter';
 import { CategoryDeletion } from './CategoryDeletion';
 import { CommerceEditor } from './CommerceEditor';
 import { ContentEditor } from './ContentEditor';
@@ -59,7 +59,7 @@ export default function ShopAdmin() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<string | null>('all');
+  const [status, setStatus] = useState<ProductStatusFilter>('active');
   const [product, setProduct] = useState<ShopProduct | null>(null);
   const [category, setCategory] = useState<ShopCategory | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -261,13 +261,7 @@ export default function ShopAdmin() {
       </Container>
     );
   const { data } = snapshot;
-  const visible = data.products
-    .filter(
-      (p) =>
-        (status === 'all' || p.status === status) &&
-        `${p.name} ${p.slug}`.toLocaleLowerCase('lt').includes(query.toLocaleLowerCase('lt')),
-    )
-    .sort((a, b) => a.order - b.order);
+  const visible = filterShopProducts(data.products, { status, query });
   return (
     <Container size="xl" py="lg">
       <Stack gap="xl">
@@ -378,8 +372,8 @@ export default function ShopAdmin() {
           <Tabs.Panel value="dpd">{activeTab === 'dpd' && <DpdIntegration />}</Tabs.Panel>
           <Tabs.Panel value="products">
             <Stack gap="lg">
-              <Group justify="space-between">
-                <Group>
+              <div className={styles.toolbar}>
+                <div className={styles.filters}>
                   <TextInput
                     aria-label="Ieškoti produktų"
                     placeholder="Ieškoti produkto…"
@@ -390,17 +384,16 @@ export default function ShopAdmin() {
                   />
                   <Select
                     aria-label="Produkto būsena"
-                    w={170}
                     value={status}
                     disabled={quickDirty || busy || loading}
-                    onChange={setStatus}
+                    onChange={(value) => setStatus((value as ProductStatusFilter) || 'active')}
                     allowDeselect={false}
                     data={[
-                      { value: 'all', label: 'Visos būsenos' },
+                      { value: 'active', label: 'Paskelbti ir juodraščiai' },
                       ...Object.entries(statusLabels).map(([value, label]) => ({ value, label })),
                     ]}
                   />
-                </Group>
+                </div>
                 <Button
                   color="teal"
                   leftSection={<IconPlus size={16} />}
@@ -409,7 +402,7 @@ export default function ShopAdmin() {
                 >
                   Naujas produktas
                 </Button>
-              </Group>
+              </div>
               {!data.categories.length && (
                 <Alert color="blue">
                   Pirmiausia pridėk bent vieną kategoriją skiltyje „Kategorijos“.
@@ -426,74 +419,64 @@ export default function ShopAdmin() {
                 </Text>
               )}
               <div className={styles.products}>
-                <Table
-                  className={styles.productTable}
-                  role="table"
-                  verticalSpacing="md"
-                  highlightOnHover
-                >
-                  <Table.Thead role="rowgroup">
-                    <Table.Tr>
-                      <Table.Th>Dirbinys</Table.Th>
-                      <Table.Th>Kategorija</Table.Th>
-                      <Table.Th>Kaina</Table.Th>
-                      <Table.Th>Būsena</Table.Th>
-                      <Table.Th colSpan={2}>Likutis ir eiliškumas</Table.Th>
-                      <Table.Th>Veiksmai</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody role="rowgroup">
-                    {visible.map((p) => (
-                      <Table.Tr key={p.id} role="row">
-                        <Table.Td role="cell" className={styles.productIdentity}>
-                          <Group wrap="nowrap" align="flex-start">
+                <ul className={styles.productList} aria-label="Produktai">
+                  {visible.map((p) => (
+                    <li key={p.id}>
+                      <article className={styles.productCard} aria-label={p.name}>
+                        <div className={styles.productSummary}>
+                          <div className={styles.productIdentity}>
                             <Image
                               src={p.images[0]?.url}
                               alt={p.images[0]?.alt || p.name}
-                              w={65}
-                              h={65}
-                              style={{ flexShrink: 0 }}
+                              w={72}
+                              h={72}
+                              className={styles.productImage}
                               radius="sm"
                               fallbackSrc="/favicon.png"
                             />
                             <div className={styles.productName}>
-                              <Text size="sm" fw={600}>
+                              <Text component="h2" size="sm" fw={600}>
                                 {p.name}
                               </Text>
-                              <Text size="xs" c="dimmed">
+                              <Text size="xs" c="dimmed" className={styles.productSlug}>
                                 /{p.slug}
                               </Text>
                               {p.featured && (
-                                <Text size="xs" c="teal">
+                                <Text size="xs" c="teal" mt={4}>
                                   Pradinio puslapio kolekcija
                                 </Text>
                               )}
                             </div>
-                          </Group>
-                        </Table.Td>
-                        <Table.Td role="cell" data-label="Kategorija">
-                          <Text size="sm">
-                            {data.categories.find((c) => c.id === p.category)?.label}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td role="cell" data-label="Kaina">
-                          {prices.format(p.price)}
-                        </Table.Td>
-                        <Table.Td role="cell" data-label="Būsena">
-                          <Badge
-                            variant="light"
-                            color={
-                              p.status === 'published'
-                                ? 'teal'
-                                : p.status === 'draft'
-                                  ? 'yellow'
-                                  : 'gray'
-                            }
-                          >
-                            {statusLabels[p.status]}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td role="cell" colSpan={2} className={styles.quickEdit}>
+                          </div>
+                          <dl className={styles.productFacts}>
+                            <div>
+                              <dt>Kategorija</dt>
+                              <dd>{data.categories.find((c) => c.id === p.category)?.label}</dd>
+                            </div>
+                            <div>
+                              <dt>Kaina</dt>
+                              <dd>{prices.format(p.price)}</dd>
+                            </div>
+                            <div>
+                              <dt>Būsena</dt>
+                              <dd>
+                                <Badge
+                                  variant="light"
+                                  color={
+                                    p.status === 'published'
+                                      ? 'teal'
+                                      : p.status === 'draft'
+                                        ? 'yellow'
+                                        : 'gray'
+                                  }
+                                >
+                                  {statusLabels[p.status]}
+                                </Badge>
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                        <div className={styles.productTools}>
                           <ProductQuickEdit
                             key={`${p.id}-${contentKey}`}
                             product={p}
@@ -501,9 +484,7 @@ export default function ShopAdmin() {
                             onSave={saveQuickProduct}
                             onDirtyChange={quickDirtyChanged}
                           />
-                        </Table.Td>
-                        <Table.Td role="cell" className={styles.productActions}>
-                          <Group gap="sm" wrap="nowrap">
+                          <div className={styles.productActions}>
                             <Button
                               variant="light"
                               color="teal"
@@ -535,12 +516,12 @@ export default function ShopAdmin() {
                                 <IconArrowUpRight size={16} />
                               </ActionIcon>
                             )}
-                          </Group>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
+                          </div>
+                        </div>
+                      </article>
+                    </li>
+                  ))}
+                </ul>
               </div>
               {!visible.length && (
                 <Paper withBorder p="xl" ta="center">

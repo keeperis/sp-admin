@@ -142,7 +142,7 @@ export function ProductQuickEdit({
         <div className={styles.fields}>
           <NumberInput
             className={styles.field}
-            label="Laisvas likutis, vnt."
+            label="Likutis, vnt."
             aria-label={`Laisvas likutis: ${product.name}`}
             size="sm"
             value={draft.stock.value}
@@ -156,7 +156,7 @@ export function ProductQuickEdit({
           />
           <NumberInput
             className={styles.field}
-            label="Eiliškumas parduotuvėje"
+            label="Eiliškumas"
             aria-label={`Eiliškumas parduotuvėje: ${product.name}`}
             size="sm"
             value={draft.order.value}
