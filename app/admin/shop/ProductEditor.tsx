@@ -2,7 +2,6 @@
 import {
   Alert,
   Button,
-  ColorInput,
   Group,
   NumberInput,
   Select,
@@ -155,13 +154,24 @@ export function ProductEditor({
                   onChange={(v) => field('stock', Number(v) || 0)}
                 />
               </SimpleGrid>
-              <TextInput
-                label="Trumpas tipas"
-                placeholder="Akmens masės keramika"
-                value={product.kind}
-                onChange={(e) => field('kind', e.target.value)}
-                maxLength={160}
-              />
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <TextInput
+                  label="Požymis 1 (kairėje)"
+                  description="Rodomas kortelės kairėje. Palikus tuščią, nerodomas."
+                  placeholder="Pvz., 300 ml"
+                  value={product.kind}
+                  onChange={(e) => field('kind', e.target.value)}
+                  maxLength={160}
+                />
+                <TextInput
+                  label="Požymis 2 (dešinėje)"
+                  description="Rodomas kortelės dešinėje. Palikus tuščią, nerodomas."
+                  placeholder="Pvz., rankų darbo"
+                  value={product.secondaryAttribute || ''}
+                  onChange={(e) => field('secondaryAttribute', e.target.value)}
+                  maxLength={160}
+                />
+              </SimpleGrid>
               <Textarea
                 label="Aprašymas (neprivalomas)"
                 description="Palikus tuščią, aprašymas gaminio puslapyje nebus rodomas."
@@ -186,20 +196,6 @@ export function ProductEditor({
           </Tabs.Panel>
           <Tabs.Panel value="extra" pt="lg">
             <Stack>
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <TextInput
-                  label="Spalvos pavadinimas"
-                  value={product.color}
-                  onChange={(e) => field('color', e.target.value)}
-                  maxLength={100}
-                />
-                <ColorInput
-                  label="Spalvos žymeklis"
-                  format="hex"
-                  value={product.colorHex}
-                  onChange={(v) => field('colorHex', v)}
-                />
-              </SimpleGrid>
               <TextInput
                 label="Matmenys / talpa"
                 value={product.size}

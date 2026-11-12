@@ -8,6 +8,7 @@ const initial: ShopProduct = {
   slug: 'cup',
   name: 'Puodelis',
   kind: 'Keramika',
+  secondaryAttribute: '',
   category: 'cups',
   price: 38,
   stock: 5,

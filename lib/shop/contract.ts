@@ -14,6 +14,7 @@ export type ShopProduct = {
   slug: string;
   name: string;
   kind: string;
+  secondaryAttribute: string;
   category: string;
   price: number;
   stock: number;

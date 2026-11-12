@@ -16,6 +16,10 @@
   min-height: 40px;
 }
 
+.quickEdit {
+  min-width: 240px;
+}
+
 @container (max-width: 50rem) {
   .productTable {
     display: block;
@@ -56,6 +60,7 @@
   }
 
   .productTable .productIdentity,
+  .productTable .quickEdit,
   .productTable .productActions {
     grid-column: 1 / -1;
   }

@@ -33,11 +33,12 @@ import {
   IconSearch,
   IconTypography,
 } from '@tabler/icons-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { shopRequest, shopSlug } from '@/lib/shop/client';
 import type { ShopCategory, ShopContent, ShopProduct, ShopSnapshot } from '@/lib/shop/contract';
 import { shopPreviewStartUrl } from '@/lib/shop/preview-config';
 import { productChanges } from '@/lib/shop/product-changes';
+import { CategoryDeletion } from './CategoryDeletion';
 import { CommerceEditor } from './CommerceEditor';
 import { ContentEditor } from './ContentEditor';
 import { DpdIntegration } from './DpdIntegration';
@@ -45,6 +46,7 @@ import { ImagesEditor } from './ImagesEditor';
 import { OrdersPanel } from './OrdersPanel';
 import { ProductEditor } from './ProductEditor';
 import styles from './ProductList.module.css';
+import { ProductQuickEdit, type ProductQuickEditChanges } from './ProductQuickEdit';
 import { ShopAccessPanel } from './ShopAccessPanel';
 
 const storefrontPreview = shopPreviewStartUrl();
@@ -65,6 +67,18 @@ export default function ShopAdmin() {
   const [contentKey, setContentKey] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('products');
+  const [quickDirtyIds, setQuickDirtyIds] = useState<Set<string>>(new Set());
+  const mutationLock = useRef(false);
+  const quickDirty = quickDirtyIds.size > 0;
+  const quickDirtyChanged = useCallback((id: string, changed: boolean) => {
+    setQuickDirtyIds((current) => {
+      if (current.has(id) === changed) return current;
+      const next = new Set(current);
+      if (changed) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,16 +95,24 @@ export default function ShopAdmin() {
     void load();
   }, [load]);
   useEffect(() => {
-    if (!dirty && !contentDirty) return;
+    if (!dirty && !contentDirty && !quickDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty, contentDirty]);
+  }, [dirty, contentDirty, quickDirty]);
 
-  async function commit(path: string, value: unknown, method = 'PUT', baseStock?: number) {
-    if (!snapshot) return false;
+  async function commit(
+    path: string,
+    value: unknown,
+    method = 'PUT',
+    baseStock?: number,
+    keepLockOnFailure = false,
+  ) {
+    if (!snapshot || mutationLock.current) return false;
+    mutationLock.current = true;
+    let saved = false;
     setBusy(true);
     setError('');
     try {
@@ -101,6 +123,7 @@ export default function ShopAdmin() {
       });
       setSnapshot(updated);
       setDirty(false);
+      saved = true;
       notifications.show({
         title: 'Išsaugota',
         message: 'Parduotuvės duomenys atnaujinti.',
@@ -111,8 +134,57 @@ export default function ShopAdmin() {
       setError((e as Error).message);
       return false;
     } finally {
+      if (saved || !keepLockOnFailure) {
+        mutationLock.current = false;
+        setBusy(false);
+      }
+    }
+  }
+  async function deleteCategory(replacementCategoryId?: string) {
+    if (!snapshot || !category?.id || mutationLock.current) return false;
+    mutationLock.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      const updated = await shopRequest(`categories/${category.id}`, 'DELETE', {
+        revision: snapshot.revision,
+        confirmDeletion: true,
+        ...(replacementCategoryId ? { replacementCategoryId } : {}),
+      });
+      setSnapshot(updated);
+      setCategory(null);
+      setDirty(false);
+      notifications.show({
+        title: 'Kategorija ištrinta',
+        message: replacementCategoryId
+          ? 'Produktai perkelti į pasirinktą kategoriją.'
+          : 'Kategorija pašalinta iš parduotuvės.',
+        color: 'teal',
+      });
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    } finally {
+      mutationLock.current = false;
       setBusy(false);
     }
+  }
+  async function saveQuickProduct(initial: ShopProduct, changes: ProductQuickEditChanges) {
+    if (!snapshot || mutationLock.current) return false;
+    const saved = await commit(`products/${initial.id}`, changes, 'PATCH', initial.stock, true);
+    if (!saved) {
+      try {
+        // Refresh concurrent inventory without discarding this row's local draft.
+        setSnapshot(await shopRequest('state'));
+      } catch {
+        // Keep the save error and draft; the existing refresh action remains available.
+      } finally {
+        mutationLock.current = false;
+        setBusy(false);
+      }
+    }
+    return saved;
   }
   function closeEditor() {
     if (busy || uploading) return;
@@ -123,8 +195,9 @@ export default function ShopAdmin() {
     setError('');
   }
   async function refresh() {
+    if (mutationLock.current || uploading) return;
     if (
-      (dirty || contentDirty) &&
+      (dirty || contentDirty || quickDirty) &&
       !window.confirm('Atmesti neišsaugotus pakeitimus ir įkelti naujausius duomenis?')
     )
       return;
@@ -132,17 +205,20 @@ export default function ShopAdmin() {
     setCategory(null);
     setDirty(false);
     setContentDirty(false);
+    setQuickDirtyIds(new Set());
     setContentKey((k) => k + 1);
     await load();
   }
   function newProduct() {
+    if (mutationLock.current || loading || quickDirty) return;
     setError('');
     setDirty(false);
     setProduct({
       id: '',
       name: '',
       slug: '',
-      kind: 'Akmens masės keramika',
+      kind: '',
+      secondaryAttribute: '',
       category: snapshot?.data.categories.find((c) => c.active)?.id || '',
       price: 0,
       stock: 1,
@@ -158,7 +234,10 @@ export default function ShopAdmin() {
       badge: '',
       status: 'draft',
       featured: false,
-      order: snapshot?.data.products.length || 0,
+      order: Math.min(
+        99999,
+        Math.max(-1, ...(snapshot?.data.products.map((p) => p.order) || [])) + 1,
+      ),
     });
   }
   if (loading && !snapshot)
@@ -210,6 +289,7 @@ export default function ShopAdmin() {
               leftSection={<IconRefresh size={16} />}
               onClick={refresh}
               loading={loading}
+              disabled={busy || uploading}
             >
               Atnaujinti
             </Button>
@@ -304,6 +384,7 @@ export default function ShopAdmin() {
                     aria-label="Ieškoti produktų"
                     placeholder="Ieškoti produkto…"
                     value={query}
+                    disabled={quickDirty || busy || loading}
                     onChange={(e) => setQuery(e.target.value)}
                     leftSection={<IconSearch size={16} />}
                   />
@@ -311,6 +392,7 @@ export default function ShopAdmin() {
                     aria-label="Produkto būsena"
                     w={170}
                     value={status}
+                    disabled={quickDirty || busy || loading}
                     onChange={setStatus}
                     allowDeselect={false}
                     data={[
@@ -323,7 +405,7 @@ export default function ShopAdmin() {
                   color="teal"
                   leftSection={<IconPlus size={16} />}
                   onClick={newProduct}
-                  disabled={!data.categories.length}
+                  disabled={!data.categories.length || busy || loading || quickDirty}
                 >
                   Naujas produktas
                 </Button>
@@ -332,6 +414,16 @@ export default function ShopAdmin() {
                 <Alert color="blue">
                   Pirmiausia pridėk bent vieną kategoriją skiltyje „Kategorijos“.
                 </Alert>
+              )}
+              <Text size="sm" c="dimmed">
+                Produktai rikiuojami pagal eiliškumą parduotuvėje: mažesnis skaičius rodomas
+                aukščiau. Likutį ir eiliškumą galite keisti čia pat.
+              </Text>
+              {quickDirty && (
+                <Text size="sm" c="dimmed" role="status">
+                  Prieš filtruodami sąrašą ar atverdami produkto redagavimą, išsaugokite arba
+                  atšaukite eilutės pakeitimus.
+                </Text>
               )}
               <div className={styles.products}>
                 <Table
@@ -345,8 +437,8 @@ export default function ShopAdmin() {
                       <Table.Th>Dirbinys</Table.Th>
                       <Table.Th>Kategorija</Table.Th>
                       <Table.Th>Kaina</Table.Th>
-                      <Table.Th>Likutis</Table.Th>
                       <Table.Th>Būsena</Table.Th>
+                      <Table.Th colSpan={2}>Likutis ir eiliškumas</Table.Th>
                       <Table.Th>Veiksmai</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -387,11 +479,6 @@ export default function ShopAdmin() {
                         <Table.Td role="cell" data-label="Kaina">
                           {prices.format(p.price)}
                         </Table.Td>
-                        <Table.Td role="cell" data-label="Likutis">
-                          <Text c={p.stock ? undefined : 'red'} size="sm">
-                            {p.stock} vnt.
-                          </Text>
-                        </Table.Td>
                         <Table.Td role="cell" data-label="Būsena">
                           <Badge
                             variant="light"
@@ -406,12 +493,22 @@ export default function ShopAdmin() {
                             {statusLabels[p.status]}
                           </Badge>
                         </Table.Td>
+                        <Table.Td role="cell" colSpan={2} className={styles.quickEdit}>
+                          <ProductQuickEdit
+                            key={`${p.id}-${contentKey}`}
+                            product={p}
+                            disabled={busy || loading}
+                            onSave={saveQuickProduct}
+                            onDirtyChange={quickDirtyChanged}
+                          />
+                        </Table.Td>
                         <Table.Td role="cell" className={styles.productActions}>
                           <Group gap="sm" wrap="nowrap">
                             <Button
                               variant="light"
                               color="teal"
                               className={styles.editButton}
+                              disabled={busy || loading || quickDirty}
                               leftSection={<IconEdit size={14} />}
                               onClick={() => {
                                 setProduct(structuredClone(p));
@@ -461,6 +558,7 @@ export default function ShopAdmin() {
                 <Button
                   color="teal"
                   leftSection={<IconPlus size={16} />}
+                  disabled={busy || loading}
                   onClick={() => {
                     setCategory({
                       id: '',
@@ -468,7 +566,10 @@ export default function ShopAdmin() {
                       label: '',
                       description: '',
                       active: true,
-                      order: data.categories.length,
+                      order: Math.min(
+                        99999,
+                        Math.max(-1, ...data.categories.map((c) => c.order)) + 1,
+                      ),
                       image: null,
                     });
                     setDirty(false);
@@ -504,6 +605,7 @@ export default function ShopAdmin() {
                         </Text>
                         <Button
                           variant="default"
+                          disabled={busy || loading}
                           leftSection={<IconEdit size={15} />}
                           onClick={() => {
                             setCategory(structuredClone(c));
@@ -673,6 +775,16 @@ export default function ShopAdmin() {
               </Group>
             </Stack>
           </form>
+        )}
+        {category?.id && (
+          <CategoryDeletion
+            key={category.id}
+            category={data.categories.find((item) => item.id === category.id) || category}
+            categories={data.categories}
+            products={data.products}
+            busy={busy || uploading}
+            onDelete={deleteCategory}
+          />
         )}
       </Modal>
     </Container>

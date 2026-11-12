@@ -1,0 +1,54 @@
+.editor {
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.controls > button,
+.fields input {
+  min-height: 40px;
+}
+
+.controls > button {
+  margin-inline-start: auto;
+}
+
+.fields {
+  display: grid;
+  align-items: end;
+  flex: 1 1 180px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  gap: 8px;
+}
+
+.field {
+  min-width: 0;
+}
+
+.field label {
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.3;
+}
+
+.error {
+  max-width: 40ch;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  max-width: 40ch;
+  margin-top: 6px;
+}
+
+.cancel {
+  min-height: 32px;
+  margin-top: 4px;
+}
