@@ -102,8 +102,11 @@ export function ContentEditor({
                         description={
                           key === 'announcement'
                             ? 'Palikus tuščią, naujienų eilutė nerodoma.'
-                            : undefined
+                            : key === 'collectionButton'
+                              ? 'Nuoroda šalia dienos gaminių skilties antraštės pagrindiniame puslapyje.'
+                              : undefined
                         }
+                        required={key === 'collectionButton'}
                         value={content.text[key]}
                         onChange={(e) => setText(key, e.target.value)}
                         maxLength={5000}

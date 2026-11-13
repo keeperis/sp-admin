@@ -57,6 +57,7 @@ export const contentFields = [
   ['collectionEyebrow', 'Kolekcijos maža antraštė', 'Kolekcija'],
   ['collectionTitle', 'Kolekcijos antraštė', 'Kolekcija'],
   ['collectionAccent', 'Kolekcijos pasvirasis tekstas', 'Kolekcija'],
+  ['collectionButton', 'Visų dirbinių nuorodos tekstas', 'Kolekcija'],
   ['catalogEyebrow', 'Katalogo maža antraštė', 'Kolekcija'],
   ['catalogTitle', 'Katalogo antraštė', 'Kolekcija'],
   ['catalogAccent', 'Katalogo pasvirasis tekstas', 'Kolekcija'],
