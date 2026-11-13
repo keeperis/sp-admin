@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Group,
+  MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
@@ -14,12 +15,14 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { shopSlug } from '@/lib/shop/client';
-import type { ShopCategory, ShopProduct } from '@/lib/shop/contract';
+import { collectionOptions } from '@/lib/shop/collection-options';
+import type { ShopCategory, ShopCollection, ShopProduct } from '@/lib/shop/contract';
 import { ImagesEditor } from './ImagesEditor';
 
 export function ProductEditor({
   initial,
   categories,
+  collections,
   save,
   cancel,
   onDirty,
@@ -27,6 +30,7 @@ export function ProductEditor({
 }: {
   initial: ShopProduct;
   categories: ShopCategory[];
+  collections: ShopCollection[];
   save: (product: ShopProduct) => Promise<boolean>;
   cancel: () => void;
   onDirty: () => void;
@@ -130,6 +134,23 @@ export function ProductEditor({
                   value: c.id,
                   label: `${c.label}${c.active ? '' : ' (paslėpta)'}`,
                 }))}
+              />
+              <MultiSelect
+                label="Kolekcijos"
+                description={
+                  collections.length
+                    ? 'Produktas gali priklausyti kelioms kolekcijoms. Paslėptos kolekcijos parduotuvės filtre nerodomos.'
+                    : 'Pirmiausia sukurk kolekciją skiltyje „Kolekcijos“.'
+                }
+                placeholder="Pasirink kolekcijas"
+                searchable
+                clearable
+                value={product.collectionIds ?? []}
+                data={collectionOptions(collections, product.collectionIds)}
+                onChange={(ids) => field('collectionIds', ids)}
+                nothingFoundMessage={
+                  collections.length ? 'Kolekcijų nerasta' : 'Pirmiausia sukurk kolekciją'
+                }
               />
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <NumberInput

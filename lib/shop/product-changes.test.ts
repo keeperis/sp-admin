@@ -44,3 +44,17 @@ test('explicit stock and image edits are included, while the identity stays in t
   assert.equal(initial.images.length, 1);
   assert.equal(initial.stock, 5);
 });
+
+test('collection memberships change only when explicitly edited, including clearing every membership', () => {
+  const member = { ...initial, collectionIds: ['hidden', 'shown'] };
+  assert.deepEqual(productChanges(member, { ...member, name: 'Naujas vardas' }), {
+    name: 'Naujas vardas',
+  });
+  assert.deepEqual(productChanges(member, { ...member, collectionIds: [] }), {
+    collectionIds: [],
+  });
+  assert.deepEqual(productChanges(initial, { ...initial, name: 'Pakeista' }), { name: 'Pakeista' });
+  assert.deepEqual(productChanges(initial, { ...initial, collectionIds: ['shown'] }), {
+    collectionIds: ['shown'],
+  });
+});

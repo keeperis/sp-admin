@@ -34,11 +34,20 @@ import {
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { shopRequest, shopSlug } from '@/lib/shop/client';
-import type { ShopCategory, ShopContent, ShopProduct, ShopSnapshot } from '@/lib/shop/contract';
+import type {
+  ShopCategory,
+  ShopCollection,
+  ShopContent,
+  ShopProduct,
+  ShopSnapshot,
+} from '@/lib/shop/contract';
 import { shopPreviewStartUrl } from '@/lib/shop/preview-config';
 import { productChanges } from '@/lib/shop/product-changes';
 import { filterShopProducts, type ProductStatusFilter } from '@/lib/shop/product-filter';
 import { CategoryDeletion } from './CategoryDeletion';
+import { CollectionDeletion } from './CollectionDeletion';
+import { CollectionEditor } from './CollectionEditor';
+import { CollectionsPanel } from './CollectionsPanel';
 import { CommerceEditor } from './CommerceEditor';
 import { ContentEditor } from './ContentEditor';
 import { DpdIntegration } from './DpdIntegration';
@@ -62,6 +71,7 @@ export default function ShopAdmin() {
   const [status, setStatus] = useState<ProductStatusFilter>('active');
   const [product, setProduct] = useState<ShopProduct | null>(null);
   const [category, setCategory] = useState<ShopCategory | null>(null);
+  const [collection, setCollection] = useState<ShopCollection | null>(null);
   const [dirty, setDirty] = useState(false);
   const [contentDirty, setContentDirty] = useState(false);
   const [contentKey, setContentKey] = useState(0);
@@ -170,6 +180,34 @@ export default function ShopAdmin() {
       setBusy(false);
     }
   }
+  async function deleteCollection() {
+    if (!snapshot || !collection?.id || mutationLock.current) return false;
+    mutationLock.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      setSnapshot(
+        await shopRequest(`collections/${collection.id}`, 'DELETE', {
+          revision: snapshot.revision,
+          confirmDeletion: true,
+        }),
+      );
+      setCollection(null);
+      setDirty(false);
+      notifications.show({
+        title: 'Kolekcija ištrinta',
+        message: 'Produktai išsaugoti. Pašalintas tik jų priskyrimas šiai kolekcijai.',
+        color: 'teal',
+      });
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  }
   async function saveQuickProduct(initial: ShopProduct, changes: ProductQuickEditChanges) {
     if (!snapshot || mutationLock.current) return false;
     const saved = await commit(`products/${initial.id}`, changes, 'PATCH', initial.stock, true);
@@ -191,6 +229,7 @@ export default function ShopAdmin() {
     if (dirty && !window.confirm('Atmesti neišsaugotus pakeitimus?')) return;
     setProduct(null);
     setCategory(null);
+    setCollection(null);
     setDirty(false);
     setError('');
   }
@@ -203,6 +242,7 @@ export default function ShopAdmin() {
       return;
     setProduct(null);
     setCategory(null);
+    setCollection(null);
     setDirty(false);
     setContentDirty(false);
     setQuickDirtyIds(new Set());
@@ -220,6 +260,7 @@ export default function ShopAdmin() {
       kind: '',
       secondaryAttribute: '',
       category: snapshot?.data.categories.find((c) => c.active)?.id || '',
+      collectionIds: [],
       price: 0,
       stock: 1,
       images: [],
@@ -302,7 +343,7 @@ export default function ShopAdmin() {
           </Group>
         </Group>
         <ShopAccessPanel />
-        {error && !product && !category && (
+        {error && !product && !category && !collection && (
           <Alert color="red" title="Pakeitimai neišsaugoti">
             {error}
           </Alert>
@@ -356,6 +397,7 @@ export default function ShopAdmin() {
             <Tabs.Tab value="categories" leftSection={<IconCategory size={17} />}>
               Kategorijos
             </Tabs.Tab>
+            <Tabs.Tab value="collections">Kolekcijos</Tabs.Tab>
             <Tabs.Tab value="content" leftSection={<IconTypography size={17} />}>
               Svetainės turinys {contentDirty ? '•' : ''}
             </Tabs.Tab>
@@ -597,6 +639,19 @@ export default function ShopAdmin() {
               </SimpleGrid>
             </Stack>
           </Tabs.Panel>
+          <Tabs.Panel value="collections">
+            <CollectionsPanel
+              collections={data.collections ?? []}
+              products={data.products}
+              disabled={busy || loading || quickDirty}
+              onEdit={(value) => {
+                if (mutationLock.current || loading || quickDirty) return;
+                setCollection(value);
+                setDirty(false);
+                setError('');
+              }}
+            />
+          </Tabs.Panel>
           <Tabs.Panel value="content">
             <ContentEditor
               key={contentKey}
@@ -631,6 +686,7 @@ export default function ShopAdmin() {
             onBusy={setUploading}
             initial={product}
             categories={data.categories}
+            collections={data.collections ?? []}
             cancel={closeEditor}
             onDirty={() => setDirty(true)}
             save={async (p) => {
@@ -760,6 +816,50 @@ export default function ShopAdmin() {
             products={data.products}
             busy={busy || uploading}
             onDelete={deleteCategory}
+          />
+        )}
+      </Modal>
+      <Modal
+        opened={!!collection}
+        onClose={closeEditor}
+        title={collection?.id ? 'Redaguoti kolekciją' : 'Nauja kolekcija'}
+        size="lg"
+        closeOnClickOutside={false}
+        closeOnEscape={!busy && !uploading}
+        closeButtonProps={{ disabled: busy || uploading }}
+      >
+        {error && (
+          <Alert color="red" mb="md" title="Pakeitimai neišsaugoti">
+            {error}
+          </Alert>
+        )}
+        {collection && (
+          <CollectionEditor
+            key={collection.id || 'new'}
+            initial={collection}
+            busy={busy}
+            uploading={uploading}
+            cancel={closeEditor}
+            onDirty={() => setDirty(true)}
+            onBusy={setUploading}
+            save={async (value) => {
+              const ok = await commit(
+                value.id ? `collections/${value.id}` : 'collections',
+                value,
+                value.id ? 'PUT' : 'POST',
+              );
+              if (ok) setCollection(null);
+              return ok;
+            }}
+          />
+        )}
+        {collection?.id && (
+          <CollectionDeletion
+            key={collection.id}
+            collection={data.collections?.find((item) => item.id === collection.id) || collection}
+            products={data.products}
+            busy={busy || uploading}
+            onDelete={deleteCollection}
           />
         )}
       </Modal>

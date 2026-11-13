@@ -9,6 +9,7 @@ export type ShopCategory = {
   order: number;
   image: ShopImage | null;
 };
+export type ShopCollection = ShopCategory;
 export type ShopProduct = {
   id: string;
   slug: string;
@@ -16,6 +17,7 @@ export type ShopProduct = {
   kind: string;
   secondaryAttribute: string;
   category: string;
+  collectionIds?: string[];
   price: number;
   stock: number;
   images: ShopImage[];
@@ -89,6 +91,7 @@ export type ShopContent = {
 export type ShopData = {
   products: ShopProduct[];
   categories: ShopCategory[];
+  collections?: ShopCollection[];
   content: ShopContent;
 };
 export type DailyCollection = { date: string; productIds: string[]; version: number };
