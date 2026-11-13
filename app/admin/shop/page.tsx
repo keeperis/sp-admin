@@ -441,11 +441,6 @@ export default function ShopAdmin() {
                               <Text size="xs" c="dimmed" className={styles.productSlug}>
                                 /{p.slug}
                               </Text>
-                              {p.featured && (
-                                <Text size="xs" c="teal" mt={4}>
-                                  Pradinio puslapio kolekcija
-                                </Text>
-                              )}
                             </div>
                           </div>
                           <dl className={styles.productFacts}>

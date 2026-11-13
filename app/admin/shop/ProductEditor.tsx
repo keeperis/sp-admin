@@ -7,7 +7,6 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Switch,
   Tabs,
   Text,
   Textarea,
@@ -253,11 +252,6 @@ export function ProductEditor({
                   onChange={(v) => field('order', Number(v) || 0)}
                 />
               </SimpleGrid>
-              <Switch
-                label="Rodyti pradinio puslapio kolekcijoje"
-                checked={product.featured}
-                onChange={(e) => field('featured', e.currentTarget.checked)}
-              />
             </Stack>
           </Tabs.Panel>
         </Tabs>

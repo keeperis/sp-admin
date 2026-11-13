@@ -91,4 +91,10 @@ export type ShopData = {
   categories: ShopCategory[];
   content: ShopContent;
 };
-export type ShopSnapshot = { revision: number; updatedAt: string | null; data: ShopData };
+export type DailyCollection = { date: string; productIds: string[]; version: number };
+export type ShopSnapshot = {
+  revision: number;
+  updatedAt: string | null;
+  data: ShopData;
+  dailyCollection?: DailyCollection;
+};
