@@ -208,7 +208,6 @@ export function ProductEditor({
                 onChange={(e) => field('material', e.target.value)}
                 autosize
                 minRows={2}
-                maxLength={300}
               />
               <Textarea
                 label="Kasdienis ritualas"
