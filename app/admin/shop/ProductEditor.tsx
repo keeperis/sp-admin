@@ -93,7 +93,7 @@ export function ProductEditor({
           <Tabs.List>
             <Tabs.Tab value="details">Produkto informacija</Tabs.Tab>
             <Tabs.Tab value="images">Nuotraukos ({product.images.length})</Tabs.Tab>
-            <Tabs.Tab value="extra">Papildoma informacija</Tabs.Tab>
+            <Tabs.Tab value="extra">Aprašymas</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="details" pt="lg">
             <Stack>
@@ -172,16 +172,6 @@ export function ProductEditor({
                   maxLength={160}
                 />
               </SimpleGrid>
-              <Textarea
-                label="Aprašymas (neprivalomas)"
-                description="Palikus tuščią, aprašymas gaminio puslapyje nebus rodomas."
-                autosize
-                minRows={4}
-                maxRows={12}
-                value={product.description}
-                onChange={(e) => field('description', e.target.value)}
-                maxLength={10000}
-              />
             </Stack>
           </Tabs.Panel>
           <Tabs.Panel value="images" pt="lg">
@@ -196,16 +186,28 @@ export function ProductEditor({
           </Tabs.Panel>
           <Tabs.Panel value="extra" pt="lg">
             <Stack>
+              <Textarea
+                label="Aprašymas (neprivalomas)"
+                description="Palikus tuščią, aprašymas gaminio puslapyje nebus rodomas."
+                autosize
+                minRows={4}
+                maxRows={12}
+                value={product.description}
+                onChange={(e) => field('description', e.target.value)}
+                maxLength={10000}
+              />
               <TextInput
                 label="Matmenys / talpa"
                 value={product.size}
                 onChange={(e) => field('size', e.target.value)}
                 maxLength={200}
               />
-              <TextInput
+              <Textarea
                 label="Medžiaga ir glazūra"
                 value={product.material}
                 onChange={(e) => field('material', e.target.value)}
+                autosize
+                minRows={2}
                 maxLength={300}
               />
               <Textarea
