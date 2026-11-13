@@ -63,6 +63,7 @@ export const contentFields = [
   ['catalogAccent', 'Katalogo pasvirasis tekstas', 'Kolekcija'],
   ['catalogDescription', 'Katalogo aprašymas', 'Kolekcija'],
   ['catalogClosing', 'Katalogo palinkėjimas', 'Kolekcija'],
+  ['cartEyebrow', 'Krepšelio maža antraštė', 'Krepšelis'],
   ['storyEyebrow', 'Istorijos maža antraštė', 'Mūsų istorija'],
   ['storyTitle', 'Istorijos pirma eilutė', 'Mūsų istorija'],
   ['storySecondLine', 'Istorijos antros eilutės pradžia', 'Mūsų istorija'],
