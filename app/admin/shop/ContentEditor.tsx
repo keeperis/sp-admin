@@ -84,7 +84,12 @@ export function ContentEditor({
                       <Textarea
                         key={key}
                         label={label}
-                        value={content.text[key]}
+                        description={
+                          key === 'storyParagraphThree'
+                            ? 'Palikus tuščią, pastraipa svetainėje nerodoma.'
+                            : undefined
+                        }
+                        value={content.text[key] ?? ''}
                         onChange={(e) => setText(key, e.target.value)}
                         autosize
                         minRows={3}

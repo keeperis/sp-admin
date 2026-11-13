@@ -66,6 +66,7 @@ export const contentFields = [
   ['storyAccent', 'Istorijos pasvirasis tekstas', 'Mūsų istorija'],
   ['storyParagraphOne', 'Istorijos pirma pastraipa', 'Mūsų istorija'],
   ['storyParagraphTwo', 'Istorijos antra pastraipa', 'Mūsų istorija'],
+  ['storyParagraphThree', 'Istorijos trečia pastraipa', 'Mūsų istorija'],
   ['storyImageNote', 'Tekstas ant studijos nuotraukos', 'Mūsų istorija'],
   ['storyButton', 'Studijos nuorodos tekstas', 'Mūsų istorija'],
   ['ritualEyebrow', 'Ritualų maža antraštė', 'Ritualai'],
