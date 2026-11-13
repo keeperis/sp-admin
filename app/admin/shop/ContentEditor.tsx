@@ -106,7 +106,11 @@ export function ContentEditor({
                               ? 'Nuoroda šalia dienos gaminių skilties antraštės pagrindiniame puslapyje.'
                               : key === 'cartEyebrow'
                                 ? 'Tekstas virš krepšelio pavadinimo. Palikus tuščią, nerodomas.'
-                                : undefined
+                                : key === 'relatedEyebrow'
+                                  ? 'Gaminio puslapyje virš kitų dirbinių antraštės. Palikus tuščią, nerodoma.'
+                                  : key === 'relatedTitle' || key === 'relatedAccent'
+                                    ? 'Palikus tuščią, ši antraštės dalis nerodoma.'
+                                    : undefined
                         }
                         required={key === 'collectionButton'}
                         value={content.text[key]}
