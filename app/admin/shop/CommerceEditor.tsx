@@ -25,6 +25,7 @@ import {
   documentKinds,
   documentLinks,
 } from '@/lib/shop/commerce-contract';
+import { isLiveCommerce } from '@/lib/shop/commerce-mode';
 import { shopPreviewStartUrl } from '@/lib/shop/preview-config';
 import { PickupScheduleEditor, pickupScheduleProblem } from './PickupScheduleEditor';
 
@@ -120,6 +121,7 @@ export function CommerceEditor() {
         )}
       </Stack>
     );
+  const live = isLiveCommerce(snapshot.data.mode);
   return (
     <Stack gap="lg">
       <Group justify="space-between">
@@ -145,19 +147,24 @@ export function CommerceEditor() {
           </Button>
         </Group>
       </Group>
-      <Alert color="yellow" title="Tik testinis režimas — tikra prekyba neįjungta">
-        Kortelės ir pavedimai yra bandomieji. Pinigų gavimo imitavimas nesukuria tikro banko
-        pavedimo. Dokumentai yra projektai: prieš prekybą patikrink rekvizitus, faktinę pristatymo
-        ir grąžinimo tvarką, duomenų saugojimą bei teisinius reikalavimus.
+      <Alert
+        color={live ? 'teal' : 'yellow'}
+        title={
+          live ? 'LIVE režimas — tikri mokėjimai' : 'Tik testinis režimas — tikra prekyba neįjungta'
+        }
+      >
+        {live
+          ? 'Kortele apmokami tikri užsakymai. Bankinius pavedimus patvirtink tik patikrinęs, kad lėšos gautos. Užsakymų grąžinimus ir pinigų grąžinimą administratorius tvarko atskirai.'
+          : 'Kortelės ir pavedimai yra bandomieji. Pinigų gavimo imitavimas nesukuria tikro banko pavedimo. Dokumentai yra projektai: prieš prekybą patikrink rekvizitus, faktinę pristatymo ir grąžinimo tvarką, duomenų saugojimą bei teisinius reikalavimus.'}
       </Alert>
       <Group>
         <Badge color={snapshot.stripeReady ? 'teal' : 'orange'}>
-          Stripe TEST: {snapshot.stripeReady ? 'prijungtas' : 'neprijungtas'}
+          Stripe {live ? 'LIVE' : 'TEST'}: {snapshot.stripeReady ? 'prijungtas' : 'neprijungtas'}
         </Badge>
         <Badge color={snapshot.webhookReady ? 'teal' : 'orange'}>
           Webhook: {snapshot.webhookReady ? 'sukonfigūruotas' : 'neprijungtas'}
         </Badge>
-        <Badge variant="outline">LIVE režimas užblokuotas</Badge>
+        <Badge variant="outline">{live ? 'LIVE režimas' : 'TEST režimas'}</Badge>
       </Group>
       {error && (
         <Alert color="red" title="Neišsaugota">
@@ -195,7 +202,10 @@ export function CommerceEditor() {
                 <Stack>
                   <Text size="sm" c="dimmed">
                     Pirmą kartą pasiūlomi keramikos sistemos rekvizitai. Išsaugojus parduotuvė turi
-                    atskirus nustatymus. Tikro pavedimo bandymuose nedarykite.
+                    atskirus nustatymus.{' '}
+                    {live
+                      ? 'Gautas lėšas sutikrinkite su užsakymo suma ir mokėjimo paskirtimi.'
+                      : 'Tikro pavedimo bandymuose nedarykite.'}
                   </Text>
                   <SimpleGrid cols={{ base: 1, sm: 2 }}>
                     {(Object.keys(bankLabels) as (keyof typeof bankLabels)[]).map((key) => (

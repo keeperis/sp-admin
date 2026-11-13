@@ -1,4 +1,5 @@
-// Shared with sp-admin and sp-shop. All commerce in this iteration is explicitly test-only.
+// Shared with sp-api and sp-admin. The API selects the commerce mode.
+export type ShopCommerceMode = 'test' | 'live';
 export const documentKinds = ['terms', 'delivery', 'returns', 'privacy', 'cookies'] as const;
 export type DocumentKind = (typeof documentKinds)[number];
 export const documentLinks: Record<DocumentKind, { title: string; slug: string }> = {
@@ -11,11 +12,21 @@ export const documentLinks: Record<DocumentKind, { title: string; slug: string }
 export type CommerceDocument = { title: string; body: string; version: string; reviewed: boolean };
 export type PickupSchedule = {
   weekly: Array<{ day: number; intervals: Array<{ start: string; end: string }> }>;
-  exceptions: Array<{ date: string; closed: boolean; intervals: Array<{ start: string; end: string }>; note: string }>;
+  exceptions: Array<{
+    date: string;
+    closed: boolean;
+    intervals: Array<{ start: string; end: string }>;
+    note: string;
+  }>;
 };
-export type ShopCourierAddress = { street: string; city: string; postalCode: string; country: 'LT' };
+export type ShopCourierAddress = {
+  street: string;
+  city: string;
+  postalCode: string;
+  country: 'LT';
+};
 export type CommerceSettings = {
-  mode: 'test';
+  mode: ShopCommerceMode;
   seller: {
     name: string;
     code: string;
@@ -119,7 +130,7 @@ export type ShopDpdLocker = {
 export type ShopOrderView = {
   id: string;
   number: string;
-  mode: 'test';
+  mode: ShopCommerceMode;
   status: OrderStatus;
   paymentMethod: 'card' | 'bank_transfer';
   createdAt: string;
@@ -154,7 +165,7 @@ export type ShopOrderView = {
 };
 export const orderStatusLabels: Record<OrderStatus, string> = {
   awaiting_payment: 'Laukiama apmokėjimo',
-  paid: 'Apmokėta (testas)',
+  paid: 'Apmokėta',
   expired: 'Mokėjimo laikas baigėsi',
   cancelled: 'Atšauktas',
   payment_review: 'Mokėjimą reikia patikrinti',

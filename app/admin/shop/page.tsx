@@ -615,7 +615,7 @@ export default function ShopAdmin() {
           {snapshot.updatedAt
             ? `Išsaugota ${new Date(snapshot.updatedAt).toLocaleString('lt-LT')} · versija ${snapshot.revision}`
             : 'Dar neišsaugota'}{' '}
-          · Atsiskaitymas parduotuvėje tebėra demonstracinis.
+          · Mokėjimų režimas ir būsena rodomi skiltyje „Dokumentai ir mokėjimai“.
         </Text>
       </Stack>
       <Modal

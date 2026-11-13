@@ -21,6 +21,12 @@ import {
   orderStatusLabels,
   type ShopOrderView,
 } from '@/lib/shop/commerce-contract';
+import {
+  bankPaymentConfirmation,
+  isLiveCommerce,
+  orderStatusLabel,
+  paymentLabel,
+} from '@/lib/shop/commerce-mode';
 import { type DpdTracking, OrderDpdShipment } from './OrderDpdShipment';
 import { OrderFulfillment } from './OrderFulfillment';
 import { OrderNotifications } from './OrderNotifications';
@@ -82,7 +88,7 @@ export function OrdersPanel() {
     setError('');
     try {
       const order = await shopRequest(`orders/${selected.id}/mark-paid`, 'POST', {
-        confirmTestPayment: true,
+        ...bankPaymentConfirmation(selected.mode),
       });
       setSelected(order);
       setConfirming(false);
@@ -126,7 +132,7 @@ export function OrdersPanel() {
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2}>Testiniai užsakymai</Title>
+          <Title order={2}>Užsakymai</Title>
           <Text size="sm" c="dimmed">
             Rodomi 50 naujausių užsakymų ir 50 atsisakymo prašymų.
           </Text>
@@ -136,11 +142,11 @@ export function OrdersPanel() {
         </Button>
       </Group>
       <Alert color="yellow">
-        Šiame sąraše nėra tikrų pardavimų. „Stripe“ būseną patvirtina serveris, pavedimo gavimą
-        galima imituoti rankiniu būdu. Testiniai užsakymai rezervuoja vietinį prekių likutį;
-        apmokėjimo patvirtinimas nurašo prekes. Neapmokėtos rezervacijos galioja iki nurodyto
-        termino. Apmokėtų užsakymų vykdymą galima išbandyti čia. Laiškų būsenos ir peržiūros
-        pateikiamos užsakymo viduje. Sąskaitos neišrašomos.
+        Kiekvieno užsakymo mokėjimas pažymėtas TEST arba LIVE. TEST užsakymai yra bandomieji; LIVE
+        užsakymai — tikri pardavimai. „Stripe“ būseną patvirtina serveris, o LIVE pavedimo gavimą
+        patvirtink tik patikrinęs lėšas banke. Užsakymai rezervuoja prekių likutį iki nurodyto
+        termino. Vykdymas ir laiškų būsenos pateikiami užsakymo viduje. Sąskaitos ir pinigų
+        grąžinimas tvarkomi atskirai.
       </Alert>
       {error && <Alert color="red">{error}</Alert>}
       <Group>
@@ -189,12 +195,17 @@ export function OrdersPanel() {
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  {o.paymentMethod === 'card' ? 'Stripe TEST' : 'Pavedimas · TEST'}
+                  {paymentLabel(o.paymentMethod, o.mode)}
+                  {isLiveCommerce(o.mode) && (
+                    <Text size="xs" c="teal">
+                      LIVE · tikras mokėjimas
+                    </Text>
+                  )}
                 </Table.Td>
                 <Table.Td>{euros(o.totalCents)}</Table.Td>
                 <Table.Td>
                   <Badge color={statusColor(o.status)} variant="light">
-                    {orderStatusLabels[o.status]}
+                    {orderStatusLabel(o.status, o.mode)}
                   </Badge>
                   {o.status === 'paid' && (
                     <Text size="xs" c="dimmed" mt={4}>
@@ -278,7 +289,14 @@ export function OrdersPanel() {
       >
         {selected && (
           <Stack>
-            <Badge color={statusColor(selected.status)}>{orderStatusLabels[selected.status]}</Badge>
+            <Badge color={statusColor(selected.status)}>
+              {orderStatusLabel(selected.status, selected.mode)}
+            </Badge>
+            <Text fw={600} c={isLiveCommerce(selected.mode) ? 'teal' : 'orange'}>
+              {isLiveCommerce(selected.mode)
+                ? 'LIVE · tikras užsakymas'
+                : 'TEST · bandomasis užsakymas'}
+            </Text>
             {selected.status === 'payment_review' && (
               <Alert color="red" title="Mokėjimą reikia patikrinti">
                 Užsakymas automatiškai nepatvirtintas. Patikrink mokėjimo būseną, sumą ir prekių
@@ -308,7 +326,7 @@ export function OrdersPanel() {
             <Text size="sm">Mokėjimo paskirtis: {selected.paymentReference}</Text>
             <Text size="sm">
               {selected.paymentMethod === 'card'
-                ? 'Stripe TEST'
+                ? paymentLabel(selected.paymentMethod, selected.mode)
                 : `Pavedimas · ${selected.bank.beneficiaryName || 'Gavėjas nenurodytas'} · ${selected.bank.iban || 'IBAN nenurodytas'}`}
             </Text>
             {selected.paidAt && <Text size="sm">Apmokėta: {date(selected.paidAt)}</Text>}
@@ -351,15 +369,27 @@ export function OrdersPanel() {
             {selected.paymentMethod === 'bank_transfer' &&
               selected.status === 'awaiting_payment' &&
               (confirming ? (
-                <Alert color="yellow" title="Patvirtinti testinį apmokėjimą?">
-                  Imituojamas tik šio užsakymo pavedimo gavimas. Tikras bankinis mokėjimas
-                  neatliekamas.
+                <Alert
+                  color="yellow"
+                  title={
+                    isLiveCommerce(selected.mode)
+                      ? 'Patvirtinti faktiškai gautą pavedimą?'
+                      : 'Patvirtinti testinį apmokėjimą?'
+                  }
+                >
+                  {isLiveCommerce(selected.mode)
+                    ? `Patikrink banko išraše, kad gauta ${euros(selected.totalCents)}, o mokėjimo paskirtis yra ${selected.paymentReference}. Patvirtinimas pažymės šį užsakymą kaip apmokėtą ir leis pradėti jo vykdymą.`
+                    : 'Imituojamas tik šio užsakymo pavedimo gavimas. Tikras bankinis mokėjimas neatliekamas.'}
                   <Group mt="sm">
                     <Button color="teal" loading={busy} onClick={markPaid}>
-                      Taip, imituoti gavimą
+                      {isLiveCommerce(selected.mode)
+                        ? 'Taip, lėšos tikrai gautos'
+                        : 'Taip, imituoti gavimą'}
                     </Button>
                     <Button variant="default" disabled={busy} onClick={() => setConfirming(false)}>
-                      Atšaukti imitavimą
+                      {isLiveCommerce(selected.mode)
+                        ? 'Grįžti nepatvirtinus'
+                        : 'Atšaukti imitavimą'}
                     </Button>
                   </Group>
                 </Alert>
@@ -369,7 +399,9 @@ export function OrdersPanel() {
                   disabled={busy || confirmingCancellation}
                   onClick={() => setConfirming(true)}
                 >
-                  Imituoti pavedimo gavimą
+                  {isLiveCommerce(selected.mode)
+                    ? 'Patvirtinti gautą pavedimą'
+                    : 'Imituoti pavedimo gavimą'}
                 </Button>
               ))}
             {selected.status === 'awaiting_payment' &&
