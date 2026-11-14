@@ -2,6 +2,8 @@
 export type ShopCommerceMode = 'test' | 'live';
 export const documentKinds = ['terms', 'delivery', 'returns', 'privacy', 'cookies'] as const;
 export type DocumentKind = (typeof documentKinds)[number];
+// Delivery and returns remain available in historical order snapshots.
+export const activeDocumentKinds = ['terms', 'privacy', 'cookies'] as const;
 export const documentLinks: Record<DocumentKind, { title: string; slug: string }> = {
   terms: { title: 'Pirkimo sąlygos', slug: 'pirkimo-salygos' },
   delivery: { title: 'Pristatymas ir apmokėjimas', slug: 'pristatymas' },
@@ -31,6 +33,7 @@ export type CommerceSettings = {
     name: string;
     code: string;
     vatCode: string;
+    vatRegistered?: boolean;
     address: string;
     returnAddress: string;
     email: string;
@@ -159,6 +162,7 @@ export type ShopOrderView = {
   paymentReference: string;
   seller: CommerceSettings['seller'];
   documents: CommerceSettings['documents'];
+  acceptedDocumentKinds?: DocumentKind[];
   acceptedAt: string;
   checkoutUrl: string | null;
   withdrawalRequestedAt: string | null;

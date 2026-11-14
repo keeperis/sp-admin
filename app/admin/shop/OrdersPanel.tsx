@@ -9,6 +9,7 @@ import {
   Select,
   Stack,
   Table,
+  Tabs,
   Text,
   TextInput,
   Title,
@@ -30,15 +31,8 @@ import {
 import { type DpdTracking, OrderDpdShipment } from './OrderDpdShipment';
 import { OrderFulfillment } from './OrderFulfillment';
 import { OrderNotifications } from './OrderNotifications';
+import { type Withdrawal, WithdrawalRequests } from './WithdrawalRequests';
 
-type Withdrawal = {
-  _id: string;
-  orderNumber: string;
-  name: string;
-  email: string;
-  items: string;
-  createdAt: string;
-};
 const euros = (cents: number) =>
   new Intl.NumberFormat('lt-LT', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const date = (value: string) => new Date(value).toLocaleString('lt-LT');
@@ -61,6 +55,7 @@ export function OrdersPanel() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string | null>('all');
+  const [activeSection, setActiveSection] = useState<string | null>('orders');
   const load = useCallback(async () => {
     setBusy(true);
     setError('');
@@ -121,6 +116,28 @@ export function OrdersPanel() {
     setOrders((current) => current.map((item) => (item.id === order.id ? order : item)));
     setSelected((current) => (current?.id === order.id ? order : current));
   }
+  async function retryWithdrawalEmail(id: string, recipient: 'buyer' | 'seller') {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await shopRequest(
+        `withdrawals/${encodeURIComponent(id)}/notifications/${recipient}/retry`,
+        'POST',
+        {},
+      );
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function openOrder(order: ShopOrderView) {
+    setConfirming(false);
+    setConfirmingCancellation(false);
+    setSelected(order);
+  }
   const filtered = orders.filter(
     (o) =>
       (status === 'all' || o.status === status) &&
@@ -132,13 +149,13 @@ export function OrdersPanel() {
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2}>Užsakymai</Title>
+          <Title order={2}>Užsakymai ir atsisakymai</Title>
           <Text size="sm" c="dimmed">
             Rodomi 50 naujausių užsakymų ir 50 atsisakymo prašymų.
           </Text>
         </div>
         <Button variant="default" loading={busy} onClick={load}>
-          Atnaujinti užsakymus
+          Atnaujinti
         </Button>
       </Group>
       <Alert color="yellow">
@@ -149,132 +166,122 @@ export function OrdersPanel() {
         grąžinimas tvarkomi atskirai.
       </Alert>
       {error && <Alert color="red">{error}</Alert>}
-      <Group>
-        <TextInput
-          aria-label="Ieškoti užsakymo"
-          placeholder="Numeris, vardas, el. paštas…"
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
-        />
-        <Select
-          aria-label="Užsakymo būsena"
-          value={status}
-          onChange={setStatus}
-          allowDeselect={false}
-          data={[
-            { value: 'all', label: 'Visos būsenos' },
-            ...Object.entries(orderStatusLabels).map(([value, label]) => ({ value, label })),
-          ]}
-        />
-        {busy && <Loader size="sm" />}
-      </Group>
-      <Table.ScrollContainer minWidth={780}>
-        <Table highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              {['Numeris / data', 'Pirkėjas', 'Mokėjimas', 'Suma', 'Būsena', ''].map((label) => (
-                <Table.Th key={label}>{label}</Table.Th>
-              ))}
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {filtered.map((o) => (
-              <Table.Tr key={o.id}>
-                <Table.Td>
-                  <Text size="sm" fw={600}>
-                    {o.number}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {date(o.createdAt)}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm">{o.customer.name}</Text>
-                  <Text size="xs" c="dimmed">
-                    {o.customer.email}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {paymentLabel(o.paymentMethod, o.mode)}
-                  {isLiveCommerce(o.mode) && (
-                    <Text size="xs" c="teal">
-                      LIVE · tikras mokėjimas
-                    </Text>
-                  )}
-                </Table.Td>
-                <Table.Td>{euros(o.totalCents)}</Table.Td>
-                <Table.Td>
-                  <Badge color={statusColor(o.status)} variant="light">
-                    {orderStatusLabel(o.status, o.mode)}
-                  </Badge>
-                  {o.status === 'paid' && (
-                    <Text size="xs" c="dimmed" mt={4}>
-                      {fulfillmentStatusLabels[o.fulfillmentStatus]}
-                    </Text>
-                  )}
-                  {o.withdrawalRequestedAt && (
-                    <Text size="xs" c="orange">
-                      Gautas atsisakymo prašymas
-                    </Text>
-                  )}
-                </Table.Td>
-                <Table.Td>
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(false);
-                      setConfirmingCancellation(false);
-                      setSelected(o);
-                    }}
-                  >
-                    Peržiūrėti
-                  </Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-      {!filtered.length && <Text c="dimmed">Užsakymų dar nėra arba jie neatitinka filtro.</Text>}
-      <Title order={3}>Sutarties atsisakymo prašymai</Title>
-      <Text size="sm" c="dimmed">
-        Prašymai nepakeičia apmokėjimo būsenos ir automatiškai negrąžina pinigų. Patikrink užsakymą
-        bei pirkėjo tapatybę.
-      </Text>
-      {!withdrawals.length ? (
-        <Text c="dimmed">Prašymų dar nėra.</Text>
-      ) : (
-        <Table.ScrollContainer minWidth={650}>
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Gauta / užsakymas</Table.Th>
-                <Table.Th>Pirkėjas</Table.Th>
-                <Table.Th>Prekės / prašymas</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {withdrawals.map((w) => (
-                <Table.Tr key={w._id}>
-                  <Table.Td>
-                    {date(w.createdAt)}
-                    <Text size="sm">{w.orderNumber}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    {w.name}
-                    <Text size="sm">{w.email}</Text>
-                  </Table.Td>
-                  <Table.Td style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                    {w.items}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      )}
+      <Tabs value={activeSection} onChange={setActiveSection}>
+        <Tabs.List mb="lg">
+          <Tabs.Tab value="orders">Užsakymai</Tabs.Tab>
+          <Tabs.Tab
+            value="withdrawals"
+            rightSection={<Badge size="sm">{withdrawals.length}</Badge>}
+          >
+            Sutarties atsisakymai
+          </Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="orders">
+          <Stack>
+            <Group>
+              <TextInput
+                aria-label="Ieškoti užsakymo"
+                placeholder="Numeris, vardas, el. paštas…"
+                value={query}
+                onChange={(e) => setQuery(e.currentTarget.value)}
+              />
+              <Select
+                aria-label="Užsakymo būsena"
+                value={status}
+                onChange={setStatus}
+                allowDeselect={false}
+                data={[
+                  { value: 'all', label: 'Visos būsenos' },
+                  ...Object.entries(orderStatusLabels).map(([value, label]) => ({ value, label })),
+                ]}
+              />
+              {busy && <Loader size="sm" />}
+            </Group>
+            <Table.ScrollContainer minWidth={780}>
+              <Table highlightOnHover verticalSpacing="sm">
+                <Table.Thead>
+                  <Table.Tr>
+                    {['Numeris / data', 'Pirkėjas', 'Mokėjimas', 'Suma', 'Būsena', ''].map(
+                      (label) => (
+                        <Table.Th key={label}>{label}</Table.Th>
+                      ),
+                    )}
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {filtered.map((o) => (
+                    <Table.Tr key={o.id}>
+                      <Table.Td>
+                        <Text size="sm" fw={600}>
+                          {o.number}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {date(o.createdAt)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{o.customer.name}</Text>
+                        <Text size="xs" c="dimmed">
+                          {o.customer.email}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {paymentLabel(o.paymentMethod, o.mode)}
+                        {isLiveCommerce(o.mode) && (
+                          <Text size="xs" c="teal">
+                            LIVE · tikras mokėjimas
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>{euros(o.totalCents)}</Table.Td>
+                      <Table.Td>
+                        <Badge color={statusColor(o.status)} variant="light">
+                          {orderStatusLabel(o.status, o.mode)}
+                        </Badge>
+                        {o.status === 'paid' && (
+                          <Text size="xs" c="dimmed" mt={4}>
+                            {fulfillmentStatusLabels[o.fulfillmentStatus]}
+                          </Text>
+                        )}
+                        {o.withdrawalRequestedAt && (
+                          <Text size="xs" c="orange">
+                            Gautas atsisakymo prašymas
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        <Button
+                          size="xs"
+                          variant="subtle"
+                          disabled={busy}
+                          onClick={() => openOrder(o)}
+                        >
+                          Peržiūrėti
+                        </Button>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+            {!filtered.length && (
+              <Text c="dimmed">Užsakymų dar nėra arba jie neatitinka filtro.</Text>
+            )}
+          </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="withdrawals">
+          <WithdrawalRequests
+            withdrawals={withdrawals}
+            busy={busy}
+            availableOrderNumbers={orders.map((order) => order.number)}
+            onOpenOrder={(number) => {
+              const order = orders.find((item) => item.number === number);
+              if (order) openOrder(order);
+            }}
+            onRetry={retryWithdrawalEmail}
+          />
+        </Tabs.Panel>
+      </Tabs>
       <Modal
         opened={!!selected}
         onClose={() => {
@@ -301,6 +308,24 @@ export function OrdersPanel() {
               <Alert color="red" title="Mokėjimą reikia patikrinti">
                 Užsakymas automatiškai nepatvirtintas. Patikrink mokėjimo būseną, sumą ir prekių
                 likutį prieš vykdydamas užsakymą. Pirkėjas neturi mokėti pakartotinai.
+              </Alert>
+            )}
+            {selected.withdrawalRequestedAt && (
+              <Alert color="orange" title="Gautas sutarties atsisakymas">
+                Gauta {date(selected.withdrawalRequestedAt)}. Atsisakymo informaciją ir laiškų
+                būsenas rasi skiltyje „Sutarties atsisakymai“. Pinigai automatiškai negrąžinami.
+                <Button
+                  mt="sm"
+                  size="xs"
+                  variant="light"
+                  disabled={busy}
+                  onClick={() => {
+                    setSelected(null);
+                    setActiveSection('withdrawals');
+                  }}
+                >
+                  Atidaryti atsisakymus
+                </Button>
               </Alert>
             )}
             {selected.status === 'awaiting_payment' && selected.reservationExpiresAt && (
@@ -356,7 +381,7 @@ export function OrdersPanel() {
               version={`${selected.status}:${selected.fulfillmentRevision}`}
             />
             <Text size="sm">Dokumentai patvirtinti: {date(selected.acceptedAt)}</Text>
-            {documentKinds.map((k) => (
+            {(selected.acceptedDocumentKinds || documentKinds).map((k) => (
               <details key={k}>
                 <summary>
                   {selected.documents[k].title} · {selected.documents[k].version}

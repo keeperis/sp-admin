@@ -402,7 +402,7 @@ export default function ShopAdmin() {
               Svetainės turinys {contentDirty ? '•' : ''}
             </Tabs.Tab>
             <Tabs.Tab value="commerce">Dokumentai ir mokėjimai</Tabs.Tab>
-            <Tabs.Tab value="orders">Užsakymai</Tabs.Tab>
+            <Tabs.Tab value="orders">Užsakymai ir atsisakymai</Tabs.Tab>
             <Tabs.Tab value="dpd">DPD siuntimas</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="commerce">

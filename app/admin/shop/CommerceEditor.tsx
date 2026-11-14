@@ -20,9 +20,9 @@ import { notifications } from '@mantine/notifications';
 import { useCallback, useEffect, useState } from 'react';
 import { shopRequest } from '@/lib/shop/client';
 import {
+  activeDocumentKinds,
   type CommerceSettings,
   type CommerceSnapshot,
-  documentKinds,
   documentLinks,
 } from '@/lib/shop/commerce-contract';
 import { isLiveCommerce } from '@/lib/shop/commerce-mode';
@@ -37,7 +37,7 @@ const sellerLabels = {
   address: 'Veiklos adresas',
   returnAddress: 'Grąžinimo adresas',
   email: 'Klientų aptarnavimo el. paštas',
-  phone: 'Telefonas',
+  phone: 'Telefonas (neviešinamas parduotuvėje)',
 };
 const bankLabels = {
   beneficiaryName: 'Gavėjo pavadinimas',
@@ -177,6 +177,17 @@ export function CommerceEditor() {
             <Accordion.Item value="seller">
               <Accordion.Control>Pardavėjo rekvizitai</Accordion.Control>
               <Accordion.Panel>
+                <Switch
+                  label="Pardavėjas yra PVM mokėtojas"
+                  mb="md"
+                  checked={draft.seller.vatRegistered ?? !!draft.seller.vatCode}
+                  onChange={(event) =>
+                    change({
+                      ...draft,
+                      seller: { ...draft.seller, vatRegistered: event.currentTarget.checked },
+                    })
+                  }
+                />
                 <SimpleGrid cols={{ base: 1, sm: 2 }}>
                   {(Object.keys(sellerLabels) as (keyof typeof sellerLabels)[]).map((key) => (
                     <TextInput
@@ -308,10 +319,15 @@ export function CommerceEditor() {
               </Accordion.Panel>
             </Accordion.Item>
             <Accordion.Item value="documents">
-              <Accordion.Control>Pirkimo ir privatumo dokumentai · 5 dokumentai</Accordion.Control>
+              <Accordion.Control>Pirkimo sąlygos, privatumas ir slapukai</Accordion.Control>
               <Accordion.Panel>
                 <Stack>
-                  {documentKinds.map((kind) => {
+                  <Text size="sm" c="dimmed">
+                    Apmokėjimas, pristatymas, grąžinimas ir garantija aprašomi vienose Pirkimo
+                    sąlygose. Pirkėjas užsakydamas sutinka su šiuo dokumentu. Privatumo ir slapukų
+                    informacija pateikiama atskirai.
+                  </Text>
+                  {activeDocumentKinds.map((kind) => {
                     const doc = draft.documents[kind];
                     const edit = (part: Partial<typeof doc>) =>
                       change({
