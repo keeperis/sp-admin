@@ -15,7 +15,7 @@ export function WelcomeLanding({ ceramicsUrl, yogaUrl }: WelcomeLandingProps) {
   const logoRef = useRef<HTMLDivElement>(null);
   const yogaRef = useRef<HTMLAnchorElement>(null);
   const ceramicsRef = useRef<HTMLAnchorElement>(null);
-  const shopRef = useRef<HTMLSpanElement>(null);
+  const shopRef = useRef<HTMLAnchorElement>(null);
   const footerRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -139,12 +139,19 @@ export function WelcomeLanding({ ceramicsUrl, yogaUrl }: WelcomeLandingProps) {
               </span>
             </a>
 
-            <span ref={shopRef} className={`${styles.cardLink} ${styles.cardLinkDisabled}`}>
+            <a
+              ref={shopRef}
+              className={styles.cardLink}
+              href="https://shop.soulpoetry.love/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open Soulpoetry shop"
+            >
               <span className={styles.cardLabelWrap}>
                 <span className={styles.cardLabel}>El. Parduotuvė</span>
-                <span className={styles.cardSubLabel}>Jau greitai</span>
+                <span className={styles.cardSubLabel}>For your everyday rituals.</span>
               </span>
-            </span>
+            </a>
           </section>
         </div>
 

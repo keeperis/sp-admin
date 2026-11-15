@@ -117,24 +117,6 @@
   background: rgba(32, 33, 36, 0.84);
 }
 
-.cardLinkDisabled {
-  cursor: default;
-  border-color: rgba(244, 239, 230, 0.08);
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  background: rgba(26, 27, 30, 0.46);
-}
-
-.cardLinkDisabled.cardLinkEntered:hover {
-  transform: translate3d(0, 0, 0);
-  border-color: rgba(244, 239, 230, 0.08);
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  background: rgba(26, 27, 30, 0.46);
-}
-
 .cardLabelWrap {
   display: flex;
   flex-direction: column;
@@ -162,11 +144,6 @@
   color: rgba(244, 239, 230, 0.64);
   text-align: center;
   pointer-events: none;
-}
-
-.cardLinkDisabled .cardLabel,
-.cardLinkDisabled .cardSubLabel {
-  color: rgba(244, 239, 230, 0.42);
 }
 
 .footer {
