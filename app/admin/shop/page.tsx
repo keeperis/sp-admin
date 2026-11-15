@@ -32,7 +32,8 @@ import {
   IconSearch,
   IconTypography,
 } from '@tabler/icons-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { shopRequest, shopSlug } from '@/lib/shop/client';
 import type {
   ShopCategory,
@@ -63,6 +64,16 @@ const statusLabels = { draft: 'Juodraštis', published: 'Paskelbtas', archived: 
 const prices = new Intl.NumberFormat('lt-LT', { style: 'currency', currency: 'EUR' });
 
 export default function ShopAdmin() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <ShopAdminContent />
+    </Suspense>
+  );
+}
+
+function ShopAdminContent() {
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab') === 'orders' ? 'orders' : 'products';
   const [snapshot, setSnapshot] = useState<ShopSnapshot | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -76,7 +87,7 @@ export default function ShopAdmin() {
   const [contentDirty, setContentDirty] = useState(false);
   const [contentKey, setContentKey] = useState(0);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<string | null>('products');
+  const [activeTab, setActiveTab] = useState<string | null>(requestedTab);
   const [quickDirtyIds, setQuickDirtyIds] = useState<Set<string>>(new Set());
   const mutationLock = useRef(false);
   const quickDirty = quickDirtyIds.size > 0;
@@ -104,6 +115,9 @@ export default function ShopAdmin() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    setActiveTab(requestedTab);
+  }, [requestedTab]);
   useEffect(() => {
     if (!dirty && !contentDirty && !quickDirty) return;
     const handler = (e: BeforeUnloadEvent) => {

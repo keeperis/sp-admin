@@ -104,10 +104,10 @@ node scripts/check-admin-pwa.mjs https://soulpoetry.love
   įrašymo veiksmai neturi būti laikomi sėkmingais.
 
 Desktop / WebKit emuliacija nepakeičia iPhone Home Screen ir tikro Google OAuth testo.
-# Admin registration notifications
+# Admin registration and shop order notifications
 
 Open **Pranešimai į telefoną** (`/admin/notifications`) in the installed Home Screen app, press **Įjungti pranešimus**, allow notifications, then press **Bandomasis pranešimas**. iPhone requires iOS 16.4+. Each device opts in independently; normal logout unsubscribes this device.
 
-New recurring and one-time workshop registrations are sent by the API's minute worker. Transfers notify on submission, cards after confirmed fulfillment/payment. Historical registrations are not replayed. Notification payloads contain no customer contact data. Click opens the authenticated admin section.
+New recurring and one-time workshop registrations, plus ceramics e-shop orders, are sent by the API's minute worker. Registrations paid by transfer notify on submission, cards after confirmed fulfillment/payment. Shop orders paid by bank transfer notify when the order is accepted; card orders notify after confirmed payment. Historical registrations and orders are not replayed. Notification payloads contain no customer contact data. Click opens the authenticated admin section; order notifications open **Užsakymai ir atsisakymai** at `/admin/shop?tab=orders`.
 
 The worker `/admin-push-sw.js` is push-only: no fetch handler, offline administration, auth caching or API caching. Service-worker contract test: `node scripts/check-push-worker.mjs`. The test button reports push-provider acceptance; physical delivery must still be checked on the device (Focus/permissions apply). API setup and delivery semantics: `sp-api/docs/admin-registration-push.md`.

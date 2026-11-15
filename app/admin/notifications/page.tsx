@@ -171,7 +171,7 @@ export default function NotificationSettings() {
       <Title order={2}>Pranešimai į telefoną</Title>
       <Text>
         Šiame įrenginyje gaukite pranešimus apie naujas registracijas į nuolatinius užsiėmimus ir
-        vieno karto dirbtuves.
+        vieno karto dirbtuves bei naujus keramikos el. parduotuvės užsakymus.
       </Text>
       <Paper withBorder p="lg" radius="md">
         <Stack>
@@ -251,8 +251,12 @@ export default function NotificationSettings() {
           patvirtintą registraciją.
         </List.Item>
         <List.Item>
-          Paprastai išsiunčiama per 1–2 minutes. Ankstesnės registracijos nesiunčiamos; kiekvieną
-          įrenginį įjunkite atskirai.
+          El. parduotuvėje: pasirinkus bankinį pavedimą – priėmus užsakymą; mokant kortele –
+          patvirtinus mokėjimą.
+        </List.Item>
+        <List.Item>
+          Paprastai išsiunčiama per 1–2 minutes. Ankstesnės registracijos ir užsakymai nesiunčiami;
+          kiekvieną įrenginį įjunkite atskirai.
         </List.Item>
         <List.Item>
           Užrakintame ekrane klientų vardai, kontaktai ir mokėjimo sumos nerodomi. Paspaudus

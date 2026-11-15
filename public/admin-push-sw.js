@@ -2,7 +2,12 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
-const allowedPaths = new Set(['/admin/bookings', '/admin/recurring', '/admin/notifications']);
+const allowedPaths = new Set([
+  '/admin/bookings',
+  '/admin/recurring',
+  '/admin/notifications',
+  '/admin/shop?tab=orders',
+]);
 function safePath(value) {
   return allowedPaths.has(value) ? value : '/admin/notifications';
 }
