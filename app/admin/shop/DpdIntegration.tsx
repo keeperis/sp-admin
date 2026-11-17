@@ -19,6 +19,7 @@ import {
 import { IconCheck, IconPlugConnected, IconTruckDelivery } from '@tabler/icons-react';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { shopRequest } from '@/lib/shop/client';
+import { DpdPickups } from './DpdPickups';
 
 type DpdEnvironment = 'production' | 'sandbox';
 type DpdConfiguration = {
@@ -158,12 +159,12 @@ export function DpdIntegration() {
   }
 
   return (
-    <Stack gap="lg" maw={800}>
+    <Stack gap="xl">
       <Group justify="space-between" align="flex-start">
         <div>
           <Title order={2}>DPD siuntimas</Title>
           <Text c="dimmed" size="sm" mt={6}>
-            Patikrink ir išsaugok turimą „DPD Baltic Shipping“ prisijungimą siuntų etiketėms kurti.
+            Paruoštų siuntų paėmimas, kurjerio iškvietimai ir DPD prisijungimas.
           </Text>
         </div>
         <Badge variant="light" color="teal" leftSection={<IconTruckDelivery size={13} />}>
@@ -173,181 +174,204 @@ export function DpdIntegration() {
         </Badge>
       </Group>
 
-      <Paper withBorder radius="md" p="lg">
-        <form onSubmit={testConnection} autoComplete="off">
-          <Stack gap="lg">
-            <Text size="sm">
-              Patikra tik nuskaito DPD duomenis. Siunta nesukuriama ir kurjeris neiškviečiamas.
-            </Text>
-            <Text size="sm" c="dimmed">
-              Pasirinkus „Patikrinti ir išsaugoti“, veikiantis prisijungimas saugomas užšifruotas ir
-              naudojamas siuntoms kurti. Ankstesnė patikra duomenų neišsaugojo — išsaugojimui
-              slaptažodį įrašyk dar kartą.
-            </Text>
+      <DpdPickups configurationRevision={configuration?.revision ?? -1} />
 
-            {configurationLoading && (
-              <Group gap="xs">
-                <Loader size="xs" />
-                <Text size="sm" c="dimmed">
-                  Tikrinami parduotuvės nustatymai…
-                </Text>
-              </Group>
-            )}
-            {configurationError && (
-              <Alert color="orange" title="Nepavyko įkelti DPD nustatymų">
-                {configurationError}
-                <Button
-                  display="block"
-                  variant="subtle"
-                  color="orange"
-                  size="xs"
-                  mt="xs"
-                  onClick={loadConfiguration}
+      <Accordion variant="separated" radius="md">
+        <Accordion.Item value="connection">
+          <Accordion.Control>DPD prisijungimo nustatymai</Accordion.Control>
+          <Accordion.Panel>
+            <Paper withBorder radius="md" p="lg">
+              <form onSubmit={testConnection} autoComplete="off">
+                <Stack gap="lg">
+                  <Text size="sm">
+                    Patikra tik nuskaito DPD duomenis. Siunta nesukuriama ir kurjeris
+                    neiškviečiamas.
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Pasirinkus „Patikrinti ir išsaugoti“, veikiantis prisijungimas saugomas
+                    užšifruotas ir naudojamas siuntoms kurti. Ankstesnė patikra duomenų neišsaugojo
+                    — išsaugojimui slaptažodį įrašyk dar kartą.
+                  </Text>
+
+                  {configurationLoading && (
+                    <Group gap="xs">
+                      <Loader size="xs" />
+                      <Text size="sm" c="dimmed">
+                        Tikrinami parduotuvės nustatymai…
+                      </Text>
+                    </Group>
+                  )}
+                  {configurationError && (
+                    <Alert color="orange" title="Nepavyko įkelti DPD nustatymų">
+                      {configurationError}
+                      <Button
+                        display="block"
+                        variant="subtle"
+                        color="orange"
+                        size="xs"
+                        mt="xs"
+                        onClick={loadConfiguration}
+                      >
+                        Bandyti dar kartą
+                      </Button>
+                    </Alert>
+                  )}
+
+                  <Select
+                    label="DPD paskyra"
+                    description="Seniems parduotuvės prisijungimams rinkis esamą paskyrą. Testinei aplinkai DPD išduoda atskirus prisijungimus."
+                    data={Object.entries(environmentLabels).map(([value, label]) => ({
+                      value,
+                      label,
+                    }))}
+                    value={environment}
+                    allowDeselect={false}
+                    disabled={busy || useServerCredentials}
+                    onChange={(value) => {
+                      if (value !== 'production' && value !== 'sandbox') return;
+                      setEnvironment(value);
+                      if (passwordField.current) passwordField.current.value = '';
+                      resetFeedback();
+                    }}
+                  />
+
+                  {configuration?.credentialsConfigured && (
+                    <Switch
+                      label="Naudoti išsaugotą prisijungimą"
+                      description={environmentLabels[configuration.environment]}
+                      checked={useServerCredentials}
+                      disabled={busy}
+                      color="teal"
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        setUseServerCredentials(checked);
+                        if (checked) setEnvironment(configuration.environment);
+                        if (passwordField.current) passwordField.current.value = '';
+                        resetFeedback();
+                      }}
+                    />
+                  )}
+
+                  {!useServerCredentials && (
+                    <Stack gap="md">
+                      <TextInput
+                        name="dpd-api-user"
+                        label="DPD naudotojas"
+                        description="Prisijungimas, kurį naudojai „DPD Baltic Shipping“ modulyje."
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        value={username}
+                        disabled={busy}
+                        required
+                        onChange={(event) => {
+                          setUsername(event.currentTarget.value);
+                          resetFeedback();
+                        }}
+                      />
+                      <PasswordInput
+                        ref={attachPasswordField}
+                        name="dpd-api-password"
+                        label="DPD slaptažodis"
+                        description="Po bandymo laukelis išvalomas. Prisijungimas išsaugomas tik pasirinkus išsaugojimo mygtuką."
+                        autoComplete="off"
+                        visibilityToggleButtonProps={{
+                          'aria-label': 'Rodyti arba slėpti slaptažodį',
+                        }}
+                        disabled={busy}
+                        required
+                        onChange={resetFeedback}
+                      />
+                    </Stack>
+                  )}
+
+                  {error && (
+                    <Alert color="red" title="Veiksmas nepavyko" role="alert">
+                      {error}
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="xs"
+                        onClick={loadConfiguration}
+                        mt="xs"
+                      >
+                        Atnaujinti nustatymus
+                      </Button>
+                    </Alert>
+                  )}
+
+                  <Group>
+                    <Button
+                      type="submit"
+                      value="test"
+                      color="teal"
+                      variant={useServerCredentials ? 'filled' : 'light'}
+                      loading={busy && !saving}
+                      disabled={saving}
+                      leftSection={<IconPlugConnected size={17} />}
+                    >
+                      Patikrinti prisijungimą
+                    </Button>
+                    {!useServerCredentials && (
+                      <Button
+                        type="submit"
+                        value="save"
+                        color="teal"
+                        loading={saving}
+                        disabled={
+                          busy || configurationLoading || !configuration || !!configurationError
+                        }
+                      >
+                        Patikrinti ir išsaugoti prisijungimą
+                      </Button>
+                    )}
+                  </Group>
+                </Stack>
+              </form>
+            </Paper>
+
+            {result && (
+              <Stack gap="sm" aria-live="polite">
+                <Alert
+                  color="teal"
+                  title={saved ? 'Prisijungimas veikia ir išsaugotas' : 'Prisijungimas veikia'}
+                  icon={<IconCheck size={20} />}
                 >
-                  Bandyti dar kartą
-                </Button>
-              </Alert>
-            )}
-
-            <Select
-              label="DPD paskyra"
-              description="Seniems parduotuvės prisijungimams rinkis esamą paskyrą. Testinei aplinkai DPD išduoda atskirus prisijungimus."
-              data={Object.entries(environmentLabels).map(([value, label]) => ({ value, label }))}
-              value={environment}
-              allowDeselect={false}
-              disabled={busy || useServerCredentials}
-              onChange={(value) => {
-                if (value !== 'production' && value !== 'sandbox') return;
-                setEnvironment(value);
-                if (passwordField.current) passwordField.current.value = '';
-                resetFeedback();
-              }}
-            />
-
-            {configuration?.credentialsConfigured && (
-              <Switch
-                label="Naudoti išsaugotą prisijungimą"
-                description={environmentLabels[configuration.environment]}
-                checked={useServerCredentials}
-                disabled={busy}
-                color="teal"
-                onChange={(event) => {
-                  const checked = event.currentTarget.checked;
-                  setUseServerCredentials(checked);
-                  if (checked) setEnvironment(configuration.environment);
-                  if (passwordField.current) passwordField.current.value = '';
-                  resetFeedback();
-                }}
-              />
-            )}
-
-            {!useServerCredentials && (
-              <Stack gap="md">
-                <TextInput
-                  name="dpd-api-user"
-                  label="DPD naudotojas"
-                  description="Prisijungimas, kurį naudojai „DPD Baltic Shipping“ modulyje."
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={username}
-                  disabled={busy}
-                  required
-                  onChange={(event) => {
-                    setUsername(event.currentTarget.value);
-                    resetFeedback();
-                  }}
-                />
-                <PasswordInput
-                  ref={attachPasswordField}
-                  name="dpd-api-password"
-                  label="DPD slaptažodis"
-                  description="Po bandymo laukelis išvalomas. Prisijungimas išsaugomas tik pasirinkus išsaugojimo mygtuką."
-                  autoComplete="off"
-                  visibilityToggleButtonProps={{ 'aria-label': 'Rodyti arba slėpti slaptažodį' }}
-                  disabled={busy}
-                  required
-                  onChange={resetFeedback}
-                />
+                  <Text size="sm">{result.message}</Text>
+                  {saved && (
+                    <Text size="sm" mt="sm">
+                      Prisijungimo duomenys išsaugoti užšifruoti. Kuriant etiketes jų iš naujo
+                      įvesti nereikės.
+                    </Text>
+                  )}
+                  <Text size="sm" mt="sm">
+                    Ši patikra nepatvirtina sutarties galiojimo. Siuntos sukūrimą ir etiketę
+                    išbandysime atskirai.
+                  </Text>
+                  <Text size="xs" mt="sm" c="dimmed">
+                    {environmentLabels[result.environment]} · Patikrinta{' '}
+                    {new Date(result.checkedAt).toLocaleString('lt-LT')}
+                  </Text>
+                </Alert>
+                <Accordion variant="contained" radius="md">
+                  <Accordion.Item value="details">
+                    <Accordion.Control>Patikros techninė informacija</Accordion.Control>
+                    <Accordion.Panel>
+                      <Stack gap={5}>
+                        <Text size="sm">API: DPD Interconnector</Text>
+                        <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
+                          Adresas: {result.endpoint}
+                        </Text>
+                        <Text size="sm">Metodas: {result.method}</Text>
+                      </Stack>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
               </Stack>
             )}
-
-            {error && (
-              <Alert color="red" title="Veiksmas nepavyko" role="alert">
-                {error}
-                <Button variant="subtle" color="red" size="xs" onClick={loadConfiguration} mt="xs">
-                  Atnaujinti nustatymus
-                </Button>
-              </Alert>
-            )}
-
-            <Group>
-              <Button
-                type="submit"
-                value="test"
-                color="teal"
-                variant={useServerCredentials ? 'filled' : 'light'}
-                loading={busy && !saving}
-                disabled={saving}
-                leftSection={<IconPlugConnected size={17} />}
-              >
-                Patikrinti prisijungimą
-              </Button>
-              {!useServerCredentials && (
-                <Button
-                  type="submit"
-                  value="save"
-                  color="teal"
-                  loading={saving}
-                  disabled={busy || configurationLoading || !configuration || !!configurationError}
-                >
-                  Patikrinti ir išsaugoti prisijungimą
-                </Button>
-              )}
-            </Group>
-          </Stack>
-        </form>
-      </Paper>
-
-      {result && (
-        <Stack gap="sm" aria-live="polite">
-          <Alert
-            color="teal"
-            title={saved ? 'Prisijungimas veikia ir išsaugotas' : 'Prisijungimas veikia'}
-            icon={<IconCheck size={20} />}
-          >
-            <Text size="sm">{result.message}</Text>
-            {saved && (
-              <Text size="sm" mt="sm">
-                Prisijungimo duomenys išsaugoti užšifruoti. Kuriant etiketes jų iš naujo įvesti
-                nereikės.
-              </Text>
-            )}
-            <Text size="sm" mt="sm">
-              Ši patikra nepatvirtina sutarties galiojimo. Siuntos sukūrimą ir etiketę išbandysime
-              atskirai.
-            </Text>
-            <Text size="xs" mt="sm" c="dimmed">
-              {environmentLabels[result.environment]} · Patikrinta{' '}
-              {new Date(result.checkedAt).toLocaleString('lt-LT')}
-            </Text>
-          </Alert>
-          <Accordion variant="contained" radius="md">
-            <Accordion.Item value="details">
-              <Accordion.Control>Patikros techninė informacija</Accordion.Control>
-              <Accordion.Panel>
-                <Stack gap={5}>
-                  <Text size="sm">API: DPD Interconnector</Text>
-                  <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
-                    Adresas: {result.endpoint}
-                  </Text>
-                  <Text size="sm">Metodas: {result.method}</Text>
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        </Stack>
-      )}
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
     </Stack>
   );
 }
