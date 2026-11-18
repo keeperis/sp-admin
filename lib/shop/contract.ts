@@ -20,6 +20,7 @@ export type ShopProduct = {
   collectionIds?: string[];
   price: number;
   stock: number;
+  weightGrams?: number | null;
   images: ShopImage[];
   color: string;
   colorHex: string;

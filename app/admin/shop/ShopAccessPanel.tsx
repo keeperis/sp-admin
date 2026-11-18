@@ -1,5 +1,6 @@
 'use client';
 import {
+  Accordion,
   Alert,
   Badge,
   Button,
@@ -9,7 +10,6 @@ import {
   Stack,
   Switch,
   Text,
-  Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useCallback, useEffect, useState } from 'react';
@@ -75,58 +75,76 @@ export function ShopAccessPanel() {
 
   return (
     <Paper withBorder p="md" radius="md">
-      <Stack gap="sm">
-        <Group justify="space-between">
-          <Title order={3}>Parduotuvės prieiga</Title>
-          {saved && (
-            <Badge color={saved.isPublic ? 'teal' : 'orange'}>
-              {saved.isPublic ? 'Vieša' : 'Uždaryta lankytojams'}
-            </Badge>
-          )}
-        </Group>
-        {!saved && busy && <Loader size="sm" aria-label="Kraunami prieigos nustatymai" />}
-        <Text size="sm" c="dimmed">
-          Kol parduotuvė uždaryta, lankytojai mato pranešimą apie ruošiamą parduotuvę. Prisijungę
-          administratoriai gali ją peržiūrėti ir tęsti darbus.
-        </Text>
-        <Switch
-          label="Parduotuvė vieša"
-          checked={isPublic}
-          onChange={(event) => setIsPublic(event.currentTarget.checked)}
-          disabled={!saved || busy}
-          description={dirty ? 'Pakeitimas įsigalios paspaudus „Išsaugoti prieigą“.' : undefined}
-        />
-        {dirty && isPublic && (
-          <Alert color="yellow">Išsaugojus parduotuvė bus pasiekiama visiems lankytojams.</Alert>
-        )}
-        {error && (
-          <Alert color="red" title="Prieiga nepakeista">
-            {error}
-          </Alert>
-        )}
-        {!previewUrl && (
-          <Alert color="yellow">Parduotuvės peržiūros adresas dar nesukonfigūruotas.</Alert>
-        )}
-        <Group>
-          <Button color="teal" onClick={save} loading={busy && !!saved} disabled={!dirty || busy}>
-            Išsaugoti prieigą
-          </Button>
-          <Button variant="default" onClick={load} disabled={busy}>
-            Atnaujinti prieigos būseną
-          </Button>
-          {previewUrl && (
-            <Button
-              component="a"
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="light"
-            >
-              Peržiūrėti parduotuvę
-            </Button>
-          )}
-        </Group>
-      </Stack>
+      <Accordion variant="default">
+        <Accordion.Item value="access" style={{ border: 0 }}>
+          <Accordion.Control>
+            <Group justify="space-between" pr="sm">
+              <Text fw={600}>Parduotuvės prieiga</Text>
+              {saved && (
+                <Badge color={saved.isPublic ? 'teal' : 'orange'}>
+                  {saved.isPublic ? 'Vieša' : 'Uždaryta lankytojams'}
+                </Badge>
+              )}
+            </Group>
+          </Accordion.Control>
+          <Accordion.Panel>
+            <Stack gap="sm">
+              {!saved && busy && <Loader size="sm" aria-label="Kraunami prieigos nustatymai" />}
+              <Text size="sm" c="dimmed">
+                Kol parduotuvė uždaryta, lankytojai mato pranešimą apie ruošiamą parduotuvę.
+                Prisijungę administratoriai gali ją peržiūrėti ir tęsti darbus.
+              </Text>
+              <Switch
+                label="Parduotuvė vieša"
+                checked={isPublic}
+                onChange={(event) => setIsPublic(event.currentTarget.checked)}
+                disabled={!saved || busy}
+                description={
+                  dirty ? 'Pakeitimas įsigalios paspaudus „Išsaugoti prieigą“.' : undefined
+                }
+              />
+              {dirty && isPublic && (
+                <Alert color="yellow">
+                  Išsaugojus parduotuvė bus pasiekiama visiems lankytojams.
+                </Alert>
+              )}
+              {error && (
+                <Alert color="red" title="Prieiga nepakeista">
+                  {error}
+                </Alert>
+              )}
+              {!previewUrl && (
+                <Alert color="yellow">Parduotuvės peržiūros adresas dar nesukonfigūruotas.</Alert>
+              )}
+              <Group>
+                <Button
+                  color="teal"
+                  onClick={save}
+                  loading={busy && !!saved}
+                  disabled={!dirty || busy}
+                >
+                  Išsaugoti prieigą
+                </Button>
+                <Button variant="default" onClick={load} disabled={busy}>
+                  Atnaujinti prieigos būseną
+                </Button>
+                {previewUrl && (
+                  <Button
+                    component="a"
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="light"
+                  >
+                    Peržiūrėti parduotuvę
+                  </Button>
+                )}
+              </Group>
+            </Stack>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+      {error && !saved && <Alert color="red">{error}</Alert>}
     </Paper>
   );
 }

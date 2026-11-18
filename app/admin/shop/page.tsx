@@ -24,13 +24,11 @@ import {
 import { notifications } from '@mantine/notifications';
 import {
   IconArrowUpRight,
-  IconCategory,
   IconEdit,
   IconPackage,
   IconPlus,
   IconRefresh,
   IconSearch,
-  IconTypography,
 } from '@tabler/icons-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -58,6 +56,7 @@ import { ProductEditor } from './ProductEditor';
 import styles from './ProductList.module.css';
 import { ProductQuickEdit, type ProductQuickEditChanges } from './ProductQuickEdit';
 import { ShopAccessPanel } from './ShopAccessPanel';
+import { ShopStatistics } from './ShopStatistics';
 
 const storefrontPreview = shopPreviewStartUrl();
 const statusLabels = { draft: 'Juodraštis', published: 'Paskelbtas', archived: 'Archyvuotas' };
@@ -73,7 +72,13 @@ export default function ShopAdmin() {
 
 function ShopAdminContent() {
   const searchParams = useSearchParams();
-  const requestedTab = searchParams.get('tab') === 'orders' ? 'orders' : 'products';
+  const queryTab = searchParams.get('tab') || 'orders';
+  const requestedTab = ['products', 'content', 'orders'].includes(queryTab) ? queryTab : 'settings';
+  const [settingsTab, setSettingsTab] = useState<string | null>(
+    ['categories', 'collections', 'commerce', 'dpd'].includes(queryTab) ? queryTab : 'categories',
+  );
+  const [statisticsVersion, setStatisticsVersion] = useState(0);
+  const refreshStatistics = useCallback(() => setStatisticsVersion((value) => value + 1), []);
   const [snapshot, setSnapshot] = useState<ShopSnapshot | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -117,7 +122,9 @@ function ShopAdminContent() {
   }, [load]);
   useEffect(() => {
     setActiveTab(requestedTab);
-  }, [requestedTab]);
+    if (['categories', 'collections', 'commerce', 'dpd'].includes(queryTab))
+      setSettingsTab(queryTab);
+  }, [requestedTab, queryTab]);
   useEffect(() => {
     if (!dirty && !contentDirty && !quickDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -262,6 +269,7 @@ function ShopAdminContent() {
     setQuickDirtyIds(new Set());
     setContentKey((k) => k + 1);
     await load();
+    refreshStatistics();
   }
   function newProduct() {
     if (mutationLock.current || loading || quickDirty) return;
@@ -323,13 +331,13 @@ function ShopAdminContent() {
         <Group justify="space-between" align="flex-start">
           <div>
             <Text size="xs" tt="uppercase" c="dimmed" fw={700} style={{ letterSpacing: '.1em' }}>
-              Soulpoetry Objects
+              Soulpoetry
             </Text>
             <Title order={1} mt={5}>
               Parduotuvės valdymas
             </Title>
             <Text c="dimmed" size="sm" mt={8}>
-              Kolekcijos, dirbiniai ir jų istorijos — vienoje vietoje.
+              Užsakymai, prekės ir kasdieniai parduotuvės darbai.
             </Text>
           </div>
           <Group>
@@ -356,6 +364,7 @@ function ShopAdminContent() {
             </Button>
           </Group>
         </Group>
+        <ShopStatistics version={`${snapshot.revision}:${statisticsVersion}`} />
         <ShopAccessPanel />
         {error && !product && !category && !collection && (
           <Alert color="red" title="Pakeitimai neišsaugoti">
@@ -386,46 +395,20 @@ function ShopAdminContent() {
             </Button>
           </Alert>
         )}
-        <SimpleGrid cols={{ base: 2, sm: 4 }}>
-          {[
-            ['Produktų', data.products.length],
-            ['Paskelbta', data.products.filter((p) => p.status === 'published').length],
-            ['Juodraščių', data.products.filter((p) => p.status === 'draft').length],
-            ['Kategorijų', data.categories.length],
-          ].map(([label, value]) => (
-            <Paper key={label} withBorder radius="md" p="lg">
-              <Text size="sm" c="dimmed">
-                {label}
-              </Text>
-              <Text size="30px" fw={600} mt={5}>
-                {value}
-              </Text>
-            </Paper>
-          ))}
-        </SimpleGrid>
         <Tabs value={activeTab} onChange={setActiveTab} keepMounted>
-          <Tabs.List mb="xl">
+          <Tabs.List mb="lg">
+            <Tabs.Tab value="orders">Užsakymai</Tabs.Tab>
             <Tabs.Tab value="products" leftSection={<IconPackage size={17} />}>
               Produktai
             </Tabs.Tab>
-            <Tabs.Tab value="categories" leftSection={<IconCategory size={17} />}>
-              Kategorijos
-            </Tabs.Tab>
-            <Tabs.Tab value="collections">Kolekcijos</Tabs.Tab>
-            <Tabs.Tab value="content" leftSection={<IconTypography size={17} />}>
-              Svetainės turinys {contentDirty ? '•' : ''}
-            </Tabs.Tab>
-            <Tabs.Tab value="commerce">Dokumentai ir mokėjimai</Tabs.Tab>
-            <Tabs.Tab value="orders">Užsakymai ir atsisakymai</Tabs.Tab>
-            <Tabs.Tab value="dpd">DPD siuntimas</Tabs.Tab>
+            <Tabs.Tab value="content">Svetainės turinys {contentDirty ? '•' : ''}</Tabs.Tab>
+            <Tabs.Tab value="settings">Nustatymai</Tabs.Tab>
           </Tabs.List>
-          <Tabs.Panel value="commerce">
-            <CommerceEditor />
-          </Tabs.Panel>
+
           <Tabs.Panel value="orders">
-            <OrdersPanel />
+            <OrdersPanel onChanged={refreshStatistics} />
           </Tabs.Panel>
-          <Tabs.Panel value="dpd">{activeTab === 'dpd' && <DpdIntegration />}</Tabs.Panel>
+
           <Tabs.Panel value="products">
             <Stack gap="lg">
               <div className={styles.toolbar}>
@@ -581,91 +564,7 @@ function ShopAdminContent() {
               )}
             </Stack>
           </Tabs.Panel>
-          <Tabs.Panel value="categories">
-            <Stack gap="lg">
-              <Group justify="space-between">
-                <Text c="dimmed" size="sm">
-                  Tvarka čia nustato kategorijų tvarką parduotuvėje.
-                </Text>
-                <Button
-                  color="teal"
-                  leftSection={<IconPlus size={16} />}
-                  disabled={busy || loading}
-                  onClick={() => {
-                    setCategory({
-                      id: '',
-                      slug: '',
-                      label: '',
-                      description: '',
-                      active: true,
-                      order: Math.min(
-                        99999,
-                        Math.max(-1, ...data.categories.map((c) => c.order)) + 1,
-                      ),
-                      image: null,
-                    });
-                    setDirty(false);
-                    setError('');
-                  }}
-                >
-                  Nauja kategorija
-                </Button>
-              </Group>
-              <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
-                {[...data.categories]
-                  .sort((a, b) => a.order - b.order)
-                  .map((c) => (
-                    <Paper withBorder p="lg" radius="md" key={c.id}>
-                      <Stack gap="sm">
-                        {c.image && (
-                          <Image src={c.image.url} alt={c.image.alt} h={135} radius="sm" />
-                        )}
-                        <Group justify="space-between">
-                          <Title order={3} size="h4">
-                            {c.label}
-                          </Title>
-                          <Badge variant="light" color={c.active ? 'teal' : 'gray'}>
-                            {c.active ? 'Rodoma' : 'Paslėpta'}
-                          </Badge>
-                        </Group>
-                        <Text size="xs" c="dimmed">
-                          /{c.slug} · eilė {c.order} ·{' '}
-                          {data.products.filter((p) => p.category === c.id).length} produktų
-                        </Text>
-                        <Text size="sm" lineClamp={3}>
-                          {c.description || 'Aprašymas dar neįrašytas.'}
-                        </Text>
-                        <Button
-                          variant="default"
-                          disabled={busy || loading}
-                          leftSection={<IconEdit size={15} />}
-                          onClick={() => {
-                            setCategory(structuredClone(c));
-                            setDirty(false);
-                            setError('');
-                          }}
-                        >
-                          Redaguoti kategoriją
-                        </Button>
-                      </Stack>
-                    </Paper>
-                  ))}
-              </SimpleGrid>
-            </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="collections">
-            <CollectionsPanel
-              collections={data.collections ?? []}
-              products={data.products}
-              disabled={busy || loading || quickDirty}
-              onEdit={(value) => {
-                if (mutationLock.current || loading || quickDirty) return;
-                setCollection(value);
-                setDirty(false);
-                setError('');
-              }}
-            />
-          </Tabs.Panel>
+
           <Tabs.Panel value="content">
             <ContentEditor
               key={contentKey}
@@ -673,6 +572,107 @@ function ShopAdminContent() {
               save={(content: ShopContent) => commit('content', content)}
               dirtyChanged={setContentDirty}
             />
+          </Tabs.Panel>
+          <Tabs.Panel value="settings">
+            <Tabs value={settingsTab} onChange={setSettingsTab} keepMounted>
+              <Tabs.List mb="lg">
+                <Tabs.Tab value="categories">Kategorijos</Tabs.Tab>
+                <Tabs.Tab value="collections">Kolekcijos</Tabs.Tab>
+                <Tabs.Tab value="commerce">Dokumentai ir mokėjimai</Tabs.Tab>
+                <Tabs.Tab value="dpd">DPD siuntimas</Tabs.Tab>
+              </Tabs.List>
+              <Tabs.Panel value="categories">
+                <Stack gap="lg">
+                  <Group justify="space-between">
+                    <Text c="dimmed" size="sm">
+                      Tvarka čia nustato kategorijų tvarką parduotuvėje.
+                    </Text>
+                    <Button
+                      color="teal"
+                      leftSection={<IconPlus size={16} />}
+                      disabled={busy || loading}
+                      onClick={() => {
+                        setCategory({
+                          id: '',
+                          slug: '',
+                          label: '',
+                          description: '',
+                          active: true,
+                          order: Math.min(
+                            99999,
+                            Math.max(-1, ...data.categories.map((c) => c.order)) + 1,
+                          ),
+                          image: null,
+                        });
+                        setDirty(false);
+                        setError('');
+                      }}
+                    >
+                      Nauja kategorija
+                    </Button>
+                  </Group>
+                  <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+                    {[...data.categories]
+                      .sort((a, b) => a.order - b.order)
+                      .map((c) => (
+                        <Paper withBorder p="lg" radius="md" key={c.id}>
+                          <Stack gap="sm">
+                            {c.image && (
+                              <Image src={c.image.url} alt={c.image.alt} h={135} radius="sm" />
+                            )}
+                            <Group justify="space-between">
+                              <Title order={3} size="h4">
+                                {c.label}
+                              </Title>
+                              <Badge variant="light" color={c.active ? 'teal' : 'gray'}>
+                                {c.active ? 'Rodoma' : 'Paslėpta'}
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              /{c.slug} · eilė {c.order} ·{' '}
+                              {data.products.filter((p) => p.category === c.id).length} produktų
+                            </Text>
+                            <Text size="sm" lineClamp={3}>
+                              {c.description || 'Aprašymas dar neįrašytas.'}
+                            </Text>
+                            <Button
+                              variant="default"
+                              disabled={busy || loading}
+                              leftSection={<IconEdit size={15} />}
+                              onClick={() => {
+                                setCategory(structuredClone(c));
+                                setDirty(false);
+                                setError('');
+                              }}
+                            >
+                              Redaguoti kategoriją
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      ))}
+                  </SimpleGrid>
+                </Stack>
+              </Tabs.Panel>
+              <Tabs.Panel value="collections">
+                <CollectionsPanel
+                  collections={data.collections ?? []}
+                  products={data.products}
+                  disabled={busy || loading || quickDirty}
+                  onEdit={(value) => {
+                    if (mutationLock.current || loading || quickDirty) return;
+                    setCollection(value);
+                    setDirty(false);
+                    setError('');
+                  }}
+                />
+              </Tabs.Panel>
+              <Tabs.Panel value="commerce">
+                <CommerceEditor />
+              </Tabs.Panel>
+              <Tabs.Panel value="dpd">
+                {activeTab === 'settings' && settingsTab === 'dpd' && <DpdIntegration />}
+              </Tabs.Panel>{' '}
+            </Tabs>
           </Tabs.Panel>
         </Tabs>
         <Text size="xs" c="dimmed">

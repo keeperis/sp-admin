@@ -216,6 +216,16 @@ export function ProductEditor({
                 onChange={(e) => field('description', e.target.value)}
                 maxLength={10000}
               />
+              <NumberInput
+                label="Prekės svoris, g"
+                description="Naudojamas DPD siuntos svoriui apskaičiuoti: sudedami visų užsakymo prekių svoriai pagal kiekį. Parduotuvėje nerodomas."
+                placeholder="Pvz., 450"
+                min={1}
+                max={1000000}
+                allowDecimal={false}
+                value={product.weightGrams ?? ''}
+                onChange={(value) => field('weightGrams', typeof value === 'number' ? value : null)}
+              />
               <TextInput
                 label="Matmenys / talpa"
                 value={product.size}

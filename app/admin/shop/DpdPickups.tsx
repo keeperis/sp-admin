@@ -653,6 +653,11 @@ export function DpdPickups({ configurationRevision }: { configurationRevision: n
                     <Badge size="sm" color={states[pickup.state].color} variant="light">
                       {states[pickup.state].label}
                     </Badge>
+                    {pickup.closedAt && (
+                      <Badge size="sm" color="gray" variant="outline">
+                        Paėmimas užbaigtas
+                      </Badge>
+                    )}
                     {pickup.environment === 'sandbox' && (
                       <Badge size="sm" color="blue">
                         Testas
@@ -687,6 +692,13 @@ export function DpdPickups({ configurationRevision }: { configurationRevision: n
                   <Text size="xs" c="dimmed">
                     Sukurta: {createdTime(pickup.createdAt)}
                   </Text>
+                  {pickup.closedAt && (
+                    <Text size="xs" c="dimmed">
+                      Paėmimas užbaigtas: {createdTime(pickup.closedAt)}
+                      {pickup.closedBy ? ` · ${pickup.closedBy}` : ''}. Nepaimtos siuntos
+                      atlaisvintos kitam iškvietimui.
+                    </Text>
+                  )}
                   {pickup.errorMessage && (
                     <Alert color={states[pickup.state].color}>{pickup.errorMessage}</Alert>
                   )}

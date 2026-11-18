@@ -36,6 +36,11 @@ export type DpdPickup = {
   reference: string;
   errorMessage: string | null;
   canResolve: boolean;
+  claimActive: boolean;
+  closedAt: string | null;
+  closedBy: string | null;
+  handedOverOrderIds?: string[];
+  handedOverAt?: string | null;
 };
 
 export type DpdPickupsData = {

@@ -43,6 +43,8 @@ type DpdState = {
     revision: number;
   };
   shipment: Shipment | null;
+  suggestedWeightKg?: number | null;
+  order?: ShopOrderView;
 };
 type CreateInput = {
   environment: 'production' | 'sandbox';
@@ -59,10 +61,12 @@ export function OrderDpdShipment({
   order,
   disabled,
   onTrackingReady,
+  onChange,
 }: {
   order: ShopOrderView;
   disabled: boolean;
   onTrackingReady: (tracking: DpdTracking) => void;
+  onChange: (order: ShopOrderView) => void;
 }) {
   const buyerLocker = order.delivery.dpdLocker;
   const buyerCourierAddress = order.delivery.courierAddress;
@@ -84,15 +88,19 @@ export function OrderDpdShipment({
   const [loadingLockers, setLoadingLockers] = useState(false);
   const [weightKg, setWeightKg] = useState<string | number>('');
   const [confirmProduction, setConfirmProduction] = useState(false);
-  const [format, setFormat] = useState<'A4' | 'A6'>('A4');
+  const [format, setFormat] = useState<'A4' | 'A6'>('A6');
   const request = useRef<{ requestId: string; input: CreateInput } | null>(null);
   const requestRejected = useRef(false);
   const locked = useRef(false);
+  const orderCallback = useRef(onChange);
+  orderCallback.current = onChange;
   const trackingCallback = useRef(onTrackingReady);
   trackingCallback.current = onTrackingReady;
 
   const acceptState = useCallback((next: DpdState) => {
     setData(next);
+    if (next.order) orderCallback.current(next.order);
+    if (next.suggestedWeightKg) setWeightKg((current) => current || next.suggestedWeightKg || '');
     setNeedsStatusCheck(false);
     if (
       (next.shipment?.state === 'rejected' &&
@@ -285,8 +293,13 @@ export function OrderDpdShipment({
     setBusy(true);
     setError('');
     try {
-      const label: { filename: string; contentType: 'application/pdf'; base64: string } =
-        await shopRequest(`orders/${order.id}/dpd/label`, 'POST', { format, confirmProduction });
+      const label: {
+        filename: string;
+        contentType: 'application/pdf';
+        base64: string;
+        order?: ShopOrderView;
+      } = await shopRequest(`orders/${order.id}/dpd/label`, 'POST', { format, confirmProduction });
+      if (label.order) orderCallback.current(label.order);
       const bytes = Uint8Array.from(atob(label.base64), (character) => character.charCodeAt(0));
       const url = URL.createObjectURL(new Blob([bytes], { type: label.contentType }));
       const anchor = document.createElement('a');
@@ -402,9 +415,9 @@ export function OrderDpdShipment({
               </Button>
             </Group>
             <Text size="sm" c="dimmed">
-              Siuntėjo adresas imamas iš DPD paskyros — patikrink jį etiketėje. Siuntos sukūrimas
-              nepakeičia užsakymo būsenos. Perdavimo DPD metu pažymėk užsakymą išsiųstu žemiau —
-              tada bus paruoštas pirkėjo pranešimas.
+              Siuntėjo adresas imamas iš DPD paskyros — patikrink jį etiketėje. Sukūrus siuntą
+              užsakymas pažymimas „Ruošiamas“. Kurjeriui paėmus siuntas, užsakymų sąraše pasirink
+              „Siuntos paimtos“.
             </Text>
           </>
         )}

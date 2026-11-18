@@ -6,9 +6,9 @@ import {
   Group,
   Loader,
   Modal,
+  Paper,
   Select,
   Stack,
-  Table,
   Tabs,
   Text,
   TextInput,
@@ -28,9 +28,16 @@ import {
   orderStatusLabel,
   paymentLabel,
 } from '@/lib/shop/commerce-mode';
+import { DpdHandover } from './DpdHandover';
+import { DpdPickups } from './DpdPickups';
+import { OrderDpdQuickAction } from './OrderDpdQuickAction';
 import { type DpdTracking, OrderDpdShipment } from './OrderDpdShipment';
 import { OrderFulfillment } from './OrderFulfillment';
+import styles from './OrderList.module.css';
+import { OrderListAction } from './OrderListAction';
 import { OrderNotifications } from './OrderNotifications';
+import { OrderPaymentQuickAction } from './OrderPaymentQuickAction';
+import { OrderTrackingStatus } from './OrderTrackingStatus';
 import { type Withdrawal, WithdrawalRequests } from './WithdrawalRequests';
 
 const euros = (cents: number) =>
@@ -44,7 +51,9 @@ const statusColor = (status: ShopOrderView['status']) =>
       : status === 'awaiting_payment'
         ? 'yellow'
         : 'gray';
-export function OrdersPanel() {
+export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
+  const [operation, setOperation] = useState<'pickup' | 'handover' | null>(null);
+  const [fulfillment, setFulfillment] = useState<string | null>('all');
   const [orders, setOrders] = useState<ShopOrderView[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [selected, setSelected] = useState<ShopOrderView | null>(null);
@@ -63,6 +72,7 @@ export function OrdersPanel() {
       const data = await shopRequest('orders');
       setOrders(data.orders);
       setWithdrawals(data.withdrawals);
+      onChanged();
       setSelected((current) =>
         current
           ? data.orders.find((order: ShopOrderView) => order.id === current.id) || current
@@ -73,7 +83,7 @@ export function OrdersPanel() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [onChanged]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -87,6 +97,7 @@ export function OrdersPanel() {
       });
       setSelected(order);
       setConfirming(false);
+      onChanged();
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -105,6 +116,7 @@ export function OrdersPanel() {
       });
       setSelected(order);
       setConfirmingCancellation(false);
+      onChanged();
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -113,8 +125,13 @@ export function OrdersPanel() {
     }
   }
   function updateOrder(order: ShopOrderView) {
-    setOrders((current) => current.map((item) => (item.id === order.id ? order : item)));
-    setSelected((current) => (current?.id === order.id ? order : current));
+    onChanged();
+    const merge = (current: ShopOrderView): ShopOrderView => ({
+      ...order,
+      ...(order.dpdTracking === undefined ? { dpdTracking: current.dpdTracking } : {}),
+    });
+    setOrders((current) => current.map((item) => (item.id === order.id ? merge(item) : item)));
+    setSelected((current) => (current?.id === order.id ? merge(current) : current));
   }
   async function retryWithdrawalEmail(id: string, recipient: 'buyer' | 'seller') {
     if (busy) return;
@@ -141,6 +158,7 @@ export function OrdersPanel() {
   const filtered = orders.filter(
     (o) =>
       (status === 'all' || o.status === status) &&
+      (fulfillment === 'all' || (o.status === 'paid' && o.fulfillmentStatus === fulfillment)) &&
       `${o.number} ${o.customer.name} ${o.customer.email}`
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -149,22 +167,23 @@ export function OrdersPanel() {
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2}>Užsakymai ir atsisakymai</Title>
+          <Title order={2}>Užsakymai</Title>
           <Text size="sm" c="dimmed">
-            Rodomi 50 naujausių užsakymų ir 50 atsisakymo prašymų.
+            Ruošk siuntas, spausdink etiketes ir valdyk užsakymus čia pat.
           </Text>
         </div>
         <Button variant="default" loading={busy} onClick={load}>
           Atnaujinti
         </Button>
       </Group>
-      <Alert color="yellow">
-        Kiekvieno užsakymo mokėjimas pažymėtas TEST arba LIVE. TEST užsakymai yra bandomieji; LIVE
-        užsakymai — tikri pardavimai. „Stripe“ būseną patvirtina serveris, o LIVE pavedimo gavimą
-        patvirtink tik patikrinęs lėšas banke. Užsakymai rezervuoja prekių likutį iki nurodyto
-        termino. Vykdymas ir laiškų būsenos pateikiami užsakymo viduje. Sąskaitos ir pinigų
-        grąžinimas tvarkomi atskirai.
-      </Alert>
+      <Group>
+        <Button variant="light" onClick={() => setOperation('pickup')}>
+          Iškviesti kurjerį
+        </Button>
+        <Button color="teal" variant="light" onClick={() => setOperation('handover')}>
+          Siuntos paimtos
+        </Button>
+      </Group>
       {error && <Alert color="red">{error}</Alert>}
       <Tabs value={activeSection} onChange={setActiveSection}>
         <Tabs.List mb="lg">
@@ -178,7 +197,7 @@ export function OrdersPanel() {
         </Tabs.List>
         <Tabs.Panel value="orders">
           <Stack>
-            <Group>
+            <div className={styles.filters}>
               <TextInput
                 aria-label="Ieškoti užsakymo"
                 placeholder="Numeris, vardas, el. paštas…"
@@ -186,84 +205,103 @@ export function OrdersPanel() {
                 onChange={(e) => setQuery(e.currentTarget.value)}
               />
               <Select
-                aria-label="Užsakymo būsena"
+                aria-label="Mokėjimo būsena"
                 value={status}
                 onChange={setStatus}
                 allowDeselect={false}
                 data={[
-                  { value: 'all', label: 'Visos būsenos' },
+                  { value: 'all', label: 'Visi mokėjimai' },
                   ...Object.entries(orderStatusLabels).map(([value, label]) => ({ value, label })),
                 ]}
               />
-              {busy && <Loader size="sm" />}
-            </Group>
-            <Table.ScrollContainer minWidth={780}>
-              <Table highlightOnHover verticalSpacing="sm">
-                <Table.Thead>
-                  <Table.Tr>
-                    {['Numeris / data', 'Pirkėjas', 'Mokėjimas', 'Suma', 'Būsena', ''].map(
-                      (label) => (
-                        <Table.Th key={label}>{label}</Table.Th>
-                      ),
-                    )}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filtered.map((o) => (
-                    <Table.Tr key={o.id}>
-                      <Table.Td>
-                        <Text size="sm" fw={600}>
+              <Select
+                aria-label="Vykdymo būsena"
+                value={fulfillment}
+                onChange={setFulfillment}
+                allowDeselect={false}
+                data={[
+                  { value: 'all', label: 'Visas vykdymas' },
+                  ...Object.entries(fulfillmentStatusLabels).map(([value, label]) => ({
+                    value,
+                    label,
+                  })),
+                ]}
+              />
+            </div>
+            {busy && <Loader size="sm" />}
+            <ul className={styles.list} aria-label="Užsakymų sąrašas">
+              {filtered.map((o) => (
+                <li key={o.id}>
+                  <Paper withBorder radius="md" p="md" className={styles.card}>
+                    <div className={styles.identity}>
+                      <Group justify="space-between" gap="xs">
+                        <Text fw={600} size="sm">
                           {o.number}
                         </Text>
-                        <Text size="xs" c="dimmed">
-                          {date(o.createdAt)}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{o.customer.name}</Text>
-                        <Text size="xs" c="dimmed">
-                          {o.customer.email}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {paymentLabel(o.paymentMethod, o.mode)}
-                        {isLiveCommerce(o.mode) && (
-                          <Text size="xs" c="teal">
-                            LIVE · tikras mokėjimas
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>{euros(o.totalCents)}</Table.Td>
-                      <Table.Td>
-                        <Badge color={statusColor(o.status)} variant="light">
-                          {orderStatusLabel(o.status, o.mode)}
-                        </Badge>
-                        {o.status === 'paid' && (
-                          <Text size="xs" c="dimmed" mt={4}>
-                            {fulfillmentStatusLabels[o.fulfillmentStatus]}
-                          </Text>
-                        )}
-                        {o.withdrawalRequestedAt && (
-                          <Text size="xs" c="orange">
-                            Gautas atsisakymo prašymas
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        <Button
-                          size="xs"
-                          variant="subtle"
-                          disabled={busy}
-                          onClick={() => openOrder(o)}
+                        <Text fw={600}>{euros(o.totalCents)}</Text>
+                      </Group>
+                      <Text size="xs" c="dimmed" mb="sm">
+                        {date(o.createdAt)}
+                      </Text>
+                      <Text size="sm">{o.customer.name}</Text>
+                      <Text size="xs" c="dimmed">
+                        {o.customer.email}
+                      </Text>
+                      <Text size="sm" mt="sm">
+                        {o.lines.map((line) => `${line.name} × ${line.quantity}`).join(', ')}
+                      </Text>
+                    </div>
+                    <Stack gap="xs">
+                      <Badge color={statusColor(o.status)} variant="light">
+                        {orderStatusLabel(o.status, o.mode)}
+                      </Badge>
+                      {o.status === 'paid' && (
+                        <Badge
+                          color={o.fulfillmentStatus === 'fulfilled' ? 'teal' : 'blue'}
+                          variant="outline"
                         >
-                          Peržiūrėti
-                        </Button>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
+                          {fulfillmentStatusLabels[o.fulfillmentStatus]}
+                        </Badge>
+                      )}
+                      <Text size="xs" c="dimmed">
+                        {paymentLabel(o.paymentMethod, o.mode)}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {o.delivery.label} · {o.delivery.location}
+                      </Text>
+                      {o.trackingNumber && (
+                        <Text size="xs" c="dimmed">
+                          DPD: {o.trackingNumber}
+                        </Text>
+                      )}
+                      <OrderTrackingStatus tracking={o.dpdTracking} />
+                      {o.withdrawalRequestedAt && (
+                        <Text size="xs" c="orange">
+                          Gautas atsisakymo prašymas
+                        </Text>
+                      )}
+                    </Stack>
+                    <div className={styles.actions}>
+                      <OrderPaymentQuickAction order={o} disabled={busy} onChange={updateOrder} />
+                      {o.status === 'paid' && ['parcel', 'courier'].includes(o.delivery.method) && (
+                        <OrderDpdQuickAction order={o} disabled={busy} onChange={updateOrder} />
+                      )}
+                      {o.status === 'paid' && (
+                        <OrderListAction order={o} disabled={busy} onChange={updateOrder} />
+                      )}
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={busy}
+                        onClick={() => openOrder(o)}
+                      >
+                        Išsami peržiūra
+                      </Button>
+                    </div>
+                  </Paper>
+                </li>
+              ))}
+            </ul>
             {!filtered.length && (
               <Text c="dimmed">Užsakymų dar nėra arba jie neatitinka filtro.</Text>
             )}
@@ -282,6 +320,26 @@ export function OrdersPanel() {
           />
         </Tabs.Panel>
       </Tabs>
+      <Modal
+        opened={operation !== null}
+        onClose={() => {
+          setOperation(null);
+          void load();
+          onChanged();
+        }}
+        title={operation === 'pickup' ? 'DPD kurjerio iškvietimas' : 'Siuntų perdavimas kurjeriui'}
+        size="xl"
+        closeOnClickOutside={false}
+      >
+        {operation === 'pickup' && <DpdPickups configurationRevision={0} />}
+        {operation === 'handover' && (
+          <DpdHandover
+            onChange={(updated) => {
+              for (const order of updated) updateOrder(order);
+            }}
+          />
+        )}
+      </Modal>
       <Modal
         opened={!!selected}
         onClose={() => {
@@ -361,6 +419,7 @@ export function OrdersPanel() {
                   key={`dpd:${selected.id}`}
                   order={selected}
                   disabled={busy}
+                  onChange={updateOrder}
                   onTrackingReady={(tracking) =>
                     setDpdTracking({ ...tracking, orderId: selected.id })
                   }
@@ -375,6 +434,7 @@ export function OrdersPanel() {
                 onChange={updateOrder}
               />
             )}
+            <OrderTrackingStatus tracking={selected.dpdTracking} />
             <OrderNotifications
               key={`notifications:${selected.id}`}
               orderId={selected.id}

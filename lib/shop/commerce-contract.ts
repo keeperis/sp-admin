@@ -1,3 +1,4 @@
+import type { DpdOrderTracking } from './dpd-tracking-contract';
 // Shared with sp-api and sp-admin. The API selects the commerce mode.
 export type ShopCommerceMode = 'test' | 'live';
 export const documentKinds = ['terms', 'delivery', 'returns', 'privacy', 'cookies'] as const;
@@ -73,6 +74,7 @@ export type OrderLine = {
   image: string;
   quantity: number;
   unitCents: number;
+  weightGrams?: number | null;
   totalCents: number;
 };
 export type OrderStatus = 'awaiting_payment' | 'paid' | 'expired' | 'cancelled' | 'payment_review';
@@ -145,6 +147,7 @@ export type ShopOrderView = {
   trackingNumber: string | null;
   trackingUrl: string | null;
   fulfillmentHistory: FulfillmentHistoryEntry[];
+  dpdTracking?: DpdOrderTracking | null;
   customer: { name: string; email: string; phone: string };
   delivery: {
     method: 'studio' | 'parcel' | 'courier';

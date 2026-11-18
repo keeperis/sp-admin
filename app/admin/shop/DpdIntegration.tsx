@@ -20,6 +20,7 @@ import { IconCheck, IconPlugConnected, IconTruckDelivery } from '@tabler/icons-r
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { shopRequest } from '@/lib/shop/client';
 import { DpdPickups } from './DpdPickups';
+import { DpdTrackingSettings } from './DpdTrackingSettings';
 
 type DpdEnvironment = 'production' | 'sandbox';
 type DpdConfiguration = {
@@ -175,6 +176,7 @@ export function DpdIntegration() {
       </Group>
 
       <DpdPickups configurationRevision={configuration?.revision ?? -1} />
+      <DpdTrackingSettings />
 
       <Accordion variant="separated" radius="md">
         <Accordion.Item value="connection">
