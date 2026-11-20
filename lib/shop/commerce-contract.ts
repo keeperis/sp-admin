@@ -104,11 +104,13 @@ export type ShopNotificationView = {
   kind: string;
   label: string;
   subject: string;
-  status: 'pending' | 'sending' | 'sent' | 'failed' | 'dead' | 'preview';
+  status: 'pending' | 'sending' | 'sent' | 'failed' | 'dead' | 'preview' | 'suppressed';
   transport: 'preview' | 'smtp';
   attempts: number;
   createdAt: string;
   sentAt: string | null;
+  suppressedAt: string | null;
+  suppressionReason: string | null;
   nextAttemptAt: string | null;
   lastError: string | null;
 };

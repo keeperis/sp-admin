@@ -3,7 +3,9 @@ import { Alert, Anchor, Badge, Button, Group, Stack, Table, Text, TextInput } fr
 import { useState } from 'react';
 import type { ShopNotificationView } from '@/lib/shop/commerce-contract';
 
-type WithdrawalEmail = Pick<ShopNotificationView, 'status' | 'attempts' | 'sentAt' | 'lastError'>;
+type WithdrawalEmail = Pick<ShopNotificationView, 'attempts' | 'sentAt' | 'lastError'> & {
+  status: Exclude<ShopNotificationView['status'], 'suppressed'>;
+};
 export type Withdrawal = {
   _id: string;
   orderNumber: string;

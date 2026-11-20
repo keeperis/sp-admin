@@ -16,6 +16,7 @@ const labels: Record<ShopNotificationView['status'], string> = {
   failed: 'Siuntimas nepavyko',
   dead: 'Reikia pakartoti rankiniu būdu',
   preview: 'Vietinė peržiūra',
+  suppressed: 'Nesiunčiamas pagal laiškų eigą',
 };
 const date = (value: string) => new Date(value).toLocaleString('lt-LT');
 
@@ -141,6 +142,11 @@ export function OrderNotifications({ orderId, version }: { orderId: string; vers
           {notification.lastError && (
             <Text size="xs" c="red">
               {notification.lastError}
+            </Text>
+          )}
+          {notification.status === 'suppressed' && notification.suppressionReason && (
+            <Text size="xs" c="dimmed">
+              {notification.suppressionReason}
             </Text>
           )}
           <Group>
