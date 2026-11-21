@@ -117,8 +117,8 @@ export function DpdTrackingSettings() {
         <Accordion.Panel>
           <Stack>
             <Text size="sm">
-              Išsiųstos siuntos tikrinamos kas valandą. Gavėjui gavus siuntą, užsakymas pažymimas
-              „Įvykdytas“. Pristatymas į paštomatą dar nelaikomas atsiėmimu.
+              Siuntos tikrinamos kas valandą nuo 8 iki 22 val. Lietuvos laiku. Gavėjui gavus siuntą,
+              užsakymas pažymimas „Įvykdytas“. Pristatymas į paštomatą dar nelaikomas atsiėmimu.
             </Text>
             <Text size="sm" c="dimmed">
               Sekimui reikalingas atskiras DPD „esiunta“ API raktas. Etikečių ir kurjerio iškvietimo

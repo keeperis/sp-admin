@@ -19,6 +19,8 @@ import { shopRequest } from '@/lib/shop/client';
 import type { ShopDpdLocker, ShopOrderView } from '@/lib/shop/commerce-contract';
 import { initialDpdShipmentFields, type DpdRecipient as Recipient } from '@/lib/shop/dpd-recipient';
 
+import { canPrintDpdLabel } from '@/lib/shop/label-print';
+
 export type DpdTracking = { number: string; url: string };
 type Locker = ShopDpdLocker;
 type Shipment = {
@@ -143,10 +145,8 @@ export function OrderDpdShipment({
       : data?.settings.environment) === 'production';
   const pending = shipment?.state === 'creating' || shipment?.state === 'uncertain';
   const created = shipment?.state === 'created';
-  const alreadySent =
-    order.fulfillmentStatus === 'shipped' ||
-    order.fulfillmentStatus === 'fulfilled' ||
-    !!order.trackingNumber;
+  const showLabel = canPrintDpdLabel(order.fulfillmentStatus);
+  const alreadySent = !showLabel || !!order.trackingNumber;
   const withdrawalPending = !!order.withdrawalRequestedAt;
   const selectedLocker =
     lockers?.find((locker) => locker.id === lockerId) ||
@@ -288,7 +288,8 @@ export function OrderDpdShipment({
   }
 
   async function downloadLabel() {
-    if (!created || disabled || locked.current || (production && !confirmProduction)) return;
+    if (!showLabel || !created || disabled || locked.current || (production && !confirmProduction))
+      return;
     locked.current = true;
     setBusy(true);
     setError('');
@@ -386,39 +387,43 @@ export function OrderDpdShipment({
                 Atidaryti DPD siuntos sekimą ↗
               </Text>
             )}
-            {production && (
-              <Checkbox
-                label="Suprantu, kad etiketė bus gauta iš tikros DPD paskyros"
-                checked={confirmProduction}
-                onChange={(event) => setConfirmProduction(event.currentTarget.checked)}
-                disabled={disabled || busy}
-              />
+            {showLabel && (
+              <>
+                {production && (
+                  <Checkbox
+                    label="Suprantu, kad etiketė bus gauta iš tikros DPD paskyros"
+                    checked={confirmProduction}
+                    onChange={(event) => setConfirmProduction(event.currentTarget.checked)}
+                    disabled={disabled || busy}
+                  />
+                )}
+                <Group align="end">
+                  <Select
+                    label="Etiketės formatas"
+                    value={format}
+                    onChange={(value) => setFormat(value === 'A6' ? 'A6' : 'A4')}
+                    data={[
+                      { value: 'A4', label: 'A4 · įprastas spausdintuvas' },
+                      { value: 'A6', label: 'A6 · etikečių spausdintuvas' },
+                    ]}
+                    allowDeselect={false}
+                    disabled={disabled || busy}
+                  />
+                  <Button
+                    loading={busy}
+                    onClick={downloadLabel}
+                    disabled={disabled || (production && !confirmProduction)}
+                  >
+                    Atsisiųsti etiketę (PDF)
+                  </Button>
+                </Group>
+                <Text size="sm" c="dimmed">
+                  Siuntėjo adresas imamas iš DPD paskyros — patikrink jį etiketėje. Sukūrus siuntą
+                  užsakymas pažymimas „Ruošiamas“. Kurjeriui paėmus siuntas, užsakymų sąraše
+                  pasirink „Siuntos paimtos“.
+                </Text>
+              </>
             )}
-            <Group align="end">
-              <Select
-                label="Etiketės formatas"
-                value={format}
-                onChange={(value) => setFormat(value === 'A6' ? 'A6' : 'A4')}
-                data={[
-                  { value: 'A4', label: 'A4 · įprastas spausdintuvas' },
-                  { value: 'A6', label: 'A6 · etikečių spausdintuvas' },
-                ]}
-                allowDeselect={false}
-                disabled={disabled || busy}
-              />
-              <Button
-                loading={busy}
-                onClick={downloadLabel}
-                disabled={disabled || (production && !confirmProduction)}
-              >
-                Atsisiųsti etiketę (PDF)
-              </Button>
-            </Group>
-            <Text size="sm" c="dimmed">
-              Siuntėjo adresas imamas iš DPD paskyros — patikrink jį etiketėje. Sukūrus siuntą
-              užsakymas pažymimas „Ruošiamas“. Kurjeriui paėmus siuntas, užsakymų sąraše pasirink
-              „Siuntos paimtos“.
-            </Text>
           </>
         )}
         {!created &&

@@ -14,7 +14,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { shopRequest } from '@/lib/shop/client';
 import {
   documentKinds,
@@ -51,9 +51,17 @@ const statusColor = (status: ShopOrderView['status']) =>
       : status === 'awaiting_payment'
         ? 'yellow'
         : 'gray';
-export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
+export function OrdersPanel({
+  onChanged,
+  initiallyPending,
+}: {
+  onChanged: () => void;
+  initiallyPending: boolean;
+}) {
   const [operation, setOperation] = useState<'pickup' | 'handover' | null>(null);
-  const [fulfillment, setFulfillment] = useState<string | null>('all');
+  const [fulfillment, setFulfillment] = useState<string | null>(
+    initiallyPending ? 'pending' : 'all',
+  );
   const [orders, setOrders] = useState<ShopOrderView[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [selected, setSelected] = useState<ShopOrderView | null>(null);
@@ -63,13 +71,17 @@ export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<string | null>('all');
+  const [status, setStatus] = useState<string | null>(initiallyPending ? 'paid' : 'active');
   const [activeSection, setActiveSection] = useState<string | null>('orders');
+  const requestVersion = useRef(0);
+  const payment = activeSection === 'withdrawals' ? 'all' : status || 'active';
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setBusy(true);
     setError('');
     try {
-      const data = await shopRequest('orders');
+      const data = await shopRequest(`orders?payment=${encodeURIComponent(payment)}`);
+      if (requestVersion.current !== version) return;
       setOrders(data.orders);
       setWithdrawals(data.withdrawals);
       onChanged();
@@ -79,13 +91,16 @@ export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
           : null,
       );
     } catch (e) {
-      setError((e as Error).message);
+      if (requestVersion.current === version) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (requestVersion.current === version) setBusy(false);
     }
-  }, [onChanged]);
+  }, [onChanged, payment]);
   useEffect(() => {
     void load();
+    return () => {
+      requestVersion.current += 1;
+    };
   }, [load]);
   async function markPaid() {
     if (!selected || !confirming || busy) return;
@@ -157,8 +172,15 @@ export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
   }
   const filtered = orders.filter(
     (o) =>
-      (status === 'all' || o.status === status) &&
-      (fulfillment === 'all' || (o.status === 'paid' && o.fulfillmentStatus === fulfillment)) &&
+      (status === 'all' ||
+        (status === 'active'
+          ? o.status !== 'expired' && o.status !== 'cancelled'
+          : o.status === status)) &&
+      (fulfillment === 'all' ||
+        (o.status === 'paid' &&
+          (fulfillment === 'pending'
+            ? isLiveCommerce(o.mode) && o.fulfillmentStatus !== 'fulfilled'
+            : o.fulfillmentStatus === fulfillment))) &&
       `${o.number} ${o.customer.name} ${o.customer.email}`
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -210,6 +232,7 @@ export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
                 onChange={setStatus}
                 allowDeselect={false}
                 data={[
+                  { value: 'active', label: 'Aktyvūs užsakymai' },
                   { value: 'all', label: 'Visi mokėjimai' },
                   ...Object.entries(orderStatusLabels).map(([value, label]) => ({ value, label })),
                 ]}
@@ -221,6 +244,7 @@ export function OrdersPanel({ onChanged }: { onChanged: () => void }) {
                 allowDeselect={false}
                 data={[
                   { value: 'all', label: 'Visas vykdymas' },
+                  { value: 'pending', label: 'Laukia vykdymo' },
                   ...Object.entries(fulfillmentStatusLabels).map(([value, label]) => ({
                     value,
                     label,

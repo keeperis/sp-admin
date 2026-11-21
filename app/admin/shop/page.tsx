@@ -55,6 +55,7 @@ import { OrdersPanel } from './OrdersPanel';
 import { ProductEditor } from './ProductEditor';
 import styles from './ProductList.module.css';
 import { ProductQuickEdit, type ProductQuickEditChanges } from './ProductQuickEdit';
+import { RestockWaitlist } from './RestockWaitlist';
 import { ShopAccessPanel } from './ShopAccessPanel';
 import { ShopStatistics } from './ShopStatistics';
 
@@ -73,11 +74,25 @@ export default function ShopAdmin() {
 function ShopAdminContent() {
   const searchParams = useSearchParams();
   const queryTab = searchParams.get('tab') || 'orders';
-  const requestedTab = ['products', 'content', 'orders'].includes(queryTab) ? queryTab : 'settings';
+  const requestedTab = ['products', 'content', 'orders', 'waitlist'].includes(queryTab)
+    ? queryTab
+    : 'settings';
   const [settingsTab, setSettingsTab] = useState<string | null>(
     ['categories', 'collections', 'commerce', 'dpd'].includes(queryTab) ? queryTab : 'categories',
   );
   const [statisticsVersion, setStatisticsVersion] = useState(0);
+  const [pendingOrdersOpen, setPendingOrdersOpen] = useState(0);
+  const tabList = useRef<HTMLDivElement>(null);
+  function openFilteredTab(tab: 'products' | 'orders') {
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      const active = tabList.current?.querySelector<HTMLElement>(
+        '[role="tab"][aria-selected="true"]',
+      );
+      active?.focus({ preventScroll: true });
+      active?.scrollIntoView({ block: 'start', inline: 'nearest' });
+    });
+  }
   const refreshStatistics = useCallback(() => setStatisticsVersion((value) => value + 1), []);
   const [snapshot, setSnapshot] = useState<ShopSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -364,7 +379,19 @@ function ShopAdminContent() {
             </Button>
           </Group>
         </Group>
-        <ShopStatistics version={`${snapshot.revision}:${statisticsVersion}`} />
+        <ShopStatistics
+          version={`${snapshot.revision}:${statisticsVersion}`}
+          productFilterDisabled={quickDirty || busy || loading}
+          onOutOfStock={() => {
+            setQuery('');
+            setStatus('out-of-stock');
+            openFilteredTab('products');
+          }}
+          onPendingOrders={() => {
+            setPendingOrdersOpen((value) => value + 1);
+            openFilteredTab('orders');
+          }}
+        />
         <ShopAccessPanel />
         {error && !product && !category && !collection && (
           <Alert color="red" title="Pakeitimai neišsaugoti">
@@ -396,17 +423,22 @@ function ShopAdminContent() {
           </Alert>
         )}
         <Tabs value={activeTab} onChange={setActiveTab} keepMounted>
-          <Tabs.List mb="lg">
+          <Tabs.List mb="lg" ref={tabList}>
             <Tabs.Tab value="orders">Užsakymai</Tabs.Tab>
             <Tabs.Tab value="products" leftSection={<IconPackage size={17} />}>
               Produktai
             </Tabs.Tab>
+            <Tabs.Tab value="waitlist">Laukiantieji</Tabs.Tab>
             <Tabs.Tab value="content">Svetainės turinys {contentDirty ? '•' : ''}</Tabs.Tab>
             <Tabs.Tab value="settings">Nustatymai</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="orders">
-            <OrdersPanel onChanged={refreshStatistics} />
+            <OrdersPanel
+              key={pendingOrdersOpen}
+              initiallyPending={pendingOrdersOpen > 0}
+              onChanged={refreshStatistics}
+            />
           </Tabs.Panel>
 
           <Tabs.Panel value="products">
@@ -429,6 +461,7 @@ function ShopAdminContent() {
                     allowDeselect={false}
                     data={[
                       { value: 'active', label: 'Paskelbti ir juodraščiai' },
+                      { value: 'out-of-stock', label: 'Paskelbtos prekės be likučio' },
                       ...Object.entries(statusLabels).map(([value, label]) => ({ value, label })),
                     ]}
                   />
@@ -565,6 +598,9 @@ function ShopAdminContent() {
             </Stack>
           </Tabs.Panel>
 
+          <Tabs.Panel value="waitlist">
+            {activeTab === 'waitlist' && <RestockWaitlist version={contentKey} />}
+          </Tabs.Panel>
           <Tabs.Panel value="content">
             <ContentEditor
               key={contentKey}

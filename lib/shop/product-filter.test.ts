@@ -58,6 +58,16 @@ test('each explicit status filter shows only that status', () => {
   }
 });
 
+test('out-of-stock drilldown matches only published products with zero stock', () => {
+  const products = [
+    { ...product('sold-out', 'published', 0), stock: 0 },
+    product('available', 'published', 1),
+    { ...product('draft', 'draft', 2), stock: 0 },
+    { ...product('archived', 'archived', 3), stock: 0 },
+  ];
+  assert.deepEqual(ids(filterShopProducts(products, { status: 'out-of-stock' })), ['sold-out']);
+});
+
 test('search trims whitespace and matches Lithuanian names or slugs case-insensitively', () => {
   const products = [
     product('cup', 'published', 2, 'Ąžuolo puodelis', 'azuolo-puodelis'),

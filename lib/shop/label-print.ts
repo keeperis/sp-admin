@@ -1,3 +1,9 @@
+import type { FulfillmentStatus } from './commerce-contract';
+
+export function canPrintDpdLabel(status: FulfillmentStatus) {
+  return status === 'unfulfilled' || status === 'preparing';
+}
+
 /** Open immediately from a user click, before requesting the cached A6 PDF. */
 export function openLabelPrintWindow() {
   const target = window.open('', '_blank');

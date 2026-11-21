@@ -67,7 +67,7 @@ function mutationRequestIsSafe(request: NextRequest) {
 export async function proxyAdminApiRequest(
   request: NextRequest,
   targetPath: string,
-  options: { maxBodyBytes?: number } = {},
+  options: { maxBodyBytes?: number; forwardQuery?: boolean } = {},
 ) {
   // Grant issuance belongs to /admin/shop/preview, which binds the current
   // session expiry and fixed audience server-side. Never accept those from a browser body.
@@ -154,6 +154,7 @@ export async function proxyAdminApiRequest(
   let target: URL;
   try {
     target = new URL(targetPath, API_BASE_URL);
+    if (options.forwardQuery) target.search = request.nextUrl.search;
   } catch {
     console.error('[sp-admin:admin-api-proxy] invalid API_BASE_URL', {
       method: request.method,

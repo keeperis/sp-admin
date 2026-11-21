@@ -1,6 +1,6 @@
 import type { ShopProduct } from './contract';
 
-export type ProductStatusFilter = 'active' | ShopProduct['status'];
+export type ProductStatusFilter = 'active' | 'out-of-stock' | ShopProduct['status'];
 
 type ProductFilterOptions = {
   status?: ProductStatusFilter;
@@ -19,7 +19,9 @@ export function filterShopProducts(
         const matchesStatus =
           status === 'active'
             ? product.status === 'published' || product.status === 'draft'
-            : product.status === status;
+            : status === 'out-of-stock'
+              ? product.status === 'published' && product.stock < 1
+              : product.status === status;
         const matchesSearch =
           !search || `${product.name} ${product.slug}`.toLocaleLowerCase('lt').includes(search);
         return matchesStatus && matchesSearch;

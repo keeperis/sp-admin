@@ -4,7 +4,7 @@ import { IconPrinter } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import { shopRequest } from '@/lib/shop/client';
 import type { ShopOrderView } from '@/lib/shop/commerce-contract';
-import { openLabelPrintWindow, showLabelPdf } from '@/lib/shop/label-print';
+import { canPrintDpdLabel, openLabelPrintWindow, showLabelPdf } from '@/lib/shop/label-print';
 
 type Context = {
   settings: {
@@ -45,13 +45,18 @@ export function OrderDpdQuickAction({
   const locked = useRef(false);
   const request = useRef<Request | null>(null);
   async function print(overrideWeight?: number) {
-    if (locked.current || disabled) return;
+    if (locked.current || disabled || !canPrintDpdLabel(order.fulfillmentStatus)) return;
     locked.current = true;
     setBusy(true);
     setError('');
     const target = openLabelPrintWindow();
     try {
       let context: Context = await shopRequest(`orders/${order.id}/dpd`);
+      if (context.order && !canPrintDpdLabel(context.order.fulfillmentStatus)) {
+        onChange(context.order);
+        target?.close();
+        return;
+      }
       if (context.shipment?.state === 'creating' || context.shipment?.state === 'uncertain') {
         throw new Error(
           'DPD užklausa jau pateikta, bet siuntos patvirtinimo dar nėra. Patikrink būseną išsamioje peržiūroje — antros siuntos nekuriame.',
@@ -112,6 +117,7 @@ export function OrderDpdQuickAction({
       setBusy(false);
     }
   }
+  if (!canPrintDpdLabel(order.fulfillmentStatus)) return null;
   return (
     <Stack gap="xs">
       <Button

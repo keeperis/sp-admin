@@ -1,0 +1,21 @@
+.linkCard {
+  appearance: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.linkCard:hover:not(:disabled),
+.linkCard:focus-visible {
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.linkCard:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+.linkCard:disabled {
+  cursor: default;
+}

@@ -6,7 +6,12 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
   return proxyAdminApiRequest(
     request,
     `/api/admin/shop/${path.map(encodeURIComponent).join('/')}`,
-    { maxBodyBytes: 12 * 1024 * 1024 },
+    {
+      maxBodyBytes: 12 * 1024 * 1024,
+      forwardQuery:
+        request.method === 'GET' &&
+        (path[0] === 'restock-waitlist' || (path.length === 1 && path[0] === 'orders')),
+    },
   );
 }
 export const GET = proxy;
