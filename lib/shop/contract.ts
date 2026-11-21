@@ -93,6 +93,7 @@ export type ShopContent = {
   heroProductId: string;
   ritualCategoryId: string;
   heroImagePosition: number;
+  heroImageVerticalPosition: number;
 };
 export type ShopData = {
   products: ShopProduct[];

@@ -151,6 +151,16 @@ export function ContentEditor({
                           setContent((c) => ({ ...c, heroImagePosition: Number(v) || 0 }))
                         }
                       />
+                      <NumberInput
+                        label="Nuotraukos vertikali pozicija, %"
+                        description="0 — viršus, 50 — centras, 100 — apačia."
+                        min={0}
+                        max={100}
+                        value={content.heroImageVerticalPosition ?? 50}
+                        onChange={(v) =>
+                          setContent((c) => ({ ...c, heroImageVerticalPosition: Number(v) || 0 }))
+                        }
+                      />
                     </SimpleGrid>
                   </>
                 )}
